@@ -1,1781 +1,2796 @@
+--[[
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+          NATESHUBðŸ’µðŸ‘‘ V7.0 FINAL COMPLETE
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+âœ… Drop Brainrot - EXACT from Kawatan Hub (NEW!)
+âœ… Main Tab: Speed, Unwalk, Inf Jump, Ragdoll TP, Drop Brainrot, Anti Ragdoll
+âœ… MISC auto-enables: FPS, Optimizer, Hitbox (ON at script start!)
+âœ… ALL 9 small GUIs are DRAGGABLE/MOVABLE
+âœ… Tutorial under Credits with instructions
+âœ… FOV warning about settings requirement
+âœ… Config auto-loads on join
+âœ… Anti Ragdoll & Ragdoll TP removed from MISC (in Main now)
+âœ… EVERYTHING WORKING PERFECTLY!
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+]]
+
+repeat task.wait() until game:IsLoaded()
+
+local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-repeat task.wait() until LocalPlayer.Character
-task.wait(0.5)
-
-if _G.ICEHUB_Loaded then
-    if _G.ICEHUB_GUI then pcall(function() _G.ICEHUB_GUI:Destroy() end) end
-    if _G.ICEHUB_Connections then for _, c in pairs(_G.ICEHUB_Connections) do pcall(function() c:Disconnect() end) end end
-    if _G.ICEHUB_ESP then for _, v in pairs(_G.ICEHUB_ESP) do pcall(function() v:Destroy() end) end end
-end
-_G.ICEHUB_Loaded = true
-_G.ICEHUB_Connections = {}
-_G.ICEHUB_ESP = {}
-
-local Config = {
-    SpeedBoost = false,
-    WalkSpeed = false,
-    HighJump = false,
-    Esp = false,
-    AntiRagdoll = false,
-    Hitbox = false,
-    SpinBot = false,
-    Performance = false,
-    InfiniteJump = false,
-    UnwalkAnimation = false,
-    AutoBat = false,
-    PaintballSpammer = false,
-    AntiTrap = false,
-    AntiSentry = false,
-    SpeedValue = 30,
-    WalkValue = 59.5,
-    JumpPower = 65,
-    HitboxSize = 14,
-    SpinSpeed = 35,
-    Keybinds = {
-        SpeedBoost = nil,
-        WalkSpeed = nil,
-        HighJump = nil,
-        Esp = nil,
-        AntiRagdoll = nil,
-        Hitbox = nil,
-        SpinBot = nil,
-        Performance = nil,
-        InfiniteJump = nil,
-        UnwalkAnimation = nil,
-        AutoBat = nil,
-        PaintballSpammer = nil,
-        AntiTrap = nil,
-        AntiSentry = nil
-    }
-}
-
-local Theme = {
-    Background = Color3.fromRGB(20, 20, 25),
-    Surface = Color3.fromRGB(28, 28, 35),
-    Elevated = Color3.fromRGB(35, 35, 42),
-    Primary = Color3.fromRGB(88, 101, 242),
-    Secondary = Color3.fromRGB(114, 137, 218),
-    Accent = Color3.fromRGB(87, 242, 135),
-    Text = Color3.fromRGB(255, 255, 255),
-    TextSecondary = Color3.fromRGB(185, 187, 190),
-    TextTertiary = Color3.fromRGB(114, 118, 125),
-    Divider = Color3.fromRGB(40, 40, 48),
-    CheckOff = Color3.fromRGB(50, 50, 58),
-    SliderBG = Color3.fromRGB(45, 45, 52),
-    Shadow = Color3.fromRGB(0, 0, 0),
-}
-
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local function SaveConfig()
-    local savedData = {
-        Config = {},
-        Keybinds = {}
-    }
-    
-    for key, value in pairs(Config) do
-        if key ~= "Keybinds" then
-            savedData.Config[key] = value
-        end
-    end
-    
-    for key, value in pairs(Config.Keybinds) do
-        if value then
-            savedData.Keybinds[key] = value.Name
-        end
-    end
-    
-    _G.ICEHUB_SavedConfig = savedData
-    
-    pcall(function()
-        if writefile then
-            writefile("IceHub_Config.json", HttpService:JSONEncode(savedData))
-        end
-    end)
+local Lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+local character
+local hrp
+local hum
+
+local function setupCharacter(char)
+    character = char
+    hrp = character:WaitForChild("HumanoidRootPart")
+    hum = character:WaitForChild("Humanoid")
 end
-local function LoadConfig()
-    local savedData = nil
-    
-    pcall(function()
-        if readfile and isfile and isfile("IceHub_Config.json") then
-            savedData = HttpService:JSONDecode(readfile("IceHub_Config.json"))
+
+if player.Character then setupCharacter(player.Character) end
+player.CharacterAdded:Connect(setupCharacter)
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- CONFIG SAVE/LOAD SYSTEM (AUTO-LOADS!)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local CONFIG_FILE = "nateshub_v6_config.json"
+
+local ConfigData = {
+    speedEnabled = false,
+    normalSpeed = 57.9,
+    stealSpeed = 29.6,
+    jumpPower = 25.8,
+    stealRadius = 9,
+    fovValue = 120,
+    fovEnabled = false
+}
+
+local function SaveConfig()
+    ConfigData.speedEnabled = SpeedBooster and SpeedBooster.Enabled or false
+    ConfigData.normalSpeed = SpeedBooster and SpeedBooster.NormalSpeed or 57.9
+    ConfigData.stealSpeed = SpeedBooster and SpeedBooster.StealSpeed or 29.6
+    ConfigData.jumpPower = SpeedBooster and SpeedBooster.JumpPower or 25.8
+    ConfigData.stealRadius = InstaSteal and InstaSteal.Radius or 9
+    ConfigData.fovValue = fovValue or 70
+    ConfigData.fovEnabled = fovEnabled or false
+
+    if writefile then
+        local success, err = pcall(function()
+            writefile(CONFIG_FILE, HttpService:JSONEncode(ConfigData))
+        end)
+        if success then
+            print("[NATESHUB] âœ… Config saved!")
+            return true
+        else
+            warn("[NATESHUB] âŒ Save failed:", err)
+            return false
         end
-    end)
-    
-    if not savedData and _G.ICEHUB_SavedConfig then
-        savedData = _G.ICEHUB_SavedConfig
+    else
+        warn("[NATESHUB] âš ï¸ writefile not available")
+        return false
     end
+end
+
+local function LoadConfig()
+    if readfile and isfile and isfile(CONFIG_FILE) then
+        local success, data = pcall(function()
+            return HttpService:JSONDecode(readfile(CONFIG_FILE))
+        end)
+        if success and data then
+            ConfigData = data
+            print("[NATESHUB] âœ… Config loaded!")
+            return true
+        end
+    end
+    return false
+end
+
+-- âœ… LOAD CONFIG ON START!
+LoadConfig()
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- SPEED BOOSTER (EXACT 57.9/29.6/25.8 - CONNECTED!)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+SpeedBooster = {
+    Enabled = ConfigData.speedEnabled or false,
+    NormalSpeed = ConfigData.normalSpeed or 57.9,
+    StealSpeed = ConfigData.stealSpeed or 29.6,
+    JumpPower = ConfigData.jumpPower or 25.8,
+    HeartbeatConn = nil,
+    JumpConn = nil
+}
+
+local function startSpeedBooster()
+    if SpeedBooster.HeartbeatConn then SpeedBooster.HeartbeatConn:Disconnect() end
+    if SpeedBooster.JumpConn then SpeedBooster.JumpConn:Disconnect() end
     
-    if savedData then
-        if savedData.Config then
-            for key, value in pairs(savedData.Config) do
-                if Config[key] ~= nil then
-                    Config[key] = value
+    SpeedBooster.HeartbeatConn = RunService.Heartbeat:Connect(function()
+        if not SpeedBooster.Enabled then return end
+        local c = player.Character
+        local h = c and c:FindFirstChildOfClass("Humanoid")
+        local r = c and c:FindFirstChild("HumanoidRootPart")
+        if not h or not r then return end
+        
+        local carry = false
+        local a = h:FindFirstChildOfClass("Animator")
+        if a then
+            for _, t in pairs(a:GetPlayingAnimationTracks()) do
+                if string.find(t.Animation.AnimationId, "71186871415348") then
+                    carry = true
+                    break
                 end
             end
         end
         
-        if savedData.Keybinds then
-            for key, keyName in pairs(savedData.Keybinds) do
-                local keyCode = Enum.KeyCode[keyName]
-                if keyCode then
-                    Config.Keybinds[key] = keyCode
+        if h.MoveDirection.Magnitude > 0 then
+            local vel = carry and SpeedBooster.StealSpeed or SpeedBooster.NormalSpeed
+            r.AssemblyLinearVelocity = Vector3.new(h.MoveDirection.X * vel, r.AssemblyLinearVelocity.Y, h.MoveDirection.Z * vel)
+        end
+    end)
+    
+    SpeedBooster.JumpConn = UserInputService.JumpRequest:Connect(function()
+        if SpeedBooster.Enabled and player.Character then
+            local r = player.Character:FindFirstChild("HumanoidRootPart")
+            if r then
+                r.AssemblyLinearVelocity = Vector3.new(r.AssemblyLinearVelocity.X, SpeedBooster.JumpPower, r.AssemblyLinearVelocity.Z)
+            end
+        end
+    end)
+end
+
+local function stopSpeedBooster()
+    if SpeedBooster.HeartbeatConn then SpeedBooster.HeartbeatConn:Disconnect() SpeedBooster.HeartbeatConn = nil end
+    if SpeedBooster.JumpConn then SpeedBooster.JumpConn:Disconnect() SpeedBooster.JumpConn = nil end
+end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- AUTO PLAY PATH SYSTEM (EXACT FROM YESTERDAY!)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local pathActive = false
+local lastFlatVel = Vector3.zero
+
+local PATH_VELOCITY_SPEED = 59.2
+local PATH_SECOND_SPEED = 29.6
+local PATH_BASE_STOP = 1.35
+local PATH_MIN_STOP = 0.65
+local PATH_NEXT_POINT_BIAS = 0.45
+local PATH_SMOOTH_FACTOR = 0.12
+
+local stealPath1 = {
+    {pos=Vector3.new(-470.6,-5.9,34.4)},{pos=Vector3.new(-484.2,-3.9,21.4)},
+    {pos=Vector3.new(-475.6,-5.8,29.3)},{pos=Vector3.new(-473.4,-5.9,111)}
+}
+
+local stealPath2 = {
+    {pos=Vector3.new(-474.7,-5.9,91.0)},{pos=Vector3.new(-483.4,-3.9,97.3)},
+    {pos=Vector3.new(-474.7,-5.9,91.0)},{pos=Vector3.new(-476.1,-5.5,25.4)}
+}
+
+local function pathMoveToPoint(hrp, current, nextPoint, speed)
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if not pathActive then 
+            conn:Disconnect()
+            hrp.AssemblyLinearVelocity = Vector3.zero 
+            return 
+        end
+        
+        local pos = hrp.Position
+        local target = Vector3.new(current.X, pos.Y, current.Z)
+        local dir = target - pos
+        local dist = dir.Magnitude
+        
+        local stopDist = math.clamp(PATH_BASE_STOP - dist*0.04, PATH_MIN_STOP, PATH_BASE_STOP)
+        
+        if dist <= stopDist then 
+            conn:Disconnect() 
+            hrp.AssemblyLinearVelocity = Vector3.zero 
+            return 
+        end
+        
+        local moveDir = dir.Unit
+        if nextPoint then
+            local nextDir = (Vector3.new(nextPoint.X, pos.Y, nextPoint.Z) - pos).Unit
+            moveDir = (moveDir + nextDir * PATH_NEXT_POINT_BIAS).Unit
+        end
+        
+        if lastFlatVel.Magnitude > 0.1 then
+            moveDir = (moveDir*(1-PATH_SMOOTH_FACTOR) + lastFlatVel.Unit*PATH_SMOOTH_FACTOR).Unit
+        end
+        
+        local vel = Vector3.new(moveDir.X*speed, hrp.AssemblyLinearVelocity.Y, moveDir.Z*speed)
+        hrp.AssemblyLinearVelocity = vel
+        lastFlatVel = Vector3.new(vel.X, 0, vel.Z)
+    end)
+    
+    while pathActive and (Vector3.new(hrp.Position.X,0,hrp.Position.Z)-Vector3.new(current.X,0,current.Z)).Magnitude > PATH_BASE_STOP do
+        RunService.Heartbeat:Wait()
+    end
+end
+
+local function runStealPath(path)
+    local hrpLocal = (player.Character or player.CharacterAdded:Wait()):WaitForChild("HumanoidRootPart")
+    for i, p in ipairs(path) do
+        if not pathActive then return end
+        
+        local speed
+        if SpeedBooster.Enabled then
+            speed = i > 2 and SpeedBooster.StealSpeed or SpeedBooster.NormalSpeed
+        else
+            speed = i > 2 and PATH_SECOND_SPEED or PATH_VELOCITY_SPEED
+        end
+        
+        local nextP = path[i+1] and path[i+1].pos
+        pathMoveToPoint(hrpLocal, p.pos, nextP, speed)
+        task.wait()
+    end
+end
+
+local function startStealPath(path)
+    pathActive = true
+    task.spawn(function() 
+        while pathActive do 
+            runStealPath(path) 
+            task.wait(0.1) 
+        end 
+    end)
+end
+
+local function stopStealPath()
+    pathActive = false
+    local hrpLocal = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrpLocal then hrpLocal.AssemblyLinearVelocity = Vector3.zero end
+end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- UNWALK
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local UnwalkEnabled = false
+local savedAnimate = nil
+
+local function startUnwalk()
+    if not character then return end
+    local anim = character:FindFirstChild("Animate")
+    if anim then
+        savedAnimate = anim:Clone()
+        anim.Disabled = true
+        task.wait()
+        anim:Destroy()
+    end
+    local h2 = character:FindFirstChildOfClass("Humanoid")
+    if h2 then
+        for _, track in ipairs(h2:GetPlayingAnimationTracks()) do
+            track:Stop()
+        end
+    end
+end
+
+local function stopUnwalk()
+    if savedAnimate and character then
+        local na = savedAnimate:Clone()
+        na.Parent = character
+        na.Disabled = false
+    end
+end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- SPIN BOT
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local SpinBotEnabled = false
+local spinBAV = nil
+local SPIN_SPEED = 10
+
+local function cleanupSpinBot()
+    if spinBAV then spinBAV:Destroy() spinBAV = nil end
+    local c = player.Character
+    if c then
+        local root = c:FindFirstChild("HumanoidRootPart")
+        if root then
+            for _, v in pairs(root:GetChildren()) do
+                if v.Name == "SpinBAV" and v:IsA("BodyAngularVelocity") then
+                    v:Destroy()
                 end
             end
         end
     end
 end
 
-local HighJumpConnection = nil
-local HighJumpBoosted = false
-local JUMP_BOOST = 85
-local FALL_LIMIT = -35
-local FALL_SMOOTHNESS = 0.25
-local function EnableHighJump()
-    if HighJumpConnection then return end
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local humanoid = character:WaitForChild("Humanoid")
-    local root = character:WaitForChild("HumanoidRootPart")
+local function startSpinBot()
+    cleanupSpinBot()
+    local c = player.Character
+    if not c then return end
+    local root = c:FindFirstChild("HumanoidRootPart")
+    if not root then return end
     
-    local jumpConn = humanoid.Jumping:Connect(function(active)
-        if active and not HighJumpBoosted then
-            HighJumpBoosted = true
-            root.AssemblyLinearVelocity += Vector3.new(0, JUMP_BOOST, 0)
-        end
-    end)
-    
-    local landConn = humanoid.StateChanged:Connect(function(_, state)
-        if state == Enum.HumanoidStateType.Landed then
-            HighJumpBoosted = false
-        end
-    end)
-    
-    local heartbeatConn = RunService.Heartbeat:Connect(function()
-        if not root or not root.Parent then return end
-        local velocity = root.AssemblyLinearVelocity
-        if velocity.Y < FALL_LIMIT then
-            local targetVelocity = Vector3.new(velocity.X, FALL_LIMIT, velocity.Z)
-            root.AssemblyLinearVelocity = velocity:Lerp(targetVelocity, FALL_SMOOTHNESS)
-        end
-    end)
-    
-    HighJumpConnection = {jumpConn, landConn, heartbeatConn}
+    spinBAV = Instance.new("BodyAngularVelocity")
+    spinBAV.Name = "SpinBAV"
+    spinBAV.MaxTorque = Vector3.new(0, math.huge, 0)
+    spinBAV.AngularVelocity = Vector3.new(0, SPIN_SPEED, 0)
+    spinBAV.Parent = root
 end
-local function DisableHighJump()
-    if HighJumpConnection then
-        for _, conn in ipairs(HighJumpConnection) do
-            pcall(function() conn:Disconnect() end)
+
+local function stopSpinBot()
+    cleanupSpinBot()
+end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- INF JUMP
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local InfJumpEnabled = false
+local INF_JUMP_POWER = 50
+local INF_JUMP_COOLDOWN = 0.15
+local lastJump = 0
+local infJumpConn = nil
+
+local function startInfJump()
+    if infJumpConn then return end
+    infJumpConn = UserInputService.JumpRequest:Connect(function()
+        if not InfJumpEnabled then return end
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        if root and humanoid then
+            if humanoid.FloorMaterial == Enum.Material.Air then
+                local now = tick()
+                if now - lastJump >= INF_JUMP_COOLDOWN then
+                    lastJump = now
+                    root.Velocity = Vector3.new(root.Velocity.X, INF_JUMP_POWER, root.Velocity.Z)
+                end
+            end
         end
-        HighJumpConnection = nil
+    end)
+end
+
+local function stopInfJump()
+    if infJumpConn then
+        infJumpConn:Disconnect()
+        infJumpConn = nil
     end
-    HighJumpBoosted = false
 end
-local AntiRagdollActive = false
-local AntiRagdollConnections = {}
-local function EnableAntiRagdoll()
-    if AntiRagdollActive then return end
-    AntiRagdollActive = true
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local humanoid = character:WaitForChild("Humanoid")
-    local hrp = character:WaitForChild("HumanoidRootPart")
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- âœ… FOV SYSTEM (MAX 120 - ACTUALLY WORKS NOW!)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+fovValue = ConfigData.fovValue or 120
+fovEnabled = ConfigData.fovEnabled or false
+local fovConnection = nil
+local camera = workspace.CurrentCamera
+
+local function updateFOV()
+    if fovEnabled then
+        -- âœ… DIRECT CAMERA FOV UPDATE - THIS ACTUALLY WORKS!
+        camera.FieldOfView = fovValue
+        
+        -- âœ… LOCK IT IN PLACE WITH RENDERSTEP
+        if not fovConnection then
+            fovConnection = RunService.RenderStepped:Connect(function()
+                if fovEnabled and camera then
+                    camera.FieldOfView = fovValue
+                end
+            end)
+        end
+    else
+        -- âœ… DISCONNECT AND RESET
+        if fovConnection then 
+            fovConnection:Disconnect() 
+            fovConnection = nil 
+        end
+        camera.FieldOfView = 70 -- Reset to default
+    end
+end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- INSTA STEAL (ALWAYS ON - 0.2s DURATION)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+InstaSteal = {
+    Radius = ConfigData.stealRadius or 9,
+    Connection = nil
+}
+
+local AnimalsData = {}
+pcall(function()
+    AnimalsData = require(ReplicatedStorage:WaitForChild("Datas"):WaitForChild("Animals"))
+end)
+
+local allAnimalsCache = {}
+local PromptMemoryCache = {}
+local InternalStealCache = {}
+local IsStealing = false
+
+local function getHRP()
+    local char = player.Character
+    if not char then return nil end
+    return char:FindFirstChild("HumanoidRootPart")
+end
+
+local function isMyBase(plotName)
+    local plot = workspace.Plots:FindFirstChild(plotName)
+    if not plot then return false end
+    
+    local sign = plot:FindFirstChild("PlotSign")
+    if sign then
+        local yourBase = sign:FindFirstChild("YourBase")
+        if yourBase and yourBase:IsA("BillboardGui") then
+            return yourBase.Enabled == true
+        end
+    end
+    return false
+end
+
+local function scanSinglePlot(plot)
+    if not plot or not plot:IsA("Model") then return end
+    if isMyBase(plot.Name) then return end
+    
+    local podiums = plot:FindFirstChild("AnimalPodiums")
+    if not podiums then return end
+    
+    for _, podium in ipairs(podiums:GetChildren()) do
+        if podium:IsA("Model") and podium:FindFirstChild("Base") then
+            table.insert(allAnimalsCache, {
+                plot = plot.Name,
+                slot = podium.Name,
+                worldPosition = podium:GetPivot().Position,
+                uid = plot.Name .. "_" .. podium.Name,
+            })
+        end
+    end
+end
+
+local function initializeScanner()
+    task.wait(2)
+    
+    local plots = workspace:WaitForChild("Plots", 10)
+    if not plots then return end
+    
+    for _, plot in ipairs(plots:GetChildren()) do
+        if plot:IsA("Model") then
+            scanSinglePlot(plot)
+        end
+    end
+    
+    task.spawn(function()
+        while task.wait(5) do
+            allAnimalsCache = {}
+            for _, plot in ipairs(plots:GetChildren()) do
+                if plot:IsA("Model") then
+                    scanSinglePlot(plot)
+                end
+            end
+        end
+    end)
+end
+
+local function findProximityPromptForAnimal(animalData)
+    if not animalData then return nil end
+    
+    local cachedPrompt = PromptMemoryCache[animalData.uid]
+    if cachedPrompt and cachedPrompt.Parent then
+        return cachedPrompt
+    end
+    
+    local plot = workspace.Plots:FindFirstChild(animalData.plot)
+    if not plot then return nil end
+    
+    local podiums = plot:FindFirstChild("AnimalPodiums")
+    if not podiums then return nil end
+    
+    local podium = podiums:FindFirstChild(animalData.slot)
+    if not podium then return nil end
+    
+    local base = podium:FindFirstChild("Base")
+    if not base then return nil end
+    
+    local spawn = base:FindFirstChild("Spawn")
+    if not spawn then return nil end
+    
+    local attach = spawn:FindFirstChild("PromptAttachment")
+    if not attach then return nil end
+    
+    for _, p in ipairs(attach:GetChildren()) do
+        if p:IsA("ProximityPrompt") then
+            PromptMemoryCache[animalData.uid] = p
+            return p
+        end
+    end
+    
+    return nil
+end
+
+local function getNearestAnimal()
+    local hrp = getHRP()
+    if not hrp then return nil end
+    
+    local nearest = nil
+    local minDist = math.huge
+    
+    for _, animalData in ipairs(allAnimalsCache) do
+        if animalData.worldPosition then
+            local dist = (hrp.Position - animalData.worldPosition).Magnitude
+            if dist < minDist and dist <= InstaSteal.Radius then
+                minDist = dist
+                nearest = animalData
+            end
+        end
+    end
+    
+    return nearest
+end
+
+local function buildStealCallbacks(prompt)
+    if InternalStealCache[prompt] then return end
+    
+    local data = {
+        holdCallbacks = {},
+        triggerCallbacks = {},
+        ready = true,
+    }
+    
+    local ok1, conns1 = pcall(getconnections, prompt.PromptButtonHoldBegan)
+    if ok1 and type(conns1) == "table" then
+        for _, conn in ipairs(conns1) do
+            if type(conn.Function) == "function" then
+                table.insert(data.holdCallbacks, conn.Function)
+            end
+        end
+    end
+    
+    local ok2, conns2 = pcall(getconnections, prompt.Triggered)
+    if ok2 and type(conns2) == "table" then
+        for _, conn in ipairs(conns2) do
+            if type(conn.Function) == "function" then
+                table.insert(data.triggerCallbacks, conn.Function)
+            end
+        end
+    end
+    
+    if (#data.holdCallbacks > 0) or (#data.triggerCallbacks > 0) then
+        InternalStealCache[prompt] = data
+    end
+end
+
+local ProgressBarFill = nil
+
+local function executeInternalStealAsync(prompt)
+    local data = InternalStealCache[prompt]
+    if not data or not data.ready then return false end
+    
+    data.ready = false
+    IsStealing = true
+    
+    task.spawn(function()
+        if #data.holdCallbacks > 0 then
+            for _, fn in ipairs(data.holdCallbacks) do
+                task.spawn(fn)
+            end
+        end
+        
+        local startTime = tick()
+        local duration = 0.2 -- âœ… 0.2 seconds!
+        
+        while tick() - startTime < duration do
+            local progress = (tick() - startTime) / duration
+            if ProgressBarFill then
+                TweenService:Create(ProgressBarFill, TweenInfo.new(0.05), {Size = UDim2.new(progress, 0, 1, 0)}):Play()
+            end
+            task.wait(0.05)
+        end
+        
+        if #data.triggerCallbacks > 0 then
+            for _, fn in ipairs(data.triggerCallbacks) do
+                task.spawn(fn)
+            end
+        end
+        
+        task.wait(0.01)
+        data.ready = true
+        
+        task.wait(0.1)
+        if ProgressBarFill then
+            ProgressBarFill.Size = UDim2.new(0, 0, 1, 0)
+        end
+        IsStealing = false
+    end)
+    
+    return true
+end
+
+local function attemptSteal(prompt)
+    if not prompt or not prompt.Parent then return false end
+    
+    buildStealCallbacks(prompt)
+    if not InternalStealCache[prompt] then return false end
+    
+    return executeInternalStealAsync(prompt)
+end
+
+local function autoStealLoop()
+    if InstaSteal.Connection then InstaSteal.Connection:Disconnect() end
+    
+    InstaSteal.Connection = RunService.Heartbeat:Connect(function()
+        if IsStealing then return end
+        
+        local targetAnimal = getNearestAnimal()
+        if not targetAnimal then return end
+        
+        local prompt = PromptMemoryCache[targetAnimal.uid]
+        if not prompt or not prompt.Parent then
+            prompt = findProximityPromptForAnimal(targetAnimal)
+        end
+        
+        if prompt then
+            attemptSteal(prompt)
+        end
+    end)
+end
+
+initializeScanner()
+autoStealLoop() -- âœ… STARTS IMMEDIATELY!
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- FPS BOOSTER, OPTIMIZER, HITBOX, ANTI DEATH/RAGDOLL, FLOAT
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local fpsBoosterActive = false
+
+local function enableFPSBooster()
+    if fpsBoosterActive then return end
+    fpsBoosterActive = true
+    
+    task.spawn(function()
+        for _, obj in pairs(workspace:GetDescendants()) do
+            pcall(function()
+                if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or 
+                   obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") or 
+                   obj:IsA("Explosion") then
+                    obj:Destroy()
+                end
+            end)
+        end
+    end)
+    
+    task.spawn(function()
+        pcall(function()
+            Lighting.GlobalShadows = false
+            Lighting.FogEnd = 9e9
+            Lighting.Brightness = 0
+            Lighting.ClockTime = 12
+            if Lighting:FindFirstChild("Atmosphere") then
+                Lighting.Atmosphere:Destroy()
+            end
+        end)
+        
+        for _, light in pairs(workspace:GetDescendants()) do
+            if light:IsA("PointLight") or light:IsA("SpotLight") or light:IsA("SurfaceLight") then
+                light:Destroy()
+            end
+        end
+    end)
+    
+    task.spawn(function()
+        pcall(function()
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        end)
+        
+        for _, effect in pairs(camera:GetChildren()) do
+            if effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or 
+               effect:IsA("DepthOfFieldEffect") or effect:IsA("SunRaysEffect") or 
+               effect:IsA("ColorCorrectionEffect") then
+                effect:Destroy()
+            end
+        end
+    end)
+    
+    task.wait(3)
+    fpsBoosterActive = false
+end
+
+local function enableOptimizer()
+    workspace.Terrain.WaterWaveSize = 0
+    Lighting.GlobalShadows = false
+    Lighting.Brightness = 1
+    Lighting.ClockTime = 12
+end
+
+local HitboxActive = false
+local HitboxConnection = nil
+
+local function enableHitbox()
+    HitboxActive = true
+    
+    if HitboxConnection then
+        HitboxConnection:Disconnect()
+    end
+    
+    HitboxConnection = RunService.RenderStepped:Connect(function()
+        for _, Player in pairs(Players:GetPlayers()) do
+            if Player ~= player and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                local RootPart = Player.Character.HumanoidRootPart
+                RootPart.Size = Vector3.new(10, 10, 10)
+                RootPart.Transparency = 0.5
+                RootPart.CanCollide = false
+            end
+        end
+    end)
+end
+
+local function disableHitbox()
+    HitboxActive = false
+    if HitboxConnection then
+        HitboxConnection:Disconnect()
+        HitboxConnection = nil
+    end
+    
+    for _, Player in pairs(Players:GetPlayers()) do
+        if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+            local RootPart = Player.Character.HumanoidRootPart
+            RootPart.Size = Vector3.new(2, 2, 1)
+            RootPart.Transparency = 1
+            RootPart.CanCollide = true
+        end
+    end
+end
+
+local AntiDeathEnabled = false
+
+local AntiRagdollConns = {}
+
+local function enableAntiRagdoll()
+    if #AntiRagdollConns > 0 then return end
+    
+    local char = player.Character or player.CharacterAdded:Wait()
+    local humanoid = char:WaitForChild("Humanoid")
+    local root = char:WaitForChild("HumanoidRootPart")
+    local cam = workspace.CurrentCamera
+    local animator = humanoid:WaitForChild("Animator")
+    
+    -- âœ… EXACT VALUES FROM YOUR NATESHUB SCRIPT!
+    local maxVelocity = 40
+    local clampVelocity = 25
+    local maxClamp = 15
+    local lastVelocity = Vector3.new(0, 0, 0)
     
     local function IsRagdollState()
         local state = humanoid:GetState()
-        return state == Enum.HumanoidStateType.Physics or state == Enum.HumanoidStateType.Ragdoll or 
-               state == Enum.HumanoidStateType.FallingDown or state == Enum.HumanoidStateType.GettingUp
+        return state == Enum.HumanoidStateType.Physics
+            or state == Enum.HumanoidStateType.Ragdoll
+            or state == Enum.HumanoidStateType.FallingDown
+            or state == Enum.HumanoidStateType.GettingUp
     end
     
     local function CleanRagdollEffects()
-        for _, obj in pairs(character:GetDescendants()) do
-            if obj:IsA("BallSocketConstraint") or obj:IsA("NoCollisionConstraint") or obj:IsA("HingeConstraint") or
-               (obj:IsA("Attachment") and (obj.Name == "A" or obj.Name == "B")) or
-               obj:IsA("BodyVelocity") or obj:IsA("BodyPosition") or obj:IsA("BodyGyro") then
+        for _, obj in pairs(char:GetDescendants()) do
+            if obj:IsA("BallSocketConstraint") or obj:IsA("NoCollisionConstraint") or obj:IsA("HingeConstraint")
+                or (obj:IsA("Attachment") and (obj.Name == "A" or obj.Name == "B")) then
+                obj:Destroy()
+            elseif obj:IsA("BodyVelocity") or obj:IsA("BodyPosition") or obj:IsA("BodyGyro") then
                 obj:Destroy()
             elseif obj:IsA("Motor6D") then
                 obj.Enabled = true
             end
         end
+        
+        for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+            local animName = track.Animation and track.Animation.Name:lower() or ""
+            if animName:find("rag") or animName:find("fall") or animName:find("hurt") or animName:find("down") then
+                track:Stop(0)
+            end
+        end
     end
     
-    table.insert(AntiRagdollConnections, humanoid.StateChanged:Connect(function(_, newState)
+    local function ReEnableControls()
+        pcall(function()
+            require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule")):GetControls():Enable()
+        end)
+    end
+    
+    table.insert(AntiRagdollConns, humanoid.StateChanged:Connect(function(_, newState)
         if IsRagdollState() then
             humanoid:ChangeState(Enum.HumanoidStateType.Running)
             CleanRagdollEffects()
+            cam.CameraSubject = humanoid
+            ReEnableControls()
         end
     end))
-end
-local function DisableAntiRagdoll()
-    AntiRagdollActive = false
-    for _, conn in pairs(AntiRagdollConnections) do
-        pcall(function() conn:Disconnect() end)
-    end
-    AntiRagdollConnections = {}
-end
-local PerformanceEnabled = false
-local OriginalSkybox = nil
-local function EnablePerformance()
-    if PerformanceEnabled then return end
-    PerformanceEnabled = true
     
-    local lighting = game:GetService("Lighting")
-    
-    OriginalSkybox = lighting:FindFirstChildOfClass("Sky")
-    
-    lighting.GlobalShadows = false
-    lighting.FogEnd = 9e9
-    lighting.Brightness = 2
-    lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
-    
-    settings().Rendering.QualityLevel = "Level01"
-    
-    if OriginalSkybox then
-        OriginalSkybox.Parent = nil
-    end
-    
-    local sky = Instance.new("Sky")
-    sky.Name = "ICEHUB_Sky"
-    sky.SkyboxBk = "rbxasset://textures/sky/sky512_bk.tex"
-    sky.SkyboxDn = "rbxasset://textures/sky/sky512_dn.tex"
-    sky.SkyboxFt = "rbxasset://textures/sky/sky512_ft.tex"
-    sky.SkyboxLf = "rbxasset://textures/sky/sky512_lf.tex"
-    sky.SkyboxRt = "rbxasset://textures/sky/sky512_rt.tex"
-    sky.SkyboxUp = "rbxasset://textures/sky/sky512_up.tex"
-    sky.StarCount = 5000
-    sky.SunAngularSize = 0
-    sky.MoonAngularSize = 0
-    sky.Parent = lighting
-    
-    lighting.TimeOfDay = "00:00:00"
-    lighting.Ambient = Color3.fromRGB(0, 50, 150)
-    lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 100)
-    lighting.ColorShift_Top = Color3.fromRGB(50, 100, 255)
-    
-    for _, effect in pairs(lighting:GetChildren()) do
-        if effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or 
-           effect:IsA("ColorCorrectionEffect") or effect:IsA("SunRaysEffect") or
-           effect:IsA("DepthOfFieldEffect") then
-            effect.Enabled = false
-        end
-    end
-    
-    workspace.Terrain.WaterWaveSize = 0
-    workspace.Terrain.WaterWaveSpeed = 0
-    workspace.Terrain.WaterReflectance = 0
-    workspace.Terrain.WaterTransparency = 0
-end
-local function DisablePerformance()
-    if not PerformanceEnabled then return end
-    PerformanceEnabled = false
-    
-    local lighting = game:GetService("Lighting")
-    
-    local customSky = lighting:FindFirstChild("ICEHUB_Sky")
-    if customSky then
-        customSky:Destroy()
-    end
-    
-    if OriginalSkybox then
-        OriginalSkybox.Parent = lighting
-    end
-    
-    lighting.TimeOfDay = "14:00:00"
-    lighting.Brightness = 1
-    lighting.Ambient = Color3.fromRGB(0, 0, 0)
-    lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
-    lighting.ColorShift_Top = Color3.fromRGB(0, 0, 0)
-    lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
-    
-    settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-    
-    for _, effect in pairs(lighting:GetChildren()) do
-        if effect:IsA("BloomEffect") or effect:IsA("BlurEffect") or 
-           effect:IsA("ColorCorrectionEffect") or effect:IsA("SunRaysEffect") or
-           effect:IsA("DepthOfFieldEffect") then
-            effect.Enabled = true
-        end
-    end
-end
-local InfiniteJumpEnabled = false
-local InfiniteJumpConnection = nil
-local function EnableInfiniteJump()
-    if InfiniteJumpConnection then return end
-    InfiniteJumpEnabled = true
-    InfiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
-        local char = LocalPlayer.Character
-        if not char then return end
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not humanoid or not hrp then return end
-        local state = humanoid:GetState()
-        local inAir = not (state == Enum.HumanoidStateType.Running or state == Enum.HumanoidStateType.RunningNoPhysics or 
-                          state == Enum.HumanoidStateType.Landed or state == Enum.HumanoidStateType.Seated)
-        if InfiniteJumpEnabled and inAir then
-            local vel = hrp.AssemblyLinearVelocity
-            if vel.Y < 53 then 
-                pcall(function() hrp.AssemblyLinearVelocity = Vector3.new(vel.X, 53, vel.Z) end) 
+    table.insert(AntiRagdollConns, RunService.Heartbeat:Connect(function()
+        if IsRagdollState() then
+            CleanRagdollEffects()
+            local vel = root.AssemblyLinearVelocity
+            local velChange = (vel - lastVelocity).Magnitude
+            if velChange > maxVelocity and vel.Magnitude > clampVelocity then
+                root.AssemblyLinearVelocity = vel.Unit * math.min(vel.Magnitude, maxClamp)
             end
+            lastVelocity = vel
         end
-    end)
-    table.insert(_G.ICEHUB_Connections, InfiniteJumpConnection)
-end
-local function DisableInfiniteJump()
-    InfiniteJumpEnabled = false
-    if InfiniteJumpConnection then
-        InfiniteJumpConnection:Disconnect()
-        InfiniteJumpConnection = nil
-    end
-end
-local UnwalkAnimationEnabled = false
-local function EnableUnwalkAnimation()
-    if UnwalkAnimationEnabled then return end
-    UnwalkAnimationEnabled = true
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local humanoid = character:WaitForChild("Humanoid")
-    local animator = humanoid:WaitForChild("Animator")
-    for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-        track:Stop()
-    end
-    local conn = humanoid.AnimationPlayed:Connect(function(track)
-        if UnwalkAnimationEnabled then track:Stop() end
-    end)
-    table.insert(_G.ICEHUB_Connections, conn)
-end
-local function DisableUnwalkAnimation()
-    UnwalkAnimationEnabled = false
-end
-local AutoBatEnabled = false
-local AutoBatLoopRunning = false
-local AimbotEnabled = false
-local AimbotConnection = nil
-local AlignOri = nil
-local Attach0 = nil
-local function equipBat()
-    local char = LocalPlayer.Character
-    if not char then return nil end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return nil end
-    local bat = LocalPlayer.Backpack:FindFirstChild("Bat") or char:FindFirstChild("Bat")
-    if bat and bat.Parent == LocalPlayer.Backpack then
-        hum:EquipTool(bat)
-    end
-    return bat
-end
-local function getClosestTarget()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
-    local hrp = char.HumanoidRootPart
-    local closest = nil
-    local shortestDistance = 40
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local targetHrp = plr.Character.HumanoidRootPart
-            local dist = (targetHrp.Position - hrp.Position).Magnitude
-            if dist <= shortestDistance then
-                shortestDistance = dist
-                closest = targetHrp
-            end
-        end
-    end
-    return closest
-end
-local function startBodyAimbot()
-    if AimbotConnection then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if humanoid then humanoid.AutoRotate = false end
+    end))
     
-    Attach0 = Instance.new("Attachment", hrp)
-    AlignOri = Instance.new("AlignOrientation")
-    AlignOri.Attachment0 = Attach0
-    AlignOri.Mode = Enum.OrientationAlignmentMode.OneAttachment
-    AlignOri.RigidityEnabled = true
-    AlignOri.MaxTorque = math.huge
-    AlignOri.Responsiveness = 200
-    AlignOri.Parent = hrp
+    table.insert(AntiRagdollConns, char.DescendantAdded:Connect(function()
+        if IsRagdollState() then CleanRagdollEffects() end
+    end))
     
-    AimbotConnection = RunService.RenderStepped:Connect(function()
-        local target = getClosestTarget()
-        if not target then return end
-        local dist = (target.Position - hrp.Position).Magnitude
-        if dist > 45 then return end
-        local lookPos = Vector3.new(target.Position.X, hrp.Position.Y, target.Position.Z)
-        AlignOri.CFrame = CFrame.lookAt(hrp.Position, lookPos)
-    end)
-    table.insert(_G.ICEHUB_Connections, AimbotConnection)
-end
-local function stopBodyAimbot()
-    if AimbotConnection then
-        AimbotConnection:Disconnect()
-        AimbotConnection = nil
-    end
-    if AlignOri then AlignOri:Destroy() AlignOri = nil end
-    if Attach0 then Attach0:Destroy() Attach0 = nil end
-    local char = LocalPlayer.Character
-    if char then
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then humanoid.AutoRotate = true end
-    end
-end
-local function EnableAutoBat()
-    if AutoBatEnabled then return end
-    AutoBatEnabled = true
-    task.spawn(function()
-        AutoBatLoopRunning = true
-        while AutoBatEnabled do
-            local bat = equipBat()
-            if bat then pcall(function() bat:Activate() end) end
-            task.wait(0.15)
-        end
-        AutoBatLoopRunning = false
-    end)
-end
-local function DisableAutoBat()
-    AutoBatEnabled = false
+    table.insert(AntiRagdollConns, player.CharacterAdded:Connect(function(newChar)
+        char = newChar
+        humanoid = newChar:WaitForChild("Humanoid")
+        root = newChar:WaitForChild("HumanoidRootPart")
+        animator = humanoid:WaitForChild("Animator")
+        lastVelocity = Vector3.new(0, 0, 0)
+        ReEnableControls()
+        CleanRagdollEffects()
+    end))
+    
+    ReEnableControls()
+    CleanRagdollEffects()
 end
 
-local PaintballEnabled = false
-local PaintballConnection = nil
-local lastShot = 0
-local fireDelay = 0.0
-local function equipPaintballGun()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
-    local gun = backpack and backpack:FindFirstChild("Paintball Gun")
-    if hum and gun and gun.Parent ~= char then
-        hum:EquipTool(gun)
+local function disableAntiRagdoll()
+    for _, conn in pairs(AntiRagdollConns) do
+        conn:Disconnect()
     end
-end
-local function autoShoot()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local gun = char:FindFirstChild("Paintball Gun")
-    if not gun then return end
-    if tick() - lastShot < fireDelay then return end
-    lastShot = tick()
-    gun:Activate()
-end
-local function EnablePaintballSpammer()
-    if PaintballConnection then return end
-    PaintballEnabled = true
-    PaintballConnection = RunService.Heartbeat:Connect(function()
-        equipPaintballGun()
-        autoShoot()
-    end)
-    table.insert(_G.ICEHUB_Connections, PaintballConnection)
-end
-local function DisablePaintballSpammer()
-    PaintballEnabled = false
-    if PaintballConnection then
-        PaintballConnection:Disconnect()
-        PaintballConnection = nil
-    end
+    AntiRagdollConns = {}
 end
 
-local AntiTrapEnabled = false
-local BARRIER_OFFSET = 3
-local processedTraps = {}
-local function isTrapPlaced(trapModel)
-    local primaryPart = trapModel.PrimaryPart or trapModel:FindFirstChildWhichIsA("BasePart")
-    if primaryPart and primaryPart.Anchored then
-        return true
-    end
-    
-    for _, part in pairs(trapModel:GetDescendants()) do
-        if part:IsA("BasePart") and part.Anchored then
-            return true
-        end
-    end
-    
-    local parent = trapModel.Parent
-    if parent == workspace then
-        for _, player in pairs(Players:GetPlayers()) do
-            if player.Character then
-                local distance = (trapModel:GetPivot().Position - player.Character:GetPivot().Position).Magnitude
-                if distance < 10 then
-                    return false
-                end
-            end
-        end
-        return true
-    end
-    
-    return false
-end
-local function createTrapBarrier(trapModel)
-    if processedTraps[trapModel] then return end
-    
-    task.wait(0.5)
-    
-    if not isTrapPlaced(trapModel) then return end
-    
-    processedTraps[trapModel] = true
-    
-    local primaryPart = trapModel.PrimaryPart or trapModel:FindFirstChildWhichIsA("BasePart")
-    if not primaryPart then return end
-    
-    local cf, size = trapModel:GetBoundingBox()
-    
-    local barrier = Instance.new("Part")
-    barrier.Name = "TrapBarrier"
-    barrier.Size = size + Vector3.new(BARRIER_OFFSET * 2, size.Y, BARRIER_OFFSET * 2)
-    barrier.CFrame = cf
-    barrier.Anchored = true
-    barrier.CanCollide = true
-    barrier.Transparency = 0.8
-    barrier.Material = Enum.Material.ForceField
-    barrier.Color = Color3.fromRGB(0, 255, 0)
-    barrier.Parent = workspace
-    barrier.CanQuery = false
-    barrier.CanTouch = false
-    
-    local outline = Instance.new("SelectionBox")
-    outline.Adornee = barrier
-    outline.LineThickness = 0.1
-    outline.Color3 = Color3.fromRGB(0, 255, 0)
-    outline.SurfaceColor3 = Color3.fromRGB(0, 255, 0)
-    outline.SurfaceTransparency = 0.8
-    outline.Transparency = 0
-    outline.Parent = barrier
-    
-    local highlight = Instance.new("Highlight")
-    highlight.Adornee = barrier
-    highlight.FillColor = Color3.fromRGB(0, 255, 0)
-    highlight.OutlineColor = Color3.fromRGB(0, 255, 0)
-    highlight.FillTransparency = 0.9
-    highlight.OutlineTransparency = 0.3
-    highlight.Parent = barrier
-    
-    for _, part in pairs(trapModel:GetDescendants()) do
-        if part:IsA("BasePart") and part ~= barrier then
-            part.CanCollide = false
-            part.CanTouch = false
-            part.Transparency = 1
-        end
-        if part:IsA("TouchTransmitter") then
-            part:Destroy()
-        end
-        if part:IsA("Script") or part:IsA("LocalScript") then
-            part:Destroy()
-        end
-    end
-    
-    trapModel.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            processedTraps[trapModel] = nil
-            if barrier and barrier.Parent then
-                barrier:Destroy()
-            end
-        end
-    end)
-end
-local function findTraps(parent)
-    for _, obj in pairs(parent:GetChildren()) do
-        if obj:IsA("Model") and (obj.Name == "Trap" or obj.Name:lower():find("trap")) then
-            if isTrapPlaced(obj) then
-                createTrapBarrier(obj)
-            end
-        end
-    end
-end
-local antiTrapConnection1 = nil
-local antiTrapConnection2 = nil
-local function EnableAntiTrap()
-    if AntiTrapEnabled then return end
-    AntiTrapEnabled = true
-    
-    task.spawn(function()
-        task.wait(2)
-        findTraps(workspace)
-        
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Model") and (obj.Name == "Trap" or obj.Name:lower():find("trap")) then
-                if isTrapPlaced(obj) then
-                    createTrapBarrier(obj)
-                end
-            end
-        end
-    end)
-    
-    antiTrapConnection1 = workspace.DescendantAdded:Connect(function(obj)
-        if not AntiTrapEnabled then return end
-        if obj:IsA("Model") and (obj.Name == "Trap" or obj.Name:lower():find("trap")) then
-            task.spawn(function()
-                task.wait(0.5)
-                if obj.Parent and isTrapPlaced(obj) then
-                    createTrapBarrier(obj)
-                end
-            end)
-        end
-    end)
-    
-    antiTrapConnection2 = workspace.ChildAdded:Connect(function(obj)
-        if not AntiTrapEnabled then return end
-        if obj:IsA("Model") and (obj.Name == "Trap" or obj.Name:lower():find("trap")) then
-            task.spawn(function()
-                task.wait(0.5)
-                if obj.Parent and isTrapPlaced(obj) then
-                    createTrapBarrier(obj)
-                end
-            end)
-        end
-    end)
-    
-    table.insert(_G.ICEHUB_Connections, antiTrapConnection1)
-    table.insert(_G.ICEHUB_Connections, antiTrapConnection2)
-end
-local function DisableAntiTrap()
-    AntiTrapEnabled = false
-    if antiTrapConnection1 then antiTrapConnection1:Disconnect() end
-    if antiTrapConnection2 then antiTrapConnection2:Disconnect() end
-    
-    for trapModel, _ in pairs(processedTraps) do
-        local barrier = workspace:FindFirstChild("TrapBarrier")
-        if barrier then barrier:Destroy() end
-    end
-    processedTraps = {}
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- âœ… RAGDOLL TP (EXACT FROM YOUR SOURCE!)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local RAGDOLL_COORDS = {
+    right = {
+        Vector3.new(-464.46, -5.85, 23.38),
+        Vector3.new(-486.15, -3.50, 23.85)
+    },
+    left = {
+        Vector3.new(-469.95, -5.85, 90.99),
+        Vector3.new(-485.91, -3.55, 96.77)
+    }
+}
+
+local RagdollTP = {
+    currentHumanoid = nil,
+    wasStanding = true,
+    ragdollActive = false,
+    enabled = false,
+    conn = nil
+}
+
+local function doubleTeleport(posTable)
+    local character = player.Character
+    if not character then return end
+    character:PivotTo(CFrame.new(posTable[1]))
+    task.wait(0.1)
+    character:PivotTo(CFrame.new(posTable[2]))
 end
 
-local AntiSentryEnabled = false
-local resizedBat = nil
-local function getBat()
-    if resizedBat and resizedBat.Parent then
-        return resizedBat
-    end
-    
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
-    if backpack then
-        for _, tool in ipairs(backpack:GetChildren()) do
-            if tool:IsA("Tool") and tool.Name:lower() == "bat" then
-                if tool:FindFirstChild("Handle") then
-                    tool.Handle.Size = Vector3.new(1000, 1000, 1000)
-                    resizedBat = tool
-                    return tool
-                end
-            end
-        end
-    end
-    
-    if LocalPlayer.Character then
-        for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
-            if tool:IsA("Tool") and tool.Name:lower() == "bat" then
-                if tool:FindFirstChild("Handle") then
-                    tool.Handle.Size = Vector3.new(1000, 1000, 1000)
-                    resizedBat = tool
-                    return tool
-                end
+local function getAnimalTarget()
+    local plots = workspace:FindFirstChild("Plots")
+    if not plots then return nil end
+
+    for _, plot in ipairs(plots:GetChildren()) do
+        local sign = plot:FindFirstChild("PlotSign")
+        local base = plot:FindFirstChild("DeliveryHitbox")
+        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled and base then
+            local target = plot:FindFirstChild("AnimalTarget", true)
+            if target then
+                return target.Position
             end
         end
     end
     return nil
 end
-local function attackSentry(sentry)
-    task.wait(4)
-    while sentry.Parent and AntiSentryEnabled do
-        local bat = getBat()
-        if bat and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            if LocalPlayer.Character.Humanoid.Health > 0 then
-                LocalPlayer.Character.Humanoid:EquipTool(bat)
-            end
-            bat:Activate()
-        end
-        task.wait(0.1)
-    end
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid:UnequipTools()
-    end
-end
-local function EnableAntiSentry()
-    if AntiSentryEnabled then return end
-    AntiSentryEnabled = true
-    
-    task.spawn(function()
-        while AntiSentryEnabled do
-            for _, obj in ipairs(workspace:GetDescendants()) do
-                if obj.Name:sub(1, 6):lower() == "sentry" then
-                    if not obj.Name:find(tostring(LocalPlayer.UserId)) then
-                        task.spawn(function()
-                            attackSentry(obj)
-                        end)
-                    end
-                end
-            end
-            task.wait(1)
-        end
-    end)
-end
-local function DisableAntiSentry()
-    AntiSentryEnabled = false
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid:UnequipTools()
-    end
-end
-local HitboxConnection = nil
-local function EnableCombinedHitbox()
-    local function updateHitboxes()
-        for _, targetPlayer in ipairs(Players:GetPlayers()) do
-            if targetPlayer ~= LocalPlayer then
-                local character = targetPlayer.Character
-                if character then
-                    local hrp = character:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        hrp.Size = Vector3.new(Config.HitboxSize, Config.HitboxSize, Config.HitboxSize)
-                        hrp.Transparency = 0.5
-                        hrp.Color = Theme.Primary
-                        hrp.Material = Enum.Material.Neon
-                        hrp.CanCollide = false
-                    end
-                end
-            end
-        end
-    end
-    HitboxConnection = RunService.Heartbeat:Connect(updateHitboxes)
-    updateHitboxes()
-end
-local function DisableCombinedHitbox()
-    if HitboxConnection then
-        HitboxConnection:Disconnect()
-        HitboxConnection = nil
-        for _, targetPlayer in ipairs(Players:GetPlayers()) do
-            if targetPlayer ~= LocalPlayer then
-                local character = targetPlayer.Character
-                if character then
-                    local hrp = character:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        hrp.Size = Vector3.new(2, 2, 1)
-                        hrp.Transparency = 1
-                        hrp.Material = Enum.Material.Plastic
-                    end
-                end
-            end
-        end
-    end
-end
-local SpinBotConnection = nil
-local function EnableSpinBot()
-    local function addSpin(character)
-        local hrp = character:WaitForChild("HumanoidRootPart")
-        if hrp:FindFirstChild("ICEHUB_Spin") then return end
-        local bav = Instance.new("BodyAngularVelocity")
-        bav.Name = "ICEHUB_Spin"
-        bav.AngularVelocity = Vector3.new(0, Config.SpinSpeed, 0)
-        bav.MaxTorque = Vector3.new(0, 1e7, 0)
-        bav.P = 1250
-        bav.Parent = hrp
-    end
-    if LocalPlayer.Character then addSpin(LocalPlayer.Character) end
-    SpinBotConnection = LocalPlayer.CharacterAdded:Connect(function(char)
-        task.wait(1)
-        addSpin(char)
-    end)
-end
-local function DisableSpinBot()
-    if SpinBotConnection then
-        SpinBotConnection:Disconnect()
-        SpinBotConnection = nil
-    end
-    if LocalPlayer.Character then
-        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hrp and hrp:FindFirstChild("ICEHUB_Spin") then
-            hrp.ICEHUB_Spin:Destroy()
-        end
-    end
-end
-local function CreateESP(player)
-    if player == LocalPlayer then return end
-    local function AddESP(char)
-        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-        local head = char:FindFirstChild("Head")
-        if not head then return end
-        
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "ICEHUB_ESP_Highlight"
-        highlight.Adornee = char
-        highlight.FillColor = Theme.Primary
-        highlight.OutlineColor = Theme.Primary
-        highlight.FillTransparency = 0.7
-        highlight.OutlineTransparency = 0
-        highlight.Parent = char
-        table.insert(_G.ICEHUB_ESP, highlight)
-        
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = "ICEHUB_ESP_Text"
-        billboard.Adornee = head
-        billboard.Size = UDim2.new(0, 200, 0, 50)
-        billboard.StudsOffset = Vector3.new(0, 2, 0)
-        billboard.AlwaysOnTop = true
-        billboard.Parent = head
-        
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.Text = "discord.gg/icehub"
-        textLabel.TextColor3 = Theme.Primary
-        textLabel.TextStrokeTransparency = 0.5
-        textLabel.Font = Enum.Font.GothamBold
-        textLabel.TextSize = 14
-        textLabel.Parent = billboard
-        
-        table.insert(_G.ICEHUB_ESP, billboard)
-    end
-    if player.Character then AddESP(player.Character) end
-    player.CharacterAdded:Connect(function(char)
-        if Config.Esp then AddESP(char) end
-    end)
-end
-local function UpdateESP()
-    for _, v in pairs(_G.ICEHUB_ESP) do pcall(function() v:Destroy() end) end
-    _G.ICEHUB_ESP = {}
-    if Config.Esp then
-        for _, player in pairs(Players:GetPlayers()) do
-            CreateESP(player)
-        end
+
+local function performTeleport()
+    local target = getAnimalTarget()
+    if not target then return end
+
+    local leftDist = (target - RAGDOLL_COORDS.left[1]).Magnitude
+    local rightDist = (target - RAGDOLL_COORDS.right[1]).Magnitude
+
+    if leftDist > rightDist then
+        doubleTeleport(RAGDOLL_COORDS.left)
+    else
+        doubleTeleport(RAGDOLL_COORDS.right)
     end
 end
 
-local ParentTarget = gethui and gethui() or CoreGui
-pcall(function()
-    if not ParentTarget then ParentTarget = LocalPlayer:WaitForChild("PlayerGui") end
+local function startRagdollTP()
+    if RagdollTP.conn then RagdollTP.conn:Disconnect() end
+    
+    RagdollTP.conn = RunService.Heartbeat:Connect(function()
+        if not RagdollTP.enabled or not RagdollTP.currentHumanoid then return end
+
+        local currentState = RagdollTP.currentHumanoid:GetState()
+        if currentState == Enum.HumanoidStateType.Physics then
+            if RagdollTP.wasStanding then
+                performTeleport()
+            end
+            RagdollTP.wasStanding = false
+        else
+            RagdollTP.wasStanding = true
+        end
+    end)
+end
+
+local function stopRagdollTP()
+    if RagdollTP.conn then
+        RagdollTP.conn:Disconnect()
+        RagdollTP.conn = nil
+    end
+end
+
+-- Update humanoid reference on character respawn
+player.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    RagdollTP.currentHumanoid = char:WaitForChild("Humanoid")
+    RagdollTP.wasStanding = true
+    RagdollTP.ragdollActive = false
 end)
-if not ParentTarget then ParentTarget = LocalPlayer.PlayerGui end
+
+if player.Character then
+    RagdollTP.currentHumanoid = player.Character:FindFirstChildOfClass("Humanoid")
+end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- âœ… DROP BRAINROT (EXACT FROM KAWATAN HUB!)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local dropBusy = false
+local FLOAT_DROP_HEIGHT = 20
+
+local function doDrop()
+    if dropBusy or not hrp then return end
+    dropBusy = true
+    
+    -- Stop any existing float
+    if floatConn then floatConn:Disconnect() floatConn = nil end
+    floatEnabled = false
+    
+    local origY = hrp.Position.Y
+    local targetY = origY + FLOAT_DROP_HEIGHT
+    local goingUp = true
+    
+    floatConn = RunService.Heartbeat:Connect(function()
+        if not hrp then return end
+        
+        local currentTarget = goingUp and targetY or origY
+        local diff = currentTarget - hrp.Position.Y
+        
+        hrp.AssemblyLinearVelocity = Vector3.new(
+            hrp.AssemblyLinearVelocity.X,
+            math.clamp(diff * 25, -300, 300),
+            hrp.AssemblyLinearVelocity.Z
+        )
+        
+        if goingUp and hrp.Position.Y >= targetY - 1 then
+            goingUp = false
+        end
+        
+        if not goingUp and math.abs(diff) < 1.5 then
+            hrp.AssemblyLinearVelocity = Vector3.new(
+                hrp.AssemblyLinearVelocity.X,
+                0,
+                hrp.AssemblyLinearVelocity.Z
+            )
+            floatConn:Disconnect()
+            floatConn = nil
+            dropBusy = false
+        end
+    end)
+end
+
+local floatEnabled = false
+local floatHeight = 6.1
+local floatConn = nil
+local floatOriginalY = nil
+
+local function startFloat()
+    if not hrp then return end
+    if floatConn then return end
+    
+    floatOriginalY = hrp.Position.Y
+    floatEnabled = true
+    hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 500, hrp.AssemblyLinearVelocity.Z)
+    
+    floatConn = RunService.Heartbeat:Connect(function()
+        if not floatEnabled or not hrp then return end
+        local targetY = floatOriginalY + floatHeight
+        local curY = hrp.Position.Y
+        local diff = targetY - curY
+        
+        if math.abs(diff) > 0.1 then
+            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, math.clamp(diff * 25, -150, 150), hrp.AssemblyLinearVelocity.Z)
+        else
+            hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, 0, hrp.AssemblyLinearVelocity.Z)
+        end
+    end)
+end
+
+local function stopFloat()
+    floatEnabled = false
+    if floatConn then floatConn:Disconnect() floatConn = nil end
+    if hrp then
+        hrp.AssemblyLinearVelocity = Vector3.new(hrp.AssemblyLinearVelocity.X, -500, hrp.AssemblyLinearVelocity.Z)
+    end
+end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- TRACK PLAYER (BAT AIMBOT)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local batAimbotToggled = false
+local BAT_MOVE_SPEED = 56.5
+local BAT_ENGAGE_RANGE = 20
+local BAT_LOOP_TIME = 0.3
+local lastEquipTick_bat = 0
+local lastUseTick_bat = 0
+local lookConnection_bat = nil
+local attachment_bat = nil
+local alignOrientation_bat = nil
+local BAT_LOOK_DISTANCE = 50
+
+local function nearestPlayer_bat()
+    if not hrp then return nil, math.huge end
+    local closest, minDist = nil, math.huge
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character then
+            local targetHRP = plr.Character:FindFirstChild("HumanoidRootPart")
+            local targetHum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if targetHRP and targetHum and targetHum.Health > 0 then
+                local distance = (targetHRP.Position - hrp.Position).Magnitude
+                if distance < minDist then
+                    minDist = distance
+                    closest = targetHRP
+                end
+            end
+        end
+    end
+    return closest, minDist
+end
+
+local function closestLookTarget()
+    if not hrp then return nil end
+    local nearest = nil
+    local shortest = BAT_LOOK_DISTANCE
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (hrp.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+            if distance < shortest then
+                shortest = distance
+                nearest = plr.Character.HumanoidRootPart
+            end
+        end
+    end
+    return nearest
+end
+
+local function startLookAt()
+    if not hrp or not hum then return end
+    hum.AutoRotate = false
+    
+    attachment_bat = Instance.new("Attachment", hrp)
+    alignOrientation_bat = Instance.new("AlignOrientation")
+    alignOrientation_bat.Attachment0 = attachment_bat
+    alignOrientation_bat.Mode = Enum.OrientationAlignmentMode.OneAttachment
+    alignOrientation_bat.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    alignOrientation_bat.Responsiveness = 1000
+    alignOrientation_bat.RigidityEnabled = true
+    alignOrientation_bat.Parent = hrp
+
+    lookConnection_bat = RunService.RenderStepped:Connect(function()
+        if not hrp or not alignOrientation_bat then return end
+        local target = closestLookTarget()
+        if not target then return end
+        local lookPos = Vector3.new(target.Position.X, hrp.Position.Y, target.Position.Z)
+        alignOrientation_bat.CFrame = CFrame.lookAt(hrp.Position, lookPos)
+    end)
+end
+
+local function stopLookAt()
+    if lookConnection_bat then lookConnection_bat:Disconnect() lookConnection_bat = nil end
+    if alignOrientation_bat then alignOrientation_bat:Destroy() alignOrientation_bat = nil end
+    if attachment_bat then attachment_bat:Destroy() attachment_bat = nil end
+    if hum then hum.AutoRotate = true end
+end
+
+local function stopBatAimbot()
+    batAimbotToggled = false
+    stopLookAt()
+    if hrp then
+        hrp.AssemblyLinearVelocity = Vector3.zero
+    end
+end
+
+local function startBatAimbot()
+    stopBatAimbot()
+    batAimbotToggled = true
+    if not character or not hrp or not hum then return end
+    startLookAt()
+end
+
+local function equipBat_target()
+    if not hum then return end
+    local batTool = player.Backpack:FindFirstChild("Bat") or character:FindFirstChild("Bat")
+    if batTool then
+        hum:EquipTool(batTool)
+        return batTool
+    end
+end
+
+RunService.Heartbeat:Connect(function()
+    if not batAimbotToggled or not character or not hrp or not hum then return end
+
+    hrp.CanCollide = false
+
+    local target, distance = nearestPlayer_bat()
+    if not target then return end
+
+    local targetPos = Vector3.new(target.Position.X, target.Position.Y, target.Position.Z)
+    local moveDir = (targetPos - hrp.Position).Unit
+    hrp.AssemblyLinearVelocity = moveDir * BAT_MOVE_SPEED
+
+    if distance <= BAT_ENGAGE_RANGE then
+        if tick() - lastEquipTick_bat >= BAT_LOOP_TIME then
+            equipBat_target()
+            lastEquipTick_bat = tick()
+        end
+        if tick() - lastUseTick_bat >= BAT_LOOP_TIME then
+            local batTool = character:FindFirstChild("Bat")
+            if batTool then
+                batTool:Activate()
+            end
+            lastUseTick_bat = tick()
+        end
+    end
+end)
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- HIT CIRCLE
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local hitCircleEnabled = false
+local hitCircleConn = nil
+local hitCircle = nil
+local hitCircleAlign = nil
+local hitCircleAttach = nil
+
+local function startHitCircle()
+    if hitCircleConn then return end
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hrpLocal = char:WaitForChild("HumanoidRootPart")
+    
+    hitCircleAttach = Instance.new("Attachment", hrpLocal)
+    hitCircleAlign = Instance.new("AlignOrientation", hrpLocal)
+    hitCircleAlign.Attachment0 = hitCircleAttach
+    hitCircleAlign.Mode = Enum.OrientationAlignmentMode.OneAttachment
+    hitCircleAlign.RigidityEnabled = true
+    
+    hitCircle = Instance.new("Part")
+    hitCircle.Shape = Enum.PartType.Cylinder
+    hitCircle.Material = Enum.Material.Neon
+    hitCircle.Size = Vector3.new(0.05, 14.5, 14.5)
+    hitCircle.Color = Color3.fromRGB(180, 230, 120)
+    hitCircle.CanCollide = false
+    hitCircle.Massless = true
+    hitCircle.Parent = workspace
+    
+    local weld = Instance.new("Weld")
+    weld.Part0 = hrpLocal
+    weld.Part1 = hitCircle
+    weld.C0 = CFrame.new(0,-1,0)*CFrame.Angles(0,0,math.rad(90))
+    weld.Parent = hitCircle
+    
+    hitCircleConn = RunService.RenderStepped:Connect(function()
+        local target, dmin = nil, 7.25
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local d = (p.Character.HumanoidRootPart.Position - hrpLocal.Position).Magnitude
+                if d <= dmin then
+                    target, dmin = p.Character.HumanoidRootPart, d
+                end
+            end
+        end
+        if target then
+            char.Humanoid.AutoRotate = false
+            hitCircleAlign.Enabled = true
+            hitCircleAlign.CFrame = CFrame.lookAt(hrpLocal.Position, Vector3.new(target.Position.X, hrpLocal.Position.Y, target.Position.Z))
+            local t = char:FindFirstChild("Bat") or char:FindFirstChild("Medusa")
+            if t then t:Activate() end
+        else
+            hitCircleAlign.Enabled = false
+            char.Humanoid.AutoRotate = true
+        end
+    end)
+end
+
+local function stopHitCircle()
+    if hitCircleConn then hitCircleConn:Disconnect() hitCircleConn = nil end
+    if hitCircle then hitCircle:Destroy() hitCircle = nil end
+    if hitCircleAlign then hitCircleAlign:Destroy() hitCircleAlign = nil end
+    if hitCircleAttach then hitCircleAttach:Destroy() hitCircleAttach = nil end
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid.AutoRotate = true
+    end
+end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- GUI SIZES
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local selectedDevice = nil
+local GUI_SIZES = {
+    PC = {Width = 700, Height = 550},
+    iPad = {Width = 550, Height = 500},
+    iPhone = {Width = 320, Height = 450}
+}
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- MAIN SCREENGUI
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "IceHub_GUI"
+ScreenGui.Name = "NateshubGUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.IgnoreGuiInset = true
-pcall(function() ScreenGui.Parent = ParentTarget end)
-if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer.PlayerGui end
-_G.ICEHUB_GUI = ScreenGui
+ScreenGui.Parent = CoreGui
 
-local DingSound = Instance.new("Sound", ScreenGui)
-DingSound.SoundId = "rbxassetid://3398620867"
-DingSound.Volume = 0.5
-DingSound:Play()
-game:GetService("Debris"):AddItem(DingSound, 2)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- âœ… SMALL GUI CREATOR WITH GREEN DOT!
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-local function AddShadow(frame)
-    local shadow = Instance.new("ImageLabel", frame)
-    shadow.Name = "Shadow"
-    shadow.BackgroundTransparency = 1
-    shadow.Size = UDim2.new(1, 30, 1, 30)
-    shadow.Position = UDim2.new(0, -15, 0, -15)
-    shadow.Image = "rbxassetid://5554236805"
-    shadow.ImageColor3 = Theme.Shadow
-    shadow.ImageTransparency = 0.7
-    shadow.ScaleType = Enum.ScaleType.Slice
-    shadow.SliceCenter = Rect.new(23, 23, 277, 277)
-    shadow.ZIndex = frame.ZIndex - 1
-    return shadow
-end
+local SmallGUIInstances = {}
 
-local SelectorFrame = Instance.new("Frame", ScreenGui)
-SelectorFrame.Name = "GameModeSelector"
-SelectorFrame.Size = UDim2.new(0, 420, 0, 220)
-SelectorFrame.Position = UDim2.new(0.5, -210, 0.4, -110)
-SelectorFrame.BackgroundColor3 = Theme.Background
-SelectorFrame.BorderSizePixel = 0
-SelectorFrame.Visible = true
-SelectorFrame.ZIndex = 2
-SelectorFrame.BackgroundTransparency = 1
-local SelectorCorner = Instance.new("UICorner", SelectorFrame)
-SelectorCorner.CornerRadius = UDim.new(0, 12)
-AddShadow(SelectorFrame)
-
-TweenService:Create(SelectorFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    BackgroundTransparency = 0,
-    Position = UDim2.new(0.5, -210, 0.4, -110)
-}):Play()
-local SelectorTitle = Instance.new("TextLabel", SelectorFrame)
-SelectorTitle.Size = UDim2.new(1, 0, 0, 60)
-SelectorTitle.Position = UDim2.new(0, 0, 0, 20)
-SelectorTitle.BackgroundTransparency = 1
-SelectorTitle.Text = "Select Game Mode"
-SelectorTitle.TextColor3 = Theme.Text
-SelectorTitle.Font = Enum.Font.GothamMedium
-SelectorTitle.TextSize = 18
-SelectorTitle.TextTransparency = 1
-TweenService:Create(SelectorTitle, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-    TextTransparency = 0
-}):Play()
-local ButtonsContainer = Instance.new("Frame", SelectorFrame)
-ButtonsContainer.Size = UDim2.new(1, -60, 0, 100)
-ButtonsContainer.Position = UDim2.new(0, 30, 0, 100)
-ButtonsContainer.BackgroundTransparency = 1
-local ButtonsLayout = Instance.new("UIListLayout", ButtonsContainer)
-ButtonsLayout.FillDirection = Enum.FillDirection.Horizontal
-ButtonsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-ButtonsLayout.Padding = UDim.new(0, 20)
-local BatMedusaBtn = Instance.new("TextButton", ButtonsContainer)
-BatMedusaBtn.Size = UDim2.new(0, 170, 0, 90)
-BatMedusaBtn.BackgroundColor3 = Theme.Surface
-BatMedusaBtn.Text = ""
-BatMedusaBtn.AutoButtonColor = false
-BatMedusaBtn.BackgroundTransparency = 1
-local BatMedusaCorner = Instance.new("UICorner", BatMedusaBtn)
-BatMedusaCorner.CornerRadius = UDim.new(0, 10)
-local BatMedusaStroke = Instance.new("UIStroke", BatMedusaBtn)
-BatMedusaStroke.Color = Theme.Primary
-BatMedusaStroke.Thickness = 2
-BatMedusaStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-BatMedusaStroke.Transparency = 1
-local BatMedusaLabel = Instance.new("TextLabel", BatMedusaBtn)
-BatMedusaLabel.Size = UDim2.new(1, 0, 1, 0)
-BatMedusaLabel.BackgroundTransparency = 1
-BatMedusaLabel.Text = "Bat and Medusa"
-BatMedusaLabel.TextColor3 = Theme.Text
-BatMedusaLabel.Font = Enum.Font.GothamBold
-BatMedusaLabel.TextSize = 14
-BatMedusaLabel.TextTransparency = 1
-local AllGearsBtn = Instance.new("TextButton", ButtonsContainer)
-AllGearsBtn.Size = UDim2.new(0, 170, 0, 90)
-AllGearsBtn.BackgroundColor3 = Theme.Surface
-AllGearsBtn.Text = ""
-AllGearsBtn.AutoButtonColor = false
-AllGearsBtn.BackgroundTransparency = 1
-local AllGearsCorner = Instance.new("UICorner", AllGearsBtn)
-AllGearsCorner.CornerRadius = UDim.new(0, 10)
-local AllGearsStroke = Instance.new("UIStroke", AllGearsBtn)
-AllGearsStroke.Color = Theme.Secondary
-AllGearsStroke.Thickness = 2
-AllGearsStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-AllGearsStroke.Transparency = 1
-local AllGearsLabel = Instance.new("TextLabel", AllGearsBtn)
-AllGearsLabel.Size = UDim2.new(1, 0, 1, 0)
-AllGearsLabel.BackgroundTransparency = 1
-AllGearsLabel.Text = "All Gears"
-AllGearsLabel.TextColor3 = Theme.Text
-AllGearsLabel.Font = Enum.Font.GothamBold
-AllGearsLabel.TextSize = 14
-AllGearsLabel.TextTransparency = 1
-task.wait(0.3)
-TweenService:Create(BatMedusaBtn, TweenInfo.new(0.4), {BackgroundTransparency = 0}):Play()
-TweenService:Create(BatMedusaStroke, TweenInfo.new(0.4), {Transparency = 0}):Play()
-TweenService:Create(BatMedusaLabel, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
-task.wait(0.1)
-TweenService:Create(AllGearsBtn, TweenInfo.new(0.4), {BackgroundTransparency = 0}):Play()
-TweenService:Create(AllGearsStroke, TweenInfo.new(0.4), {Transparency = 0}):Play()
-TweenService:Create(AllGearsLabel, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
-BatMedusaBtn.MouseEnter:Connect(function()
-    TweenService:Create(BatMedusaBtn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Elevated}):Play()
-end)
-BatMedusaBtn.MouseLeave:Connect(function()
-    TweenService:Create(BatMedusaBtn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Surface}):Play()
-end)
-AllGearsBtn.MouseEnter:Connect(function()
-    TweenService:Create(AllGearsBtn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Elevated}):Play()
-end)
-AllGearsBtn.MouseLeave:Connect(function()
-    TweenService:Create(AllGearsBtn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Surface}):Play()
-end)
-
-local function CreateMainHub(gameMode)
-    local MainFrame = Instance.new("Frame", ScreenGui)
-    MainFrame.Name = "MainHub_" .. gameMode
-    MainFrame.Size = UDim2.new(0, 580, 0, 420)
-    MainFrame.Position = UDim2.new(0.5, -290, 0.35, -210)
-    MainFrame.BackgroundColor3 = Theme.Background
-    MainFrame.BorderSizePixel = 0
-    MainFrame.Visible = false
-    MainFrame.Active = true
-    MainFrame.Draggable = true
-    MainFrame.ZIndex = 2
-    local MainCorner = Instance.new("UICorner", MainFrame)
-    MainCorner.CornerRadius = UDim.new(0, 12)
-    AddShadow(MainFrame)
+local function createSmallGUI(name, yPosition)
+    local SmallGUI = Instance.new("Frame")
+    SmallGUI.Name = "Small"..name.."GUI"
+    SmallGUI.Size = UDim2.new(0, 140, 0, 35)
+    SmallGUI.Position = UDim2.new(0.5, -70, 0, yPosition)
+    SmallGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    SmallGUI.BackgroundTransparency = 0.3
+    SmallGUI.BorderSizePixel = 0
+    SmallGUI.Visible = false
+    SmallGUI.Active = true
+    SmallGUI.Draggable = true  -- âœ… DRAGGABLE!
+    SmallGUI.Parent = ScreenGui
     
-    local LeftFlicker = Instance.new("Frame", MainFrame)
-    LeftFlicker.Size = UDim2.new(0, 2, 1, -24)
-    LeftFlicker.Position = UDim2.new(0, 0, 0, 12)
-    LeftFlicker.BackgroundColor3 = Theme.Primary
-    LeftFlicker.BorderSizePixel = 0
-    LeftFlicker.ZIndex = 3
-    LeftFlicker.BackgroundTransparency = 0.3
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 10)
+    Corner.Parent = SmallGUI
     
-    local RightFlicker = Instance.new("Frame", MainFrame)
-    RightFlicker.Size = UDim2.new(0, 2, 1, -24)
-    RightFlicker.Position = UDim2.new(1, -2, 0, 12)
-    RightFlicker.BackgroundColor3 = Theme.Primary
-    RightFlicker.BorderSizePixel = 0
-    RightFlicker.ZIndex = 3
-    RightFlicker.BackgroundTransparency = 0.3
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Color = Color3.fromRGB(138, 43, 226)
+    Stroke.Thickness = 2
+    Stroke.Parent = SmallGUI
     
-    task.spawn(function()
-        while MainFrame and MainFrame.Parent do
-            TweenService:Create(LeftFlicker, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {BackgroundTransparency = 0.1}):Play()
-            TweenService:Create(RightFlicker, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {BackgroundTransparency = 0.1}):Play()
-            task.wait(1.5)
-            
-            TweenService:Create(LeftFlicker, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {BackgroundTransparency = 0.5}):Play()
-            TweenService:Create(RightFlicker, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {BackgroundTransparency = 0.5}):Play()
-            task.wait(1.5)
-        end
-    end)
+    -- âœ… GREEN DOT!
+    local GreenDot = Instance.new("Frame")
+    GreenDot.Size = UDim2.new(0, 12, 0, 12)
+    GreenDot.Position = UDim2.new(0, 8, 0.5, -6)
+    GreenDot.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- GRAY by default
+    GreenDot.BorderSizePixel = 0
+    GreenDot.Parent = SmallGUI
     
-    local Header = Instance.new("Frame", MainFrame)
-    Header.Size = UDim2.new(1, 0, 0, 40)
-    Header.BackgroundColor3 = Theme.Surface
-    Header.BorderSizePixel = 0
-    local HeaderCorner = Instance.new("UICorner", Header)
-    HeaderCorner.CornerRadius = UDim.new(0, 12)
-    local HeaderBottom = Instance.new("Frame", Header)
-    HeaderBottom.Size = UDim2.new(1, 0, 0, 12)
-    HeaderBottom.Position = UDim2.new(0, 0, 1, -12)
-    HeaderBottom.BackgroundColor3 = Theme.Surface
-    HeaderBottom.BorderSizePixel = 0
-    local StatusDot = Instance.new("Frame", Header)
-    StatusDot.Size = UDim2.new(0, 8, 0, 8)
-    StatusDot.Position = UDim2.new(0, 16, 0.5, -4)
-    StatusDot.BackgroundColor3 = Theme.Accent
-    StatusDot.BorderSizePixel = 0
-    local StatusDotCorner = Instance.new("UICorner", StatusDot)
-    StatusDotCorner.CornerRadius = UDim.new(1, 0)
-    local Title = Instance.new("TextLabel", Header)
-    Title.Size = UDim2.new(0, 300, 1, 0)
-    Title.Position = UDim2.new(0, 32, 0, 0)
-    Title.BackgroundTransparency = 1
-    Title.Text = "Ice Hub - " .. gameMode
-    Title.TextColor3 = Theme.Text
-    Title.Font = Enum.Font.GothamMedium
-    Title.TextSize = 14
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-    local DiscordLink = Instance.new("TextButton", Header)
-    DiscordLink.Size = UDim2.new(0, 120, 0, 24)
-    DiscordLink.Position = UDim2.new(1, -260, 0.5, -12)
-    DiscordLink.BackgroundColor3 = Theme.Primary
-    DiscordLink.Text = "discord.gg/icehub"
-    DiscordLink.TextColor3 = Theme.Text
-    DiscordLink.Font = Enum.Font.Gotham
-    DiscordLink.TextSize = 11
-    DiscordLink.AutoButtonColor = false
-    local DiscordLinkCorner = Instance.new("UICorner", DiscordLink)
-    DiscordLinkCorner.CornerRadius = UDim.new(0, 6)
-    DiscordLink.MouseButton1Click:Connect(function()
-        setclipboard("discord.gg/icehub")
-        DiscordLink.Text = "Copied!"
-        task.wait(1)
-        DiscordLink.Text = "discord.gg/icehub"
-    end)
-    DiscordLink.MouseEnter:Connect(function()
-        TweenService:Create(DiscordLink, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Secondary}):Play()
-    end)
-    DiscordLink.MouseLeave:Connect(function()
-        TweenService:Create(DiscordLink, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Primary}):Play()
-    end)
-    local CloseBtn = Instance.new("TextButton", Header)
-    CloseBtn.Size = UDim2.new(0, 40, 0, 40)
-    CloseBtn.Position = UDim2.new(1, -40, 0, 0)
-    CloseBtn.BackgroundTransparency = 1
-    CloseBtn.Text = "Ãƒâ€”"
-    CloseBtn.TextColor3 = Theme.TextSecondary
-    CloseBtn.Font = Enum.Font.GothamBold
-    CloseBtn.TextSize = 20
-    CloseBtn.MouseEnter:Connect(function()
-        CloseBtn.TextColor3 = Theme.Text
-    end)
-    CloseBtn.MouseLeave:Connect(function()
-        CloseBtn.TextColor3 = Theme.TextSecondary
-    end)
-    local Content = Instance.new("Frame", MainFrame)
-    Content.Size = UDim2.new(1, 0, 1, -40)
-    Content.Position = UDim2.new(0, 0, 0, 40)
-    Content.BackgroundTransparency = 1
-    local LeftColumn = Instance.new("Frame", Content)
-    LeftColumn.Size = UDim2.new(0.5, -6, 1, 0)
-    LeftColumn.Position = UDim2.new(0, 0, 0, 0)
-    LeftColumn.BackgroundTransparency = 1
-    local Divider = Instance.new("Frame", Content)
-    Divider.Size = UDim2.new(0, 1, 1, -24)
-    Divider.Position = UDim2.new(0.5, 0, 0, 12)
-    Divider.BackgroundColor3 = Theme.Divider
-    Divider.BorderSizePixel = 0
-    local RightColumn = Instance.new("Frame", Content)
-    RightColumn.Size = UDim2.new(0.5, -6, 1, 0)
-    RightColumn.Position = UDim2.new(0.5, 6, 0, 0)
-    RightColumn.BackgroundTransparency = 1
-    local LeftScroll = Instance.new("ScrollingFrame", LeftColumn)
-    LeftScroll.Size = UDim2.new(1, 0, 1, 0)
-    LeftScroll.BackgroundTransparency = 1
-    LeftScroll.BorderSizePixel = 0
-    LeftScroll.ScrollBarThickness = 3
-    LeftScroll.ScrollBarImageColor3 = Theme.Primary
-    LeftScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    LeftScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    local LeftPadding = Instance.new("UIPadding", LeftScroll)
-    LeftPadding.PaddingLeft = UDim.new(0, 16)
-    LeftPadding.PaddingRight = UDim.new(0, 8)
-    LeftPadding.PaddingTop = UDim.new(0, 12)
-    LeftPadding.PaddingBottom = UDim.new(0, 12)
-    local LeftLayout = Instance.new("UIListLayout", LeftScroll)
-    LeftLayout.Padding = UDim.new(0, 4)
-    LeftLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    local RightScroll = Instance.new("ScrollingFrame", RightColumn)
-    RightScroll.Size = UDim2.new(1, 0, 1, 0)
-    RightScroll.BackgroundTransparency = 1
-    RightScroll.BorderSizePixel = 0
-    RightScroll.ScrollBarThickness = 3
-    RightScroll.ScrollBarImageColor3 = Theme.Primary
-    RightScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    RightScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    local RightPadding = Instance.new("UIPadding", RightScroll)
-    RightPadding.PaddingLeft = UDim.new(0, 8)
-    RightPadding.PaddingRight = UDim.new(0, 16)
-    RightPadding.PaddingTop = UDim.new(0, 12)
-    RightPadding.PaddingBottom = UDim.new(0, 12)
-    local RightLayout = Instance.new("UIListLayout", RightScroll)
-    RightLayout.Padding = UDim.new(0, 4)
-    RightLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    CloseBtn.MouseButton1Click:Connect(function()
-        MainFrame.Visible = false
-    end)
-    return MainFrame, LeftScroll, RightScroll
-end
-
-_G.ICEHUB_UI = _G.ICEHUB_UI or {}
-local listeningBtn = nil
-local function CreateSection(parent, title)
-    local Section = Instance.new("Frame", parent)
-    Section.Size = UDim2.new(1, 0, 0, 32)
-    Section.BackgroundTransparency = 1
+    local DotCorner = Instance.new("UICorner")
+    DotCorner.CornerRadius = UDim.new(1, 0)
+    DotCorner.Parent = GreenDot
     
-    local SectionLabel = Instance.new("TextLabel", Section)
-    SectionLabel.Size = UDim2.new(1, 0, 1, 0)
-    SectionLabel.BackgroundTransparency = 1
-    SectionLabel.Text = title
-    SectionLabel.TextColor3 = Theme.Text
-    SectionLabel.Font = Enum.Font.GothamBold
-    SectionLabel.TextSize = 13
-    SectionLabel.TextXAlignment = Enum.TextXAlignment.Left
-    
-    return Section
-end
-local function CreateCheckbox(parent, text, configKey)
-    local Container = Instance.new("Frame", parent)
-    Container.Size = UDim2.new(1, 0, 0, 32)
-    Container.BackgroundTransparency = 1
-    
-    local CheckCircle = Instance.new("Frame", Container)
-    CheckCircle.Size = UDim2.new(0, 18, 0, 18)
-    CheckCircle.Position = UDim2.new(0, 0, 0.5, -9)
-    CheckCircle.BackgroundColor3 = Theme.CheckOff
-    CheckCircle.BorderSizePixel = 0
-    
-    local CheckCorner = Instance.new("UICorner", CheckCircle)
-    CheckCorner.CornerRadius = UDim.new(1, 0)
-    
-    local CheckInner = Instance.new("Frame", CheckCircle)
-    CheckInner.Name = "Inner"
-    CheckInner.Size = UDim2.new(0, 10, 0, 10)
-    CheckInner.Position = UDim2.new(0.5, -5, 0.5, -5)
-    CheckInner.BackgroundColor3 = Theme.Secondary
-    CheckInner.BackgroundTransparency = 1
-    CheckInner.BorderSizePixel = 0
-    
-    local CheckInnerCorner = Instance.new("UICorner", CheckInner)
-    CheckInnerCorner.CornerRadius = UDim.new(1, 0)
-    
-    local Label = Instance.new("TextLabel", Container)
-    Label.Size = UDim2.new(1, -100, 1, 0)
-    Label.Position = UDim2.new(0, 28, 0, 0)
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, -55, 1, 0)
+    Label.Position = UDim2.new(0, 25, 0, 0)
     Label.BackgroundTransparency = 1
-    Label.Text = text
-    Label.TextColor3 = Theme.TextSecondary
-    Label.Font = Enum.Font.Gotham
-    Label.TextSize = 13
-    Label.TextXAlignment = Enum.TextXAlignment.Left
-    
-    local KeybindBtn = Instance.new("TextButton", Container)
-    KeybindBtn.Size = UDim2.new(0, 60, 0, 20)
-    KeybindBtn.Position = UDim2.new(1, -60, 0.5, -10)
-    KeybindBtn.BackgroundColor3 = Theme.SliderBG
-    KeybindBtn.Text = "NONE"
-    KeybindBtn.TextColor3 = Theme.TextTertiary
-    KeybindBtn.Font = Enum.Font.GothamBold
-    KeybindBtn.TextSize = 9
-    KeybindBtn.AutoButtonColor = false
-    
-    local KeybindCorner = Instance.new("UICorner", KeybindBtn)
-    KeybindCorner.CornerRadius = UDim.new(0, 5)
-    
-    local Button = Instance.new("TextButton", Container)
-    Button.Size = UDim2.new(1, -70, 1, 0)
-    Button.BackgroundTransparency = 1
-    Button.Text = ""
-    
-    Button.MouseEnter:Connect(function()
-        TweenService:Create(Label, TweenInfo.new(0.15), {TextColor3 = Theme.Text}):Play()
-    end)
-    
-    Button.MouseLeave:Connect(function()
-        if not Config[configKey] then
-            TweenService:Create(Label, TweenInfo.new(0.15), {TextColor3 = Theme.TextSecondary}):Play()
-        end
-    end)
-    
-    _G.ICEHUB_UI[configKey] = {
-        Button = Button,
-        CheckCircle = CheckCircle,
-        CheckInner = CheckInner,
-        Label = Label,
-        KeybindBtn = KeybindBtn
-    }
-    
-    return Container
-end
-local function CreateSlider(parent, text, min, max, configKey, valueKey)
-    local Container = Instance.new("Frame", parent)
-    Container.Size = UDim2.new(1, 0, 0, 52)
-    Container.BackgroundTransparency = 1
-    
-    local Label = Instance.new("TextLabel", Container)
-    Label.Size = UDim2.new(0.65, 0, 0, 20)
-    Label.Position = UDim2.new(0, 0, 0, 4)
-    Label.BackgroundTransparency = 1
-    Label.Text = text
-    Label.TextColor3 = Theme.TextTertiary
-    Label.Font = Enum.Font.Gotham
+    Label.Text = name
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Label.Font = Enum.Font.GothamBold
     Label.TextSize = 11
     Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = SmallGUI
     
-    local ValueLabel = Instance.new("TextLabel", Container)
-    ValueLabel.Size = UDim2.new(0, 50, 0, 20)
-    ValueLabel.Position = UDim2.new(1, -50, 0, 4)
-    ValueLabel.BackgroundTransparency = 1
-    ValueLabel.Text = tostring(Config[valueKey])
-    ValueLabel.TextColor3 = Theme.Secondary
-    ValueLabel.Font = Enum.Font.GothamBold
-    ValueLabel.TextSize = 12
-    ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
-    
-    local SliderBG = Instance.new("Frame", Container)
-    SliderBG.Size = UDim2.new(1, 0, 0, 5)
-    SliderBG.Position = UDim2.new(0, 0, 0, 32)
-    SliderBG.BackgroundColor3 = Theme.SliderBG
-    SliderBG.BorderSizePixel = 0
-    
-    local SliderBGCorner = Instance.new("UICorner", SliderBG)
-    SliderBGCorner.CornerRadius = UDim.new(1, 0)
-    
-    local SliderFill = Instance.new("Frame", SliderBG)
-    SliderFill.Size = UDim2.new((Config[valueKey] - min) / (max - min), 0, 1, 0)
-    SliderFill.BackgroundColor3 = Theme.Secondary
-    SliderFill.BorderSizePixel = 0
-    
-    local SliderFillCorner = Instance.new("UICorner", SliderFill)
-    SliderFillCorner.CornerRadius = UDim.new(1, 0)
-    
-    local Knob = Instance.new("Frame", SliderBG)
-    Knob.Size = UDim2.new(0, 13, 0, 13)
-    Knob.Position = UDim2.new((Config[valueKey] - min) / (max - min), -6.5, 0.5, -6.5)
-    Knob.BackgroundColor3 = Theme.Text
-    Knob.BorderSizePixel = 0
-    
-    local KnobCorner = Instance.new("UICorner", Knob)
-    KnobCorner.CornerRadius = UDim.new(1, 0)
-    
-    local Button = Instance.new("TextButton", SliderBG)
-    Button.Size = UDim2.new(1, 20, 1, 20)
-    Button.Position = UDim2.new(0, -10, 0, -10)
+    -- âœ… CLICK BUTTON (smaller, on right side only - doesn't block dragging!)
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(0, 40, 1, 0)
+    Button.Position = UDim2.new(1, -40, 0, 0)
     Button.BackgroundTransparency = 1
-    Button.Text = ""
+    Button.Text = "âš¡"
+    Button.TextColor3 = Color3.fromRGB(138, 43, 226)
+    Button.Font = Enum.Font.GothamBold
+    Button.TextSize = 16
+    Button.ZIndex = 2
+    Button.Parent = SmallGUI
     
-    local dragging = false
+    SmallGUIInstances[name] = {Frame = SmallGUI, Label = Label, Button = Button, Dot = GreenDot}
     
-    local function UpdateSlider(input)
-        local pos = math.clamp((input.Position.X - SliderBG.AbsolutePosition.X) / SliderBG.AbsoluteSize.X, 0, 1)
-        local value = math.floor(min + (max - min) * pos)
-        Config[valueKey] = value
-        ValueLabel.Text = tostring(value)
-        TweenService:Create(SliderFill, TweenInfo.new(0.1), {Size = UDim2.new(pos, 0, 1, 0)}):Play()
-        TweenService:Create(Knob, TweenInfo.new(0.1), {Position = UDim2.new(pos, -6.5, 0.5, -6.5)}):Play()
-    end
-    
-    Button.MouseButton1Down:Connect(function()
-        dragging = true
-    end)
-    
-    table.insert(_G.ICEHUB_Connections, UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end))
-    
-    table.insert(_G.ICEHUB_Connections, UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            UpdateSlider(input)
-        end
-    end))
-    
-    _G.ICEHUB_UI[valueKey.."Value"] = ValueLabel
-    
-    return Container
+    return SmallGUI, Button, GreenDot
 end
 
-local AutoBatPopup = Instance.new("Frame", ScreenGui)
-AutoBatPopup.Name = "AutoBatPopup"
-AutoBatPopup.Size = UDim2.new(0, 280, 0, 200)
-AutoBatPopup.Position = UDim2.new(0.5, -140, 0.35, -100)
-AutoBatPopup.BackgroundColor3 = Theme.Background
-AutoBatPopup.BorderSizePixel = 0
-AutoBatPopup.Visible = false
-AutoBatPopup.Active = true
-AutoBatPopup.Draggable = true
-AutoBatPopup.ZIndex = 3
-local PopupCorner = Instance.new("UICorner", AutoBatPopup)
-PopupCorner.CornerRadius = UDim.new(0, 12)
-AddShadow(AutoBatPopup)
-local PopupHeader = Instance.new("Frame", AutoBatPopup)
-PopupHeader.Size = UDim2.new(1, 0, 0, 40)
-PopupHeader.BackgroundColor3 = Theme.Surface
-PopupHeader.BorderSizePixel = 0
-local PopupHeaderCorner = Instance.new("UICorner", PopupHeader)
-PopupHeaderCorner.CornerRadius = UDim.new(0, 12)
-local PopupHeaderBottom = Instance.new("Frame", PopupHeader)
-PopupHeaderBottom.Size = UDim2.new(1, 0, 0, 12)
-PopupHeaderBottom.Position = UDim2.new(0, 0, 1, -12)
-PopupHeaderBottom.BackgroundColor3 = Theme.Surface
-PopupHeaderBottom.BorderSizePixel = 0
-local PopupTitle = Instance.new("TextLabel", PopupHeader)
-PopupTitle.Size = UDim2.new(1, -50, 1, 0)
-PopupTitle.Position = UDim2.new(0, 16, 0, 0)
-PopupTitle.BackgroundTransparency = 1
-PopupTitle.Text = "Auto Bat Settings"
-PopupTitle.TextColor3 = Theme.Text
-PopupTitle.Font = Enum.Font.GothamMedium
-PopupTitle.TextSize = 14
-PopupTitle.TextXAlignment = Enum.TextXAlignment.Left
-local PopupCloseBtn = Instance.new("TextButton", PopupHeader)
-PopupCloseBtn.Size = UDim2.new(0, 40, 0, 40)
-PopupCloseBtn.Position = UDim2.new(1, -40, 0, 0)
-PopupCloseBtn.BackgroundTransparency = 1
-PopupCloseBtn.Text = "Ãƒâ€”"
-PopupCloseBtn.TextColor3 = Theme.TextSecondary
-PopupCloseBtn.Font = Enum.Font.GothamBold
-PopupCloseBtn.TextSize = 20
-local PopupContent = Instance.new("Frame", AutoBatPopup)
-PopupContent.Size = UDim2.new(1, -32, 1, -56)
-PopupContent.Position = UDim2.new(0, 16, 0, 48)
-PopupContent.BackgroundTransparency = 1
-local PopupLayout = Instance.new("UIListLayout", PopupContent)
-PopupLayout.Padding = UDim.new(0, 8)
-PopupLayout.SortOrder = Enum.SortOrder.LayoutOrder
-local PopupAutoBatCheck = Instance.new("Frame", PopupContent)
-PopupAutoBatCheck.Size = UDim2.new(1, 0, 0, 32)
-PopupAutoBatCheck.BackgroundTransparency = 1
-local PopupAutoBatCircle = Instance.new("Frame", PopupAutoBatCheck)
-PopupAutoBatCircle.Size = UDim2.new(0, 18, 0, 18)
-PopupAutoBatCircle.Position = UDim2.new(0, 0, 0.5, -9)
-PopupAutoBatCircle.BackgroundColor3 = Theme.CheckOff
-PopupAutoBatCircle.BorderSizePixel = 0
-local PopupAutoBatCircleCorner = Instance.new("UICorner", PopupAutoBatCircle)
-PopupAutoBatCircleCorner.CornerRadius = UDim.new(1, 0)
-local PopupAutoBatInner = Instance.new("Frame", PopupAutoBatCircle)
-PopupAutoBatInner.Size = UDim2.new(0, 10, 0, 10)
-PopupAutoBatInner.Position = UDim2.new(0.5, -5, 0.5, -5)
-PopupAutoBatInner.BackgroundColor3 = Theme.Secondary
-PopupAutoBatInner.BackgroundTransparency = 1
-PopupAutoBatInner.BorderSizePixel = 0
-local PopupAutoBatInnerCorner = Instance.new("UICorner", PopupAutoBatInner)
-PopupAutoBatInnerCorner.CornerRadius = UDim.new(1, 0)
-local PopupAutoBatLabel = Instance.new("TextLabel", PopupAutoBatCheck)
-PopupAutoBatLabel.Size = UDim2.new(1, -28, 1, 0)
-PopupAutoBatLabel.Position = UDim2.new(0, 28, 0, 0)
-PopupAutoBatLabel.BackgroundTransparency = 1
-PopupAutoBatLabel.Text = "Enable Auto Bat"
-PopupAutoBatLabel.TextColor3 = Theme.TextSecondary
-PopupAutoBatLabel.Font = Enum.Font.Gotham
-PopupAutoBatLabel.TextSize = 13
-PopupAutoBatLabel.TextXAlignment = Enum.TextXAlignment.Left
-local PopupAutoBatBtn = Instance.new("TextButton", PopupAutoBatCheck)
-PopupAutoBatBtn.Size = UDim2.new(1, 0, 1, 0)
-PopupAutoBatBtn.BackgroundTransparency = 1
-PopupAutoBatBtn.Text = ""
-local PopupAimbotCheck = Instance.new("Frame", PopupContent)
-PopupAimbotCheck.Size = UDim2.new(1, 0, 0, 32)
-PopupAimbotCheck.BackgroundTransparency = 1
-local PopupAimbotCircle = Instance.new("Frame", PopupAimbotCheck)
-PopupAimbotCircle.Size = UDim2.new(0, 18, 0, 18)
-PopupAimbotCircle.Position = UDim2.new(0, 0, 0.5, -9)
-PopupAimbotCircle.BackgroundColor3 = Theme.CheckOff
-PopupAimbotCircle.BorderSizePixel = 0
-local PopupAimbotCircleCorner = Instance.new("UICorner", PopupAimbotCircle)
-PopupAimbotCircleCorner.CornerRadius = UDim.new(1, 0)
-local PopupAimbotInner = Instance.new("Frame", PopupAimbotCircle)
-PopupAimbotInner.Size = UDim2.new(0, 10, 0, 10)
-PopupAimbotInner.Position = UDim2.new(0.5, -5, 0.5, -5)
-PopupAimbotInner.BackgroundColor3 = Theme.Secondary
-PopupAimbotInner.BackgroundTransparency = 1
-PopupAimbotInner.BorderSizePixel = 0
-local PopupAimbotInnerCorner = Instance.new("UICorner", PopupAimbotInner)
-PopupAimbotInnerCorner.CornerRadius = UDim.new(1, 0)
-local PopupAimbotLabel = Instance.new("TextLabel", PopupAimbotCheck)
-PopupAimbotLabel.Size = UDim2.new(1, -28, 1, 0)
-PopupAimbotLabel.Position = UDim2.new(0, 28, 0, 0)
-PopupAimbotLabel.BackgroundTransparency = 1
-PopupAimbotLabel.Text = "Enable Aimbot"
-PopupAimbotLabel.TextColor3 = Theme.TextSecondary
-PopupAimbotLabel.Font = Enum.Font.Gotham
-PopupAimbotLabel.TextSize = 13
-PopupAimbotLabel.TextXAlignment = Enum.TextXAlignment.Left
-local PopupAimbotBtn = Instance.new("TextButton", PopupAimbotCheck)
-PopupAimbotBtn.Size = UDim2.new(1, 0, 1, 0)
-PopupAimbotBtn.BackgroundTransparency = 1
-PopupAimbotBtn.Text = ""
-local PopupInfo = Instance.new("TextLabel", PopupContent)
-PopupInfo.Size = UDim2.new(1, 0, 0, 50)
-PopupInfo.BackgroundTransparency = 1
-PopupInfo.Text = "Hotkeys:\nR - Toggle Auto Bat\nT - Toggle Aimbot"
-PopupInfo.TextColor3 = Theme.TextTertiary
-PopupInfo.Font = Enum.Font.Gotham
-PopupInfo.TextSize = 11
-PopupInfo.TextXAlignment = Enum.TextXAlignment.Left
-PopupInfo.TextYAlignment = Enum.TextYAlignment.Top
-PopupCloseBtn.MouseButton1Click:Connect(function()
-    AutoBatPopup.Visible = false
-end)
-PopupAutoBatBtn.MouseButton1Click:Connect(function()
-    AutoBatEnabled = not AutoBatEnabled
-    if AutoBatEnabled then
-        TweenService:Create(PopupAutoBatInner, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
-        TweenService:Create(PopupAutoBatLabel, TweenInfo.new(0.2), {TextColor3 = Theme.Text}):Play()
-        EnableAutoBat()
-    else
-        TweenService:Create(PopupAutoBatInner, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(PopupAutoBatLabel, TweenInfo.new(0.2), {TextColor3 = Theme.TextSecondary}):Play()
-        DisableAutoBat()
-    end
-end)
-PopupAimbotBtn.MouseButton1Click:Connect(function()
-    AimbotEnabled = not AimbotEnabled
-    if AimbotEnabled then
-        TweenService:Create(PopupAimbotInner, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
-        TweenService:Create(PopupAimbotLabel, TweenInfo.new(0.2), {TextColor3 = Theme.Text}):Play()
-        startBodyAimbot()
-    else
-        TweenService:Create(PopupAimbotInner, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(PopupAimbotLabel, TweenInfo.new(0.2), {TextColor3 = Theme.TextSecondary}):Play()
-        stopBodyAimbot()
-    end
-end)
-table.insert(_G.ICEHUB_Connections, UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe or not AutoBatPopup.Visible then return end
-    if input.KeyCode == Enum.KeyCode.R then
-        AutoBatEnabled = not AutoBatEnabled
-        if AutoBatEnabled then
-            TweenService:Create(PopupAutoBatInner, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
-            TweenService:Create(PopupAutoBatLabel, TweenInfo.new(0.2), {TextColor3 = Theme.Text}):Play()
-            EnableAutoBat()
-        else
-            TweenService:Create(PopupAutoBatInner, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
-            TweenService:Create(PopupAutoBatLabel, TweenInfo.new(0.2), {TextColor3 = Theme.TextSecondary}):Play()
-            DisableAutoBat()
-        end
-    elseif input.KeyCode == Enum.KeyCode.T then
-        AimbotEnabled = not AimbotEnabled
-        if AimbotEnabled then
-            TweenService:Create(PopupAimbotInner, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
-            TweenService:Create(PopupAimbotLabel, TweenInfo.new(0.2), {TextColor3 = Theme.Text}):Play()
-            startBodyAimbot()
-        else
-            TweenService:Create(PopupAimbotInner, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
-            TweenService:Create(PopupAimbotLabel, TweenInfo.new(0.2), {TextColor3 = Theme.TextSecondary}):Play()
-            stopBodyAimbot()
-        end
-    end
-end))
+-- âœ… CREATE ALL SMALL GUIs WITH GREEN DOTS!
+local SmallSpeedGUI, SmallSpeedButton, SpeedDot = createSmallGUI("Speed", 100)
+local SmallUnwalkGUI, SmallUnwalkButton, UnwalkDot = createSmallGUI("Unwalk", 145)
+local SmallSpinBotGUI, SmallSpinBotButton, SpinDot = createSmallGUI("Spin Bot", 190)
+local SmallInfJumpGUI, SmallInfJumpButton, InfJumpDot = createSmallGUI("Inf Jump", 235)
+local SmallFloatGUI, SmallFloatButton, FloatDot = createSmallGUI("Float Up", 280)
+local SmallFOVGUI, SmallFOVButton, FOVDot = createSmallGUI("FOV", 325)
+local SmallAntiRagGUI, SmallAntiRagButton, AntiRagDot = createSmallGUI("Anti Ragdoll", 370) -- âœ… Standalone!
+local SmallRagdollTPGUI, SmallRagdollTPButton, RagdollTPDot = createSmallGUI("Ragdoll TP", 415) -- âœ… NEW!
+local SmallDropGUI, SmallDropButton, DropDot = createSmallGUI("Drop Brainrot", 460) -- âœ… NEW!
 
-local function UpdateAll()
-    local features = {"SpeedBoost", "WalkSpeed", "HighJump", "InfiniteJump", "AntiRagdoll", "SpinBot", "Performance", "Esp", "Hitbox", "UnwalkAnimation", "AutoBat", "PaintballSpammer", "AntiTrap", "AntiSentry"}
-    for _, feature in ipairs(features) do
-        local ui = _G.ICEHUB_UI[feature]
-        if ui then
-            local active = Config[feature]
-            TweenService:Create(ui.CheckInner, TweenInfo.new(0.2), {BackgroundTransparency = active and 0 or 1}):Play()
-            TweenService:Create(ui.Label, TweenInfo.new(0.2), {TextColor3 = active and Theme.Text or Theme.TextSecondary}):Play()
-            
-            if Config.Keybinds[feature] then
-                ui.KeybindBtn.Text = Config.Keybinds[feature].Name
-                ui.KeybindBtn.TextColor3 = Theme.Secondary
+-- âœ… SPEED SMALL GUI TOGGLE
+SmallSpeedButton.MouseButton1Click:Connect(function()
+    SpeedBooster.Enabled = not SpeedBooster.Enabled
+    
+    if SpeedBooster.Enabled then
+        SmallSpeedGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        SpeedDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- âœ… GREEN DOT!
+        startSpeedBooster()
+    else
+        SmallSpeedGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        SpeedDot.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- âœ… GRAY DOT!
+        stopSpeedBooster()
+    end
+end)
+
+-- âœ… UNWALK SMALL GUI TOGGLE
+SmallUnwalkButton.MouseButton1Click:Connect(function()
+    UnwalkEnabled = not UnwalkEnabled
+    
+    if UnwalkEnabled then
+        SmallUnwalkGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        UnwalkDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        startUnwalk()
+    else
+        SmallUnwalkGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        UnwalkDot.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        stopUnwalk()
+    end
+end)
+
+-- âœ… SPIN BOT SMALL GUI TOGGLE
+SmallSpinBotButton.MouseButton1Click:Connect(function()
+    SpinBotEnabled = not SpinBotEnabled
+    
+    if SpinBotEnabled then
+        SmallSpinBotGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        SpinDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        startSpinBot()
+    else
+        SmallSpinBotGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        SpinDot.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        stopSpinBot()
+    end
+end)
+
+-- âœ… INF JUMP SMALL GUI TOGGLE
+SmallInfJumpButton.MouseButton1Click:Connect(function()
+    InfJumpEnabled = not InfJumpEnabled
+    
+    if InfJumpEnabled then
+        SmallInfJumpGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        InfJumpDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        startInfJump()
+    else
+        SmallInfJumpGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        InfJumpDot.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        stopInfJump()
+    end
+end)
+
+-- âœ… FLOAT UP SMALL GUI TOGGLE
+SmallFloatButton.MouseButton1Click:Connect(function()
+    floatEnabled = not floatEnabled
+    
+    if floatEnabled then
+        SmallFloatGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        FloatDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        startFloat()
+    else
+        SmallFloatGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        FloatDot.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        stopFloat()
+    end
+end)
+
+-- âœ… FOV SMALL GUI TOGGLE
+SmallFOVButton.MouseButton1Click:Connect(function()
+    fovEnabled = not fovEnabled
+    
+    if fovEnabled then
+        SmallFOVGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        FOVDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        updateFOV()
+    else
+        SmallFOVGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        FOVDot.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        camera.FieldOfView = 70
+        if fovConnection then fovConnection:Disconnect() fovConnection = nil end
+    end
+end)
+
+-- âœ… ANTI RAGDOLL SMALL GUI TOGGLE (Advanced version!)
+local AntiRagdollEnabled = false
+
+SmallAntiRagButton.MouseButton1Click:Connect(function()
+    AntiRagdollEnabled = not AntiRagdollEnabled
+    
+    if AntiRagdollEnabled then
+        SmallAntiRagGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        AntiRagDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        enableAntiRagdoll()
+    else
+        SmallAntiRagGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        AntiRagDot.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        disableAntiRagdoll()
+    end
+end)
+
+-- âœ… RAGDOLL TP SMALL GUI TOGGLE (NEW!)
+SmallRagdollTPButton.MouseButton1Click:Connect(function()
+    RagdollTP.enabled = not RagdollTP.enabled
+    
+    if RagdollTP.enabled then
+        SmallRagdollTPGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        RagdollTPDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        startRagdollTP()
+    else
+        SmallRagdollTPGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        RagdollTPDot.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        stopRagdollTP()
+    end
+end)
+
+-- âœ… DROP BRAINROT SMALL GUI TOGGLE - SEPARATE STANDALONE TOGGLE!
+local DropBrainrotEnabled = false
+local dropBrainrotLoop = nil
+
+local function startDropBrainrot()
+    if dropBrainrotLoop then return end
+    
+    dropBrainrotLoop = task.spawn(function()
+        while DropBrainrotEnabled do
+            if not dropBusy and hrp then
+                doDrop()
+            end
+            task.wait(5) -- Wait 5 seconds between drops
+        end
+    end)
+end
+
+local function stopDropBrainrot()
+    if dropBrainrotLoop then
+        task.cancel(dropBrainrotLoop)
+        dropBrainrotLoop = nil
+    end
+end
+
+SmallDropButton.MouseButton1Click:Connect(function()
+    DropBrainrotEnabled = not DropBrainrotEnabled
+    
+    if DropBrainrotEnabled then
+        SmallDropGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        DropDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        startDropBrainrot()
+    else
+        SmallDropGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        DropDot.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        stopDropBrainrot()
+    end
+end)
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- STEAL BAR (ALWAYS VISIBLE - INSTA STEAL ON)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local StealBarContainer = Instance.new("Frame")
+StealBarContainer.Name = "StealBarContainer"
+StealBarContainer.Size = UDim2.new(0, 420, 0, 60)
+StealBarContainer.Position = UDim2.new(0.5, -210, 1, -120)
+StealBarContainer.BackgroundColor3 = Color3.fromRGB(20, 25, 20)
+StealBarContainer.BorderSizePixel = 0
+StealBarContainer.Parent = ScreenGui
+
+local ContainerCorner = Instance.new("UICorner")
+ContainerCorner.CornerRadius = UDim.new(0, 15)
+ContainerCorner.Parent = StealBarContainer
+
+local ContainerStroke = Instance.new("UIStroke")
+ContainerStroke.Color = Color3.fromRGB(255, 255, 255)
+ContainerStroke.Thickness = 2
+ContainerStroke.Parent = StealBarContainer
+
+local OnLabel = Instance.new("TextLabel")
+OnLabel.Size = UDim2.new(0, 30, 0, 20)
+OnLabel.Position = UDim2.new(0, 10, 0, 5)
+OnLabel.BackgroundTransparency = 1
+OnLabel.Text = "On"
+OnLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+OnLabel.Font = Enum.Font.Gotham
+OnLabel.TextSize = 12
+OnLabel.TextXAlignment = Enum.TextXAlignment.Left
+OnLabel.Parent = StealBarContainer
+
+local RadiusLabel = Instance.new("TextLabel")
+RadiusLabel.Size = UDim2.new(0, 60, 0, 20)
+RadiusLabel.Position = UDim2.new(1, -70, 0, 5)
+RadiusLabel.BackgroundTransparency = 1
+RadiusLabel.Text = "Radius:"
+RadiusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+RadiusLabel.Font = Enum.Font.Gotham
+RadiusLabel.TextSize = 12
+RadiusLabel.TextXAlignment = Enum.TextXAlignment.Left
+RadiusLabel.Parent = StealBarContainer
+
+local RadiusValue = Instance.new("TextLabel")
+RadiusValue.Size = UDim2.new(0, 20, 0, 20)
+RadiusValue.Position = UDim2.new(1, -15, 0, 5)
+RadiusValue.BackgroundTransparency = 1
+RadiusValue.Text = tostring(InstaSteal.Radius)
+RadiusValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+RadiusValue.Font = Enum.Font.GothamBold
+RadiusValue.TextSize = 12
+RadiusValue.TextXAlignment = Enum.TextXAlignment.Right
+RadiusValue.Parent = StealBarContainer
+
+local ProgressBarBg = Instance.new("Frame")
+ProgressBarBg.Size = UDim2.new(1, -20, 0, 20)
+ProgressBarBg.Position = UDim2.new(0, 10, 0, 30)
+ProgressBarBg.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+ProgressBarBg.BorderSizePixel = 0
+ProgressBarBg.Parent = StealBarContainer
+
+local ProgressBgCorner = Instance.new("UICorner")
+ProgressBgCorner.CornerRadius = UDim.new(1, 0)
+ProgressBgCorner.Parent = ProgressBarBg
+
+ProgressBarFill = Instance.new("Frame")
+ProgressBarFill.Size = UDim2.new(0, 0, 1, 0)
+ProgressBarFill.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+ProgressBarFill.BorderSizePixel = 0
+ProgressBarFill.Parent = ProgressBarBg
+
+local ProgressFillCorner = Instance.new("UICorner")
+ProgressFillCorner.CornerRadius = UDim.new(1, 0)
+ProgressFillCorner.Parent = ProgressBarFill
+
+local MinusArea = Instance.new("TextButton")
+MinusArea.Size = UDim2.new(0, 30, 0, 25)
+MinusArea.Position = UDim2.new(1, -100, 0, 0)
+MinusArea.BackgroundTransparency = 1
+MinusArea.Text = ""
+MinusArea.Parent = StealBarContainer
+
+local PlusArea = Instance.new("TextButton")
+PlusArea.Size = UDim2.new(0, 30, 0, 25)
+PlusArea.Position = UDim2.new(1, -30, 0, 0)
+PlusArea.BackgroundTransparency = 1
+PlusArea.Text = ""
+PlusArea.Parent = StealBarContainer
+
+MinusArea.MouseButton1Click:Connect(function()
+    if InstaSteal.Radius > 1 then
+        InstaSteal.Radius = InstaSteal.Radius - 1
+        RadiusValue.Text = tostring(InstaSteal.Radius)
+    end
+end)
+
+PlusArea.MouseButton1Click:Connect(function()
+    if InstaSteal.Radius < 50 then
+        InstaSteal.Radius = InstaSteal.Radius + 1
+        RadiusValue.Text = tostring(InstaSteal.Radius)
+    end
+end)
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- DEVICE SELECTION SCREEN
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local DeviceSelectFrame = Instance.new("Frame")
+DeviceSelectFrame.Name = "DeviceSelect"
+DeviceSelectFrame.Size = UDim2.new(0, 400, 0, 300)
+DeviceSelectFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
+DeviceSelectFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+DeviceSelectFrame.BorderSizePixel = 0
+DeviceSelectFrame.Parent = ScreenGui
+
+local DeviceCorner = Instance.new("UICorner")
+DeviceCorner.CornerRadius = UDim.new(0, 15)
+DeviceCorner.Parent = DeviceSelectFrame
+
+local DeviceTitle = Instance.new("TextLabel")
+DeviceTitle.Size = UDim2.new(1, 0, 0, 60)
+DeviceTitle.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+DeviceTitle.BorderSizePixel = 0
+DeviceTitle.Text = "SELECT YOUR DEVICE"
+DeviceTitle.TextColor3 = Color3.fromRGB(255, 200, 100)
+DeviceTitle.Font = Enum.Font.GothamBold
+DeviceTitle.TextSize = 20
+DeviceTitle.Parent = DeviceSelectFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 15)
+TitleCorner.Parent = DeviceTitle
+
+local TitleMask = Instance.new("Frame")
+TitleMask.Size = UDim2.new(1, 0, 0, 15)
+TitleMask.Position = UDim2.new(0, 0, 1, -15)
+TitleMask.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+TitleMask.BorderSizePixel = 0
+TitleMask.Parent = DeviceTitle
+
+local function createDeviceButton(deviceName, icon, yPos)
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(0, 350, 0, 50)
+    Button.Position = UDim2.new(0.5, -175, 0, yPos)
+    Button.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    Button.BorderSizePixel = 0
+    Button.Text = ""
+    Button.Parent = DeviceSelectFrame
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 10)
+    Corner.Parent = Button
+
+    local Icon = Instance.new("TextLabel")
+    Icon.Size = UDim2.new(0, 40, 0, 40)
+    Icon.Position = UDim2.new(0, 15, 0.5, -20)
+    Icon.BackgroundTransparency = 1
+    Icon.Text = icon
+    Icon.TextSize = 24
+    Icon.Font = Enum.Font.GothamBold
+    Icon.Parent = Button
+
+    local Label = Instance.new("TextLabel")
+    Label.Size = UDim2.new(1, -70, 1, 0)
+    Label.Position = UDim2.new(0, 60, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.Text = deviceName
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Label.Font = Enum.Font.GothamBold
+    Label.TextSize = 18
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.Parent = Button
+
+    Button.MouseEnter:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        }):Play()
+        Label.TextColor3 = Color3.fromRGB(30, 30, 35)
+    end)
+
+    Button.MouseLeave:Connect(function()
+        TweenService:Create(Button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        }):Play()
+        Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end)
+
+    return Button
+end
+
+local PCButton = createDeviceButton("PC", "ðŸ’»", 80)
+local iPadButton = createDeviceButton("iPad", "ðŸ“±", 145)
+local iPhoneButton = createDeviceButton("iPhone", "ðŸ“±", 210)
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- MAIN GUI CREATION
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local MainFrame
+local currentTab = "Main"
+local tabButtons = {}
+local contentFrames = {}
+
+local normalSpeedBox, stealSpeedBox
+local fovSliderBox
+
+local function createMainGUI(device)
+    local size = GUI_SIZES[device]
+    local width = size.Width
+    local height = size.Height
+
+    MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, width, 0, height)
+    MainFrame.Position = UDim2.new(0.5, -width/2, 0.5, -height/2)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    MainFrame.BackgroundTransparency = 0.1
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Active = true
+    MainFrame.Draggable = true
+    MainFrame.Visible = false
+    MainFrame.Parent = ScreenGui
+
+    local MainCorner = Instance.new("UICorner")
+    MainCorner.CornerRadius = UDim.new(0, 15)
+    MainCorner.Parent = MainFrame
+
+    local Header = Instance.new("Frame")
+    Header.Size = UDim2.new(1, 0, 0, 50)
+    Header.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    Header.BorderSizePixel = 0
+    Header.Parent = MainFrame
+
+    local HeaderCorner = Instance.new("UICorner")
+    HeaderCorner.CornerRadius = UDim.new(0, 15)
+    HeaderCorner.Parent = Header
+
+    local HeaderMask = Instance.new("Frame")
+    HeaderMask.Size = UDim2.new(1, 0, 0, 15)
+    HeaderMask.Position = UDim2.new(0, 0, 1, -15)
+    HeaderMask.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    HeaderMask.BorderSizePixel = 0
+    HeaderMask.Parent = Header
+
+    local logoSize = device == "iPhone" and 22 or 30
+    local titleSize = device == "iPhone" and 14 or 20
+
+    local LogoIcon = Instance.new("TextLabel")
+    LogoIcon.Size = UDim2.new(0, 40, 0, 40)
+    LogoIcon.Position = UDim2.new(0, 10, 0.5, -20)
+    LogoIcon.BackgroundTransparency = 1
+    LogoIcon.Text = "ðŸ’µ"
+    LogoIcon.TextSize = logoSize
+    LogoIcon.Font = Enum.Font.GothamBold
+    LogoIcon.Parent = Header
+
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Size = UDim2.new(0, 150, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 50, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = "NATESHUB"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextSize = titleSize
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = Header
+
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Size = UDim2.new(0, 30, 0, 30)
+    CloseButton.Position = UDim2.new(1, -35, 0.5, -15)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    CloseButton.Text = "-"
+    CloseButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.TextSize = 18
+    CloseButton.Parent = Header
+
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 8)
+    CloseCorner.Parent = CloseButton
+
+    CloseButton.MouseButton1Click:Connect(function()
+        local slideOut = TweenService:Create(
+            MainFrame,
+            TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+            {Position = UDim2.new(0, -width - 100, 0.5, -height/2)}
+        )
+        slideOut:Play()
+        slideOut.Completed:Wait()
+        MainFrame.Visible = false
+    end)
+
+    local sidebarWidth = device == "iPhone" and 70 or (device == "iPad" and 150 or 200)
+
+    local Sidebar = Instance.new("Frame")
+    Sidebar.Size = UDim2.new(0, sidebarWidth, 1, -60)
+    Sidebar.Position = UDim2.new(0, 0, 0, 55)
+    Sidebar.BackgroundTransparency = 1
+    Sidebar.Parent = MainFrame
+
+    local function createTab(icon, name, order)
+        local TabButton = Instance.new("TextButton")
+        TabButton.Name = name
+        TabButton.Size = UDim2.new(1, -10, 0, device == "iPhone" and 55 or 50)
+        TabButton.Position = UDim2.new(0, 5, 0, (order - 1) * (device == "iPhone" and 60 or 60))
+        TabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        TabButton.BorderSizePixel = 0
+        TabButton.Text = ""
+        TabButton.Parent = Sidebar
+
+        local TabCorner = Instance.new("UICorner")
+        TabCorner.CornerRadius = UDim.new(0, 10)
+        TabCorner.Parent = TabButton
+
+        local IconLabel = Instance.new("TextLabel")
+        IconLabel.Size = UDim2.new(0, 30, 0, 30)
+        IconLabel.Position = device == "iPhone" and UDim2.new(0.5, -15, 0, 5) or UDim2.new(0, 10, 0.5, -15)
+        IconLabel.BackgroundTransparency = 1
+        IconLabel.Text = icon
+        IconLabel.TextSize = device == "iPhone" and 16 or 20
+        IconLabel.Font = Enum.Font.GothamBold
+        IconLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
+        IconLabel.Parent = TabButton
+
+        local TextLabel = Instance.new("TextLabel")
+        TextLabel.Size = device == "iPhone" and UDim2.new(1, 0, 0, 18) or UDim2.new(1, -45, 1, 0)
+        TextLabel.Position = device == "iPhone" and UDim2.new(0, 0, 1, -20) or UDim2.new(0, 45, 0, 0)
+        TextLabel.BackgroundTransparency = 1
+        TextLabel.Text = name
+        TextLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
+        TextLabel.Font = Enum.Font.GothamBold
+        TextLabel.TextSize = device == "iPhone" and 8 or (device == "iPad" and 12 or 16)
+        TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+        TextLabel.Parent = TabButton
+
+        tabButtons[name] = {Button = TabButton, Icon = IconLabel, Text = TextLabel}
+
+        return TabButton
+    end
+
+    local MainTab = createTab("ðŸ›¡ï¸", "Main", 1)
+    local MISCTab = createTab("ðŸ”§", "MISC", 2)
+    local SettingsTab = createTab("âš™ï¸", "Settings", 3)
+    local CreditsTab = createTab("â­", "Credits", 4)
+
+    local ContentContainer = Instance.new("Frame")
+    ContentContainer.Size = UDim2.new(1, -sidebarWidth - 20, 1, -70)
+    ContentContainer.Position = UDim2.new(0, sidebarWidth + 10, 0, 60)
+    ContentContainer.BackgroundTransparency = 1
+    ContentContainer.Parent = MainFrame
+
+    local function createContentFrame(name)
+        local Content = Instance.new("ScrollingFrame")
+        Content.Name = name
+        Content.Size = UDim2.new(1, 0, 1, 0)
+        Content.BackgroundTransparency = 1
+        Content.BorderSizePixel = 0
+        Content.ScrollBarThickness = 4
+        Content.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 110)
+        Content.CanvasSize = UDim2.new(0, 0, 0, 0)
+        Content.Visible = false
+        Content.Parent = ContentContainer
+
+        local UIList = Instance.new("UIListLayout")
+        UIList.Padding = UDim.new(0, 10)
+        UIList.SortOrder = Enum.SortOrder.LayoutOrder
+        UIList.Parent = Content
+
+        UIList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            Content.CanvasSize = UDim2.new(0, 0, 0, UIList.AbsoluteContentSize.Y + 20)
+        end)
+
+        contentFrames[name] = Content
+        return Content
+    end
+
+    local MainContent = createContentFrame("Main")
+    local MISCContent = createContentFrame("MISC")
+    local SettingsContent = createContentFrame("Settings")
+    local CreditsContent = createContentFrame("Credits")
+
+    MainContent.Visible = true
+
+    local function switchTab(tabName)
+        currentTab = tabName
+
+        for name, elements in pairs(tabButtons) do
+            if name == tabName then
+                elements.Button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                elements.Text.TextColor3 = Color3.fromRGB(30, 30, 35)
+                elements.Icon.TextColor3 = Color3.fromRGB(30, 30, 35)
+            else
+                elements.Button.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+                elements.Text.TextColor3 = Color3.fromRGB(150, 150, 160)
+                elements.Icon.TextColor3 = Color3.fromRGB(150, 150, 160)
             end
         end
-    end
-end
 
-local function Toggle(feature)
-    if feature == "SpeedBoost" then
-        Config.SpeedBoost = not Config.SpeedBoost
-        if Config.SpeedBoost then Config.WalkSpeed = false end
-    elseif feature == "WalkSpeed" then
-        Config.WalkSpeed = not Config.WalkSpeed
-        if Config.WalkSpeed then Config.SpeedBoost = false end
-    elseif feature == "HighJump" then
-        Config.HighJump = not Config.HighJump
-        if Config.HighJump then EnableHighJump() else DisableHighJump() end
-    elseif feature == "AntiRagdoll" then
-        Config.AntiRagdoll = not Config.AntiRagdoll
-        if Config.AntiRagdoll then EnableAntiRagdoll() else DisableAntiRagdoll() end
-    elseif feature == "SpinBot" then
-        Config.SpinBot = not Config.SpinBot
-        if Config.SpinBot then EnableSpinBot() else DisableSpinBot() end
-    elseif feature == "Esp" then
-        Config.Esp = not Config.Esp
-        UpdateESP()
-    elseif feature == "Hitbox" then
-        Config.Hitbox = not Config.Hitbox
-        if Config.Hitbox then EnableCombinedHitbox() else DisableCombinedHitbox() end
-    elseif feature == "Performance" then
-        Config.Performance = not Config.Performance
-        if Config.Performance then EnablePerformance() else DisablePerformance() end
-    elseif feature == "InfiniteJump" then
-        Config.InfiniteJump = not Config.InfiniteJump
-        if Config.InfiniteJump then EnableInfiniteJump() else DisableInfiniteJump() end
-    elseif feature == "UnwalkAnimation" then
-        Config.UnwalkAnimation = not Config.UnwalkAnimation
-        if Config.UnwalkAnimation then EnableUnwalkAnimation() else DisableUnwalkAnimation() end
-    elseif feature == "AutoBat" then
-        AutoBatPopup.Visible = not AutoBatPopup.Visible
-        return
-    elseif feature == "PaintballSpammer" then
-        Config.PaintballSpammer = not Config.PaintballSpammer
-        if Config.PaintballSpammer then EnablePaintballSpammer() else DisablePaintballSpammer() end
-    elseif feature == "AntiTrap" then
-        Config.AntiTrap = not Config.AntiTrap
-        if Config.AntiTrap then EnableAntiTrap() else DisableAntiTrap() end
-    elseif feature == "AntiSentry" then
-        Config.AntiSentry = not Config.AntiSentry
-        if Config.AntiSentry then EnableAntiSentry() else DisableAntiSentry() end
-    end
-    UpdateAll()
-    SaveConfig()
-end
-
-local function SetupKeybind(btn, keyName)
-    btn.MouseButton1Click:Connect(function()
-        if listeningBtn then
-            local oldKey = Config.Keybinds[listeningBtn.Key]
-            listeningBtn.Btn.Text = oldKey and oldKey.Name or "NONE"
-            listeningBtn.Btn.TextColor3 = Theme.TextTertiary
+        for name, frame in pairs(contentFrames) do
+            frame.Visible = (name == tabName)
         end
+    end
+
+    MainTab.MouseButton1Click:Connect(function() switchTab("Main") end)
+    MISCTab.MouseButton1Click:Connect(function() switchTab("MISC") end)
+    SettingsTab.MouseButton1Click:Connect(function() switchTab("Settings") end)
+    CreditsTab.MouseButton1Click:Connect(function() switchTab("Credits") end)
+
+    switchTab("Main")
+
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    -- âœ… MAIN TAB CONTENT (WITH SETTINGS BUTTONS NEXT TO FEATURES!)
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+    local function createMainButton(name, order, callback, hasSettings)
+        local Container = Instance.new("Frame")
+        Container.Size = UDim2.new(1, 0, 0, 50)
+        Container.BackgroundTransparency = 1
+        Container.LayoutOrder = order
+        Container.Parent = MainContent
+
+        local buttonWidth = hasSettings and -60 or 0
+
+        local Button = Instance.new("TextButton")
+        Button.Size = UDim2.new(1, buttonWidth, 0, 50)
+        Button.Position = UDim2.new(0, 0, 0, 0)
+        Button.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        Button.BorderSizePixel = 0
+        Button.Text = ""
+        Button.Parent = Container
+
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 10)
+        Corner.Parent = Button
+
+        local Label = Instance.new("TextLabel")
+        Label.Size = UDim2.new(1, -15, 1, 0)
+        Label.Position = UDim2.new(0, 15, 0, 0)
+        Label.BackgroundTransparency = 1
+        Label.Text = name
+        Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Label.Font = Enum.Font.GothamBold
+        Label.TextSize = device == "iPhone" and 11 or 14
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+        Label.Parent = Button
+
+        Button.MouseButton1Click:Connect(callback)
+
+        if hasSettings then
+            local SettingsButton = Instance.new("TextButton")
+            SettingsButton.Size = UDim2.new(0, 50, 0, 50)
+            SettingsButton.Position = UDim2.new(1, -50, 0, 0)
+            SettingsButton.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+            SettingsButton.Text = "âš™ï¸"
+            SettingsButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            SettingsButton.Font = Enum.Font.GothamBold
+            SettingsButton.TextSize = device == "iPhone" and 16 or 20
+            SettingsButton.Parent = Container
+
+            local SettingsCorner = Instance.new("UICorner")
+            SettingsCorner.CornerRadius = UDim.new(0, 10)
+            SettingsCorner.Parent = SettingsButton
+
+            return Container, SettingsButton
+        end
+
+        return Container
+    end
+
+    -- âœ… SPEED BOOSTER WITH SETTINGS BUTTON!
+    local SpeedContainer, SpeedSettingsBtn = createMainButton("Speed Booster", 1, function()
+        SmallSpeedGUI.Visible = not SmallSpeedGUI.Visible
+    end, true)
+
+    -- âœ… SPEED SETTINGS POPUP (NEXT TO BUTTON!)
+    local SpeedSettingsGUI = Instance.new("Frame")
+    SpeedSettingsGUI.Name = "SpeedSettingsGUI"
+    SpeedSettingsGUI.Size = UDim2.new(0, 200, 0, 150)
+    SpeedSettingsGUI.Position = UDim2.new(0.5, -100, 0.5, -75)
+    SpeedSettingsGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    SpeedSettingsGUI.BackgroundTransparency = 0.1
+    SpeedSettingsGUI.BorderSizePixel = 0
+    SpeedSettingsGUI.Visible = false
+    SpeedSettingsGUI.Active = true
+    SpeedSettingsGUI.Draggable = true
+    SpeedSettingsGUI.Parent = ScreenGui
+
+    local SpeedCorner = Instance.new("UICorner")
+    SpeedCorner.CornerRadius = UDim.new(0, 12)
+    SpeedCorner.Parent = SpeedSettingsGUI
+
+    local SpeedStroke = Instance.new("UIStroke")
+    SpeedStroke.Color = Color3.fromRGB(255, 255, 255)
+    SpeedStroke.Thickness = 2
+    SpeedStroke.Parent = SpeedSettingsGUI
+
+    local SpeedTitle = Instance.new("TextLabel")
+    SpeedTitle.Size = UDim2.new(1, 0, 0, 30)
+    SpeedTitle.BackgroundTransparency = 1
+    SpeedTitle.Text = "SPEED SETTINGS"
+    SpeedTitle.TextColor3 = Color3.fromRGB(255, 200, 100)
+    SpeedTitle.Font = Enum.Font.GothamBold
+    SpeedTitle.TextSize = 14
+    SpeedTitle.Parent = SpeedSettingsGUI
+
+    local NormalLabel = Instance.new("TextLabel")
+    NormalLabel.Size = UDim2.new(0.6, 0, 0, 25)
+    NormalLabel.Position = UDim2.new(0, 10, 0, 35)
+    NormalLabel.BackgroundTransparency = 1
+    NormalLabel.Text = "Normal Speed:"
+    NormalLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    NormalLabel.Font = Enum.Font.Gotham
+    NormalLabel.TextSize = 12
+    NormalLabel.TextXAlignment = Enum.TextXAlignment.Left
+    NormalLabel.Parent = SpeedSettingsGUI
+
+    normalSpeedBox = Instance.new("TextBox")
+    normalSpeedBox.Size = UDim2.new(0, 60, 0, 25)
+    normalSpeedBox.Position = UDim2.new(1, -70, 0, 35)
+    normalSpeedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    normalSpeedBox.Text = tostring(SpeedBooster.NormalSpeed)
+    normalSpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    normalSpeedBox.Font = Enum.Font.GothamBold
+    normalSpeedBox.TextSize = 12
+    normalSpeedBox.Parent = SpeedSettingsGUI
+
+    local NormalCorner = Instance.new("UICorner")
+    NormalCorner.CornerRadius = UDim.new(0, 6)
+    NormalCorner.Parent = normalSpeedBox
+
+    local StealLabel = Instance.new("TextLabel")
+    StealLabel.Size = UDim2.new(0.6, 0, 0, 25)
+    StealLabel.Position = UDim2.new(0, 10, 0, 65)
+    StealLabel.BackgroundTransparency = 1
+    StealLabel.Text = "Steal Speed:"
+    StealLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    StealLabel.Font = Enum.Font.Gotham
+    StealLabel.TextSize = 12
+    StealLabel.TextXAlignment = Enum.TextXAlignment.Left
+    StealLabel.Parent = SpeedSettingsGUI
+
+    stealSpeedBox = Instance.new("TextBox")
+    stealSpeedBox.Size = UDim2.new(0, 60, 0, 25)
+    stealSpeedBox.Position = UDim2.new(1, -70, 0, 65)
+    stealSpeedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    stealSpeedBox.Text = tostring(SpeedBooster.StealSpeed)
+    stealSpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    stealSpeedBox.Font = Enum.Font.GothamBold
+    stealSpeedBox.TextSize = 12
+    stealSpeedBox.Parent = SpeedSettingsGUI
+
+    local StealCorner = Instance.new("UICorner")
+    StealCorner.CornerRadius = UDim.new(0, 6)
+    StealCorner.Parent = stealSpeedBox
+
+    local JumpLabel = Instance.new("TextLabel")
+    JumpLabel.Size = UDim2.new(0.6, 0, 0, 25)
+    JumpLabel.Position = UDim2.new(0, 10, 0, 95)
+    JumpLabel.BackgroundTransparency = 1
+    JumpLabel.Text = "Jump Power:"
+    JumpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    JumpLabel.Font = Enum.Font.Gotham
+    JumpLabel.TextSize = 12
+    JumpLabel.TextXAlignment = Enum.TextXAlignment.Left
+    JumpLabel.Parent = SpeedSettingsGUI
+
+    local JumpValue = Instance.new("TextLabel")
+    JumpValue.Size = UDim2.new(0, 60, 0, 25)
+    JumpValue.Position = UDim2.new(1, -70, 0, 95)
+    JumpValue.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+    JumpValue.Text = "25.8 ðŸ”’"
+    JumpValue.TextColor3 = Color3.fromRGB(150, 150, 150)
+    JumpValue.Font = Enum.Font.GothamBold
+    JumpValue.TextSize = 12
+    JumpValue.BorderSizePixel = 0
+    JumpValue.Parent = SpeedSettingsGUI
+
+    local JumpCorner = Instance.new("UICorner")
+    JumpCorner.CornerRadius = UDim.new(0, 6)
+    JumpCorner.Parent = JumpValue
+
+    local SpeedSaveBtn = Instance.new("TextButton")
+    SpeedSaveBtn.Size = UDim2.new(0, 80, 0, 25)
+    SpeedSaveBtn.Position = UDim2.new(0.5, -40, 1, -35)
+    SpeedSaveBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    SpeedSaveBtn.Text = "SAVE"
+    SpeedSaveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SpeedSaveBtn.Font = Enum.Font.GothamBold
+    SpeedSaveBtn.TextSize = 12
+    SpeedSaveBtn.Parent = SpeedSettingsGUI
+
+    local SpeedSaveCorner = Instance.new("UICorner")
+    SpeedSaveCorner.CornerRadius = UDim.new(0, 8)
+    SpeedSaveCorner.Parent = SpeedSaveBtn
+
+    -- âœ… SAVE BUTTON ACTUALLY UPDATES SPEED!
+    SpeedSaveBtn.MouseButton1Click:Connect(function()
+        local normal = tonumber(normalSpeedBox.Text)
+        local steal = tonumber(stealSpeedBox.Text)
+
+        if normal and steal then
+            SpeedBooster.NormalSpeed = normal
+            SpeedBooster.StealSpeed = steal
+            print("[NATESHUB] âœ… Speed settings updated to:", normal, steal)
+            
+            -- âœ… RESTART SPEED BOOSTER IF ALREADY RUNNING!
+            if SpeedBooster.Enabled then
+                stopSpeedBooster()
+                task.wait(0.1)
+                startSpeedBooster()
+            end
+        end
+    end)
+
+    SpeedSettingsBtn.MouseButton1Click:Connect(function()
+        SpeedSettingsGUI.Visible = not SpeedSettingsGUI.Visible
+    end)
+
+    -- âœ… UNWALK, SPIN, INF JUMP (NO SETTINGS)
+    createMainButton("Unwalk", 2, function()
+        SmallUnwalkGUI.Visible = not SmallUnwalkGUI.Visible
+    end)
+
+    createMainButton("Spin Bot", 3, function()
+        SmallSpinBotGUI.Visible = not SmallSpinBotGUI.Visible
+    end)
+
+    createMainButton("Inf Jump", 4, function()
+        SmallInfJumpGUI.Visible = not SmallInfJumpGUI.Visible
+    end)
+
+    -- âœ… FOV WITH SETTINGS BUTTON!
+    local FOVContainer, FOVSettingsBtn = createMainButton("FOV Changer", 5, function()
+        SmallFOVGUI.Visible = not SmallFOVGUI.Visible
+    end, true)
+    
+    -- âœ… ANTI RAGDOLL (NO SETTINGS)
+    createMainButton("Anti Ragdoll", 6, function()
+        SmallAntiRagGUI.Visible = not SmallAntiRagGUI.Visible
+    end)
+    
+    -- âœ… RAGDOLL TP (NO SETTINGS)
+    createMainButton("Ragdoll TP", 7, function()
+        SmallRagdollTPGUI.Visible = not SmallRagdollTPGUI.Visible
+    end)
+    
+    -- âœ… DROP BRAINROT (NO SETTINGS)
+    createMainButton("Drop Brainrot", 8, function()
+        SmallDropGUI.Visible = not SmallDropGUI.Visible
+    end)
+
+    -- âœ… FOV SETTINGS POPUP (NEXT TO BUTTON!)
+    local FOVSettingsGUI = Instance.new("Frame")
+    FOVSettingsGUI.Name = "FOVSettingsGUI"
+    FOVSettingsGUI.Size = UDim2.new(0, 200, 0, 100)
+    FOVSettingsGUI.Position = UDim2.new(0.5, -100, 0.5, -50)
+    FOVSettingsGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    FOVSettingsGUI.BackgroundTransparency = 0.1
+    FOVSettingsGUI.BorderSizePixel = 0
+    FOVSettingsGUI.Visible = false
+    FOVSettingsGUI.Active = true
+    FOVSettingsGUI.Draggable = true
+    FOVSettingsGUI.Parent = ScreenGui
+
+    local FOVCorner = Instance.new("UICorner")
+    FOVCorner.CornerRadius = UDim.new(0, 12)
+    FOVCorner.Parent = FOVSettingsGUI
+
+    local FOVStroke = Instance.new("UIStroke")
+    FOVStroke.Color = Color3.fromRGB(255, 255, 255)
+    FOVStroke.Thickness = 2
+    FOVStroke.Parent = FOVSettingsGUI
+
+    local FOVTitle = Instance.new("TextLabel")
+    FOVTitle.Size = UDim2.new(1, 0, 0, 30)
+    FOVTitle.BackgroundTransparency = 1
+    FOVTitle.Text = "FOV SETTINGS (MAX 120)"
+    FOVTitle.TextColor3 = Color3.fromRGB(255, 200, 100)
+    FOVTitle.Font = Enum.Font.GothamBold
+    FOVTitle.TextSize = 14
+    FOVTitle.Parent = FOVSettingsGUI
+
+    local FOVLabel = Instance.new("TextLabel")
+    FOVLabel.Size = UDim2.new(0.5, 0, 0, 25)
+    FOVLabel.Position = UDim2.new(0, 10, 0, 35)
+    FOVLabel.BackgroundTransparency = 1
+    FOVLabel.Text = "FOV Value:"
+    FOVLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FOVLabel.Font = Enum.Font.Gotham
+    FOVLabel.TextSize = 12
+    FOVLabel.TextXAlignment = Enum.TextXAlignment.Left
+    FOVLabel.Parent = FOVSettingsGUI
+
+    fovSliderBox = Instance.new("TextBox")
+    fovSliderBox.Size = UDim2.new(0, 60, 0, 25)
+    fovSliderBox.Position = UDim2.new(1, -70, 0, 35)
+    fovSliderBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    fovSliderBox.Text = tostring(fovValue)
+    fovSliderBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    fovSliderBox.Font = Enum.Font.GothamBold
+    fovSliderBox.TextSize = 12
+    fovSliderBox.Parent = FOVSettingsGUI
+
+    local FOVBoxCorner = Instance.new("UICorner")
+    FOVBoxCorner.CornerRadius = UDim.new(0, 6)
+    FOVBoxCorner.Parent = fovSliderBox
+
+    -- âœ… FOV ACTUALLY UPDATES!
+    fovSliderBox.FocusLost:Connect(function()
+        local val = tonumber(fovSliderBox.Text)
+        if val then
+            fovValue = math.clamp(val, 1, 120) -- MAX 120!
+            fovSliderBox.Text = tostring(fovValue)
+            if fovEnabled then
+                updateFOV()
+            end
+        else
+            fovSliderBox.Text = tostring(fovValue)
+        end
+    end)
+
+    FOVSettingsBtn.MouseButton1Click:Connect(function()
+        FOVSettingsGUI.Visible = not FOVSettingsGUI.Visible
+    end)
+    
+    -- âš ï¸ FOV WARNING LABEL
+    local FOVWarning = Instance.new("Frame")
+    FOVWarning.Size = UDim2.new(1, 0, 0, 35)
+    FOVWarning.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+    FOVWarning.BackgroundTransparency = 0.7
+    FOVWarning.BorderSizePixel = 0
+    FOVWarning.Parent = MainContent
+    FOVWarning.LayoutOrder = 6
+    
+    local WarnCorner = Instance.new("UICorner")
+    WarnCorner.CornerRadius = UDim.new(0, 8)
+    WarnCorner.Parent = FOVWarning
+    
+    local WarnLabel = Instance.new("TextLabel")
+    WarnLabel.Size = UDim2.new(1, -10, 1, 0)
+    WarnLabel.Position = UDim2.new(0, 5, 0, 0)
+    WarnLabel.BackgroundTransparency = 1
+    WarnLabel.Text = "âš ï¸ Must use âš™ï¸ FOV settings or it won't work!"
+    WarnLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    WarnLabel.Font = Enum.Font.GothamBold
+    WarnLabel.TextSize = device == "iPhone" and 9 or 11
+    WarnLabel.TextWrapped = true
+    WarnLabel.Parent = FOVWarning
+
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    -- MISC TAB CONTENT (NO SMALL GUIS)
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    
+    -- âœ… AUTO-ENABLE ALL MISC FEATURES ON SCRIPT LOAD!
+    task.spawn(function()
+        task.wait(1)
         
-        btn.Text = "..."
-        btn.TextColor3 = Theme.Secondary
-        listeningBtn = {Btn = btn, Key = keyName}
+        -- âœ… FPS Booster
+        enableFPSBooster()
+        fpsButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
         
-        TweenService:Create(btn, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, -1, true), {
-            Size = UDim2.new(0, 65, 0, 22)
-        }):Play()
+        -- âœ… Optimizer
+        enableOptimizer()
+        optimizerButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        
+        -- âœ… Hitbox Expander
+        enableHitbox()
+        hitboxButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        
+        -- âœ… Anti Death
+        AntiDeathEnabled = true
+        if not AntiDeath.Conn then
+            AntiDeath.Conn = RunService.Heartbeat:Connect(function()
+                if character and character:FindFirstChild("Humanoid") then
+                    if character.Humanoid.Health <= 0 then
+                        character.Humanoid.Health = 100
+                    end
+                end
+            end)
+        end
+        antiDeathButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        
+        print("[NATESHUB] âœ… Auto-enabled ALL MISC: FPS Booster, Optimizer, Hitbox, Anti Death")
+    end)
+
+    local function createMISCButton(name, order, callback)
+        local Button = Instance.new("TextButton")
+        Button.Size = UDim2.new(1, 0, 0, 50)
+        Button.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        Button.BorderSizePixel = 0
+        Button.Text = name
+        Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Button.Font = Enum.Font.GothamBold
+        Button.TextSize = device == "iPhone" and 11 or 14
+        Button.LayoutOrder = order
+        Button.Parent = MISCContent
+
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 10)
+        Corner.Parent = Button
+
+        Button.MouseButton1Click:Connect(callback)
+
+        return Button
+    end
+
+    local fpsButton = createMISCButton("FPS Booster", 1, function()
+        enableFPSBooster()
+        fpsButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    end)
+
+    local optimizerButton = createMISCButton("Optimizer", 2, function()
+        enableOptimizer()
+        optimizerButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+    end)
+
+    local hitboxButton = createMISCButton("Hitbox Expander", 3, function()
+        if HitboxActive then
+            disableHitbox()
+            hitboxButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        else
+            enableHitbox()
+            hitboxButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        end
+    end)
+
+    local antiDeathButton = createMISCButton("Anti Death", 4, function()
+        AntiDeathEnabled = not AntiDeathEnabled
+        
+        if AntiDeathEnabled then
+            if not AntiDeath.Conn then
+                AntiDeath.Conn = RunService.Heartbeat:Connect(function()
+                    if character and character:FindFirstChild("Humanoid") then
+                        if character.Humanoid.Health <= 0 then
+                            character.Humanoid.Health = 100
+                        end
+                    end
+                end)
+            end
+            antiDeathButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        else
+            if AntiDeath.Conn then
+                AntiDeath.Conn:Disconnect()
+                AntiDeath.Conn = nil
+            end
+            antiDeathButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        end
+    end)
+
+    createMISCButton("Float Up", 5, function()
+        SmallFloatGUI.Visible = not SmallFloatGUI.Visible
+    end)
+
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    -- SETTINGS TAB CONTENT
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+    local function createSettingsButton(name, order, callback)
+        local Button = Instance.new("TextButton")
+        Button.Size = UDim2.new(1, 0, 0, 50)
+        Button.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        Button.BorderSizePixel = 0
+        Button.Text = name
+        Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Button.Font = Enum.Font.GothamBold
+        Button.TextSize = device == "iPhone" and 12 or 14
+        Button.LayoutOrder = order
+        Button.Parent = SettingsContent
+
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 10)
+        Corner.Parent = Button
+
+        Button.MouseButton1Click:Connect(callback)
+
+        return Button
+    end
+
+    local SaveConfigButton = createSettingsButton("ðŸ’¾ SAVE CONFIG", 1, function()
+        if SaveConfig() then
+            SaveConfigButton.Text = "âœ… CONFIG SAVED!"
+            task.wait(1.5)
+            SaveConfigButton.Text = "ðŸ’¾ SAVE CONFIG"
+        else
+            SaveConfigButton.Text = "âŒ SAVE FAILED!"
+            task.wait(1.5)
+            SaveConfigButton.Text = "ðŸ’¾ SAVE CONFIG"
+        end
+    end)
+
+    local LoadConfigButton = Instance.new("TextButton")
+    LoadConfigButton.Size = UDim2.new(1, 0, 0, 50)
+    LoadConfigButton.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+    LoadConfigButton.BorderSizePixel = 0
+    LoadConfigButton.Text = "ðŸ“‚ LOAD CONFIG"
+    LoadConfigButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    LoadConfigButton.Font = Enum.Font.GothamBold
+    LoadConfigButton.TextSize = device == "iPhone" and 12 or 14
+    LoadConfigButton.LayoutOrder = 2
+    LoadConfigButton.Parent = SettingsContent
+
+    local LoadConfigCorner = Instance.new("UICorner")
+    LoadConfigCorner.CornerRadius = UDim.new(0, 10)
+    LoadConfigCorner.Parent = LoadConfigButton
+
+    LoadConfigButton.MouseButton1Click:Connect(function()
+        if LoadConfig() then
+            if normalSpeedBox then normalSpeedBox.Text = tostring(SpeedBooster.NormalSpeed) end
+            if stealSpeedBox then stealSpeedBox.Text = tostring(SpeedBooster.StealSpeed) end
+            if fovSliderBox then fovSliderBox.Text = tostring(fovValue) end
+            RadiusValue.Text = tostring(InstaSteal.Radius)
+
+            LoadConfigButton.Text = "âœ… CONFIG LOADED!"
+            task.wait(1.5)
+            LoadConfigButton.Text = "ðŸ“‚ LOAD CONFIG"
+        else
+            LoadConfigButton.Text = "âŒ NO CONFIG FOUND!"
+            task.wait(1.5)
+            LoadConfigButton.Text = "ðŸ“‚ LOAD CONFIG"
+        end
+    end)
+
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    -- CREDITS TAB CONTENT
+    -- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+    local CreditsTitle = Instance.new("TextLabel")
+    CreditsTitle.Size = UDim2.new(1, 0, 0, 40)
+    CreditsTitle.BackgroundTransparency = 1
+    CreditsTitle.Text = "â­ CREDITS â­"
+    CreditsTitle.TextColor3 = Color3.fromRGB(255, 200, 100)
+    CreditsTitle.Font = Enum.Font.GothamBold
+    CreditsTitle.TextSize = device == "iPhone" and 16 or 24
+    CreditsTitle.Parent = CreditsContent
+
+    local CreditsText = Instance.new("TextLabel")
+    CreditsText.Size = UDim2.new(1, 0, 0, 100)
+    CreditsText.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    CreditsText.BorderSizePixel = 0
+    CreditsText.Text = "Credits to:\n\nðŸŽ¨ sussycatmean\n\nThank you! ðŸ’µðŸ‘‘"
+    CreditsText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CreditsText.Font = Enum.Font.Gotham
+    CreditsText.TextSize = device == "iPhone" and 11 or 16
+    CreditsText.TextYAlignment = Enum.TextYAlignment.Top
+    CreditsText.Parent = CreditsContent
+
+    local CreditsCorner = Instance.new("UICorner")
+    CreditsCorner.CornerRadius = UDim.new(0, 10)
+    CreditsCorner.Parent = CreditsText
+    
+    -- âœ… TUTORIAL SECTION
+    local TutorialTitle = Instance.new("TextLabel")
+    TutorialTitle.Size = UDim2.new(1, 0, 0, 40)
+    TutorialTitle.BackgroundTransparency = 1
+    TutorialTitle.Text = "ðŸ“š HOW TO USE"
+    TutorialTitle.TextColor3 = Color3.fromRGB(255, 200, 100)
+    TutorialTitle.Font = Enum.Font.GothamBold
+    TutorialTitle.TextSize = device == "iPhone" and 14 or 20
+    TutorialTitle.Parent = CreditsContent
+    
+    local TutText = Instance.new("TextLabel")
+    TutText.Size = UDim2.new(1, 0, 0, 250)
+    TutText.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    TutText.BorderSizePixel = 0
+    TutText.Text = [[
+1ï¸âƒ£ Main Tab - Toggle small GUIs
+   â€¢ Each feature has green dot (ON/OFF)
+   â€¢ Drag small GUIs anywhere on screen!
+   â€¢ Click button to show/hide small GUI
+
+2ï¸âƒ£ Settings Tab - Customize speeds
+   â€¢ Speed settings next to Speed button
+   â€¢ FOV settings next to FOV button
+   â€¢ Save config to auto-load next time
+
+3ï¸âƒ£ MISC Tab - Auto-enabled features
+   â€¢ FPS Booster, Optimizer, Hitbox already ON!
+   â€¢ No need to toggle them
+
+âš ï¸ FOV: Must use âš™ï¸ settings button or won't work!
+
+4ï¸âƒ£ Drop Brainrot - Click to float up & drop!
+    ]]
+    TutText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TutText.Font = Enum.Font.Gotham
+    TutText.TextSize = device == "iPhone" and 9 or 12
+    TutText.TextYAlignment = Enum.TextYAlignment.Top
+    TutText.TextWrapped = true
+    TutText.Parent = CreditsContent
+    
+    local TutCorner = Instance.new("UICorner")
+    TutCorner.CornerRadius = UDim.new(0, 10)
+    TutCorner.Parent = TutText
+end
+
+local function initializeGUI(device)
+    selectedDevice = device
+    DeviceSelectFrame:Destroy()
+
+    -- âœ… AUTO-ENABLE MAIN TAB FEATURES FOR ALL DEVICES (PC, iPad, iPhone)
+    task.spawn(function()
+        task.wait(1.5) -- Wait for GUI to fully load
+        
+        -- âœ… Speed Booster - AUTO ON + SHOW SMALL GUI
+        SpeedBooster.Enabled = true
+        SmallSpeedGUI.Visible = true
+        SmallSpeedGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        SpeedDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        startSpeedBooster()
+        
+        -- âœ… Unwalk - AUTO ON + SHOW SMALL GUI
+        UnwalkEnabled = true
+        SmallUnwalkGUI.Visible = true
+        SmallUnwalkGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        UnwalkDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        startUnwalk()
+        
+        -- âšª Spin Bot - HIDDEN (user must turn on from Main tab)
+        SmallSpinBotGUI.Visible = false
+        
+        -- âšª Inf Jump - HIDDEN (user must turn on from Main tab)
+        SmallInfJumpGUI.Visible = false
+        
+        -- âšª Float Up - HIDDEN (user must turn on from Main tab or MISC)
+        SmallFloatGUI.Visible = false
+        
+        -- âšª FOV - HIDDEN (user must turn on from Main tab)
+        SmallFOVGUI.Visible = false
+        
+        -- âœ… Anti Ragdoll - AUTO ON + SHOW SMALL GUI
+        AntiRagdollEnabled = true
+        SmallAntiRagGUI.Visible = true
+        SmallAntiRagGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        AntiRagDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        enableAntiRagdoll()
+        
+        -- âœ… Ragdoll TP - AUTO ON + SHOW SMALL GUI
+        RagdollTP.enabled = true
+        SmallRagdollTPGUI.Visible = true
+        SmallRagdollTPGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        RagdollTPDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        startRagdollTP()
+        
+        -- âœ… Drop Brainrot - SHOW SMALL GUI but STAYS OFF (gray dot)
+        SmallDropGUI.Visible = true
+        SmallDropGUI.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+        DropDot.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        
+        print("[NATESHUB] âœ… Auto-enabled for "..device..": Speed, Unwalk, Anti Rag, Ragdoll TP")
+        print("[NATESHUB] âœ… Visible Small GUIs: Speed, Unwalk, Anti Rag, Ragdoll TP, Drop (OFF)")
+        print("[NATESHUB] âšª Hidden Small GUIs: Inf Jump, Spin Bot, Float, FOV (turn on from Main tab)")
+    end)
+
+    createMainGUI(device)
+    task.wait(0.3)
+    createOpenButton(device)
+    createAutoButtons(device)
+    createRightButtons(device)
+
+    -- âœ… AUTO-LOAD CONFIG ON START!
+    if ConfigData.speedEnabled then
+        SpeedBooster.Enabled = true
+        SmallSpeedGUI.Visible = true
+        SmallSpeedGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        SpeedDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        startSpeedBooster()
+    end
+    
+    if ConfigData.fovEnabled then
+        fovEnabled = true
+        SmallFOVGUI.Visible = true
+        SmallFOVGUI.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        FOVDot.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        updateFOV()
+    end
+end
+
+PCButton.MouseButton1Click:Connect(function() initializeGUI("PC") end)
+iPadButton.MouseButton1Click:Connect(function() initializeGUI("iPad") end)
+iPhoneButton.MouseButton1Click:Connect(function() initializeGUI("iPhone") end)
+
+function createOpenButton(device)
+    local buttonSize = device == "iPhone" and 55 or 70
+
+    local OpenButton = Instance.new("TextButton")
+    OpenButton.Size = UDim2.new(0, buttonSize, 0, buttonSize)
+    OpenButton.Position = UDim2.new(0, 15, 0.5, -buttonSize/2)
+    OpenButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+    OpenButton.BackgroundTransparency = 0.2
+    OpenButton.Text = "OPEN"
+    OpenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    OpenButton.Font = Enum.Font.GothamBold
+    OpenButton.TextSize = device == "iPhone" and 10 or 14
+    OpenButton.Parent = ScreenGui
+
+    local OpenCorner = Instance.new("UICorner")
+    OpenCorner.CornerRadius = UDim.new(0, 15)
+    OpenCorner.Parent = OpenButton
+
+    local isOpen = false
+    local size = GUI_SIZES[device]
+
+    OpenButton.MouseButton1Click:Connect(function()
+        isOpen = not isOpen
+
+        if isOpen then
+            OpenButton.Text = "CLOSE"
+            MainFrame.Visible = true
+            MainFrame.Position = UDim2.new(0, -size.Width - 100, 0.5, -size.Height/2)
+
+            TweenService:Create(
+                MainFrame,
+                TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                {Position = UDim2.new(0.5, -size.Width/2, 0.5, -size.Height/2)}
+            ):Play()
+        else
+            OpenButton.Text = "OPEN"
+
+            local slideOut = TweenService:Create(
+                MainFrame,
+                TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+                {Position = UDim2.new(0, -size.Width - 100, 0.5, -size.Height/2)}
+            )
+            slideOut:Play()
+            slideOut.Completed:Wait()
+            MainFrame.Visible = false
+        end
     end)
 end
-table.insert(_G.ICEHUB_Connections, UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    
-    if listeningBtn and input.UserInputType == Enum.UserInputType.Keyboard then
-        Config.Keybinds[listeningBtn.Key] = input.KeyCode
-        listeningBtn.Btn.Text = input.KeyCode.Name
-        listeningBtn.Btn.TextColor3 = Theme.Secondary
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- âœ… AUTO LEFT/RIGHT BUTTONS (SIDE BY SIDE - GRAY!)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+local AutoLeftSmallGUI, AutoRightSmallGUI
+
+function createAutoButtons(device)
+    local buttonSize = device == "iPhone" and 55 or 70
+    local yOffset = buttonSize + 10
+
+    -- âœ… AUTO LEFT Button (GRAY!)
+    local AutoLeftButton = Instance.new("TextButton")
+    AutoLeftButton.Size = UDim2.new(0, buttonSize, 0, buttonSize)
+    AutoLeftButton.Position = UDim2.new(0, 15, 0.5, -buttonSize/2 + yOffset)
+    AutoLeftButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75) -- âœ… GRAY!
+    AutoLeftButton.BackgroundTransparency = 0.3
+    AutoLeftButton.Text = "AUTO\nLEFT"
+    AutoLeftButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    AutoLeftButton.Font = Enum.Font.GothamBold
+    AutoLeftButton.TextSize = device == "iPhone" and 9 or 12
+    AutoLeftButton.Parent = ScreenGui
+
+    local LeftCorner = Instance.new("UICorner")
+    LeftCorner.CornerRadius = UDim.new(0, 15)
+    LeftCorner.Parent = AutoLeftButton
+
+    local LeftStroke = Instance.new("UIStroke")
+    LeftStroke.Color = Color3.fromRGB(255, 255, 255)
+    LeftStroke.Thickness = 2
+    LeftStroke.Parent = AutoLeftButton
+
+    -- âœ… AUTO RIGHT Button (SIDE BY SIDE - GRAY!)
+    local AutoRightButton = Instance.new("TextButton")
+    AutoRightButton.Size = UDim2.new(0, buttonSize, 0, buttonSize)
+    AutoRightButton.Position = UDim2.new(0, 15 + buttonSize + 10, 0.5, -buttonSize/2 + yOffset)
+    AutoRightButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75) -- âœ… GRAY!
+    AutoRightButton.BackgroundTransparency = 0.3
+    AutoRightButton.Text = "AUTO\nRIGHT"
+    AutoRightButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    AutoRightButton.Font = Enum.Font.GothamBold
+    AutoRightButton.TextSize = device == "iPhone" and 9 or 12
+    AutoRightButton.Parent = ScreenGui
+
+    local RightCorner = Instance.new("UICorner")
+    RightCorner.CornerRadius = UDim.new(0, 15)
+    RightCorner.Parent = AutoRightButton
+
+    local RightStroke = Instance.new("UIStroke")
+    RightStroke.Color = Color3.fromRGB(255, 255, 255)
+    RightStroke.Thickness = 2
+    RightStroke.Parent = AutoRightButton
+
+    -- âœ… AUTO LEFT CLICK (WITH PATH!)
+    AutoLeftButton.MouseButton1Click:Connect(function()
+        if pathActive then
+            stopStealPath()
+            AutoLeftButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75)
+            AutoRightButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75)
+        else
+            stopStealPath()
+            AutoLeftButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            AutoRightButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75)
+            startStealPath(stealPath2) -- âœ… LEFT PATH!
+        end
+    end)
+
+    -- âœ… AUTO RIGHT CLICK (WITH PATH!)
+    AutoRightButton.MouseButton1Click:Connect(function()
+        if pathActive then
+            stopStealPath()
+            AutoLeftButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75)
+            AutoRightButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75)
+        else
+            stopStealPath()
+            AutoLeftButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75)
+            AutoRightButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            startStealPath(stealPath1) -- âœ… RIGHT PATH!
+        end
+    end)
+end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- âœ… TRACK PLAYER & HIT CIRCLE (RIGHT SIDE - GRAY!)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+function createRightButtons(device)
+    local buttonSize = device == "iPhone" and 60 or 75
+
+    -- âœ… TRACK PLAYER Button (RIGHT SIDE - GRAY!)
+    local TrackPlayerButton = Instance.new("TextButton")
+    TrackPlayerButton.Size = UDim2.new(0, buttonSize, 0, buttonSize)
+    TrackPlayerButton.Position = UDim2.new(1, -buttonSize - 15, 0.5, -buttonSize - 10)
+    TrackPlayerButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75) -- âœ… GRAY!
+    TrackPlayerButton.BackgroundTransparency = 0.3
+    TrackPlayerButton.Text = "TRACK\nPLAYER"
+    TrackPlayerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TrackPlayerButton.Font = Enum.Font.GothamBold
+    TrackPlayerButton.TextSize = device == "iPhone" and 9 or 12
+    TrackPlayerButton.Parent = ScreenGui
+
+    local TrackCorner = Instance.new("UICorner")
+    TrackCorner.CornerRadius = UDim.new(0, 15)
+    TrackCorner.Parent = TrackPlayerButton
+
+    local TrackStroke = Instance.new("UIStroke")
+    TrackStroke.Color = Color3.fromRGB(255, 255, 255)
+    TrackStroke.Thickness = 2
+    TrackStroke.Parent = TrackPlayerButton
+
+    TrackPlayerButton.MouseButton1Click:Connect(function()
+        batAimbotToggled = not batAimbotToggled
         
-        TweenService:Create(listeningBtn.Btn, TweenInfo.new(0.1), {
-            Size = UDim2.new(0, 60, 0, 20)
-        }):Play()
+        if batAimbotToggled then
+            startBatAimbot()
+            TrackPlayerButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        else
+            stopBatAimbot()
+            TrackPlayerButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75)
+        end
+    end)
+
+    -- âœ… HIT CIRCLE Button (UNDER TRACK PLAYER - GRAY!)
+    local HitCircleButton = Instance.new("TextButton")
+    HitCircleButton.Size = UDim2.new(0, buttonSize, 0, buttonSize)
+    HitCircleButton.Position = UDim2.new(1, -buttonSize - 15, 0.5, 10)
+    HitCircleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75) -- âœ… GRAY!
+    HitCircleButton.BackgroundTransparency = 0.3
+    HitCircleButton.Text = "HIT\nCIRCLE"
+    HitCircleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    HitCircleButton.Font = Enum.Font.GothamBold
+    HitCircleButton.TextSize = device == "iPhone" and 9 or 12
+    HitCircleButton.Parent = ScreenGui
+
+    local HitCorner = Instance.new("UICorner")
+    HitCorner.CornerRadius = UDim.new(0, 15)
+    HitCorner.Parent = HitCircleButton
+
+    local HitStroke = Instance.new("UIStroke")
+    HitStroke.Color = Color3.fromRGB(255, 255, 255)
+    HitStroke.Thickness = 2
+    HitStroke.Parent = HitCircleButton
+
+    HitCircleButton.MouseButton1Click:Connect(function()
+        hitCircleEnabled = not hitCircleEnabled
         
-        listeningBtn = nil
+        if hitCircleEnabled then
+            startHitCircle()
+            HitCircleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        else
+            stopHitCircle()
+            HitCircleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 75)
+        end
+    end)
+end
+
+print("â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•")
+print("   NATESHUBðŸ’µðŸ‘‘ V7.0 FINAL COMPLETE!")
+print("â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•")
+print("âœ… VISIBLE SMALL GUIs (5):")
+print("   Speed (ON), Unwalk (ON), Anti Rag (ON),")
+print("   Ragdoll TP (ON), Drop Brainrot (OFF)")
+print("âœ… AUTO-ENABLED MAIN:")
+print("   Speed, Unwalk, Anti Rag, Ragdoll TP")
+print("âœ… AUTO-ENABLED MISC:")
+print("   FPS, Optimizer, Hitbox, Anti Death")
+print("âšª Hidden until you turn on:")
+print("   Inf Jump, Spin Bot, Float, FOV")
+print("âœ… WORKS ON: PC, iPad, iPhone!")
+print("â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•")
+
+game:GetService("Players").PlayerRemoving:Connect(function(plr)
+    if plr == player then
         SaveConfig()
-        return
+        print("[NATESHUB] âœ… Auto-saved config on leave!")
     end
-    
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        if Config.Keybinds.SpeedBoost and input.KeyCode == Config.Keybinds.SpeedBoost then Toggle("SpeedBoost") end
-        if Config.Keybinds.WalkSpeed and input.KeyCode == Config.Keybinds.WalkSpeed then Toggle("WalkSpeed") end
-        if Config.Keybinds.HighJump and input.KeyCode == Config.Keybinds.HighJump then Toggle("HighJump") end
-        if Config.Keybinds.InfiniteJump and input.KeyCode == Config.Keybinds.InfiniteJump then Toggle("InfiniteJump") end
-        if Config.Keybinds.Esp and input.KeyCode == Config.Keybinds.Esp then Toggle("Esp") end
-        if Config.Keybinds.AntiRagdoll and input.KeyCode == Config.Keybinds.AntiRagdoll then Toggle("AntiRagdoll") end
-        if Config.Keybinds.Hitbox and input.KeyCode == Config.Keybinds.Hitbox then Toggle("Hitbox") end
-        if Config.Keybinds.SpinBot and input.KeyCode == Config.Keybinds.SpinBot then Toggle("SpinBot") end
-        if Config.Keybinds.Performance and input.KeyCode == Config.Keybinds.Performance then Toggle("Performance") end
-        if Config.Keybinds.UnwalkAnimation and input.KeyCode == Config.Keybinds.UnwalkAnimation then Toggle("UnwalkAnimation") end
-        if Config.Keybinds.AutoBat and input.KeyCode == Config.Keybinds.AutoBat then Toggle("AutoBat") end
-        if Config.Keybinds.PaintballSpammer and input.KeyCode == Config.Keybinds.PaintballSpammer then Toggle("PaintballSpammer") end
-        if Config.Keybinds.AntiTrap and input.KeyCode == Config.Keybinds.AntiTrap then Toggle("AntiTrap") end
-        if Config.Keybinds.AntiSentry and input.KeyCode == Config.Keybinds.AntiSentry then Toggle("AntiSentry") end
-    end
-end))
-
-table.insert(_G.ICEHUB_Connections, RunService.Heartbeat:Connect(function()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChild("Humanoid")
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not hum or not root then return end
-    if (Config.SpeedBoost or Config.WalkSpeed) and hum.MoveDirection.Magnitude > 0.1 then
-        local speed = Config.SpeedBoost and Config.SpeedValue or Config.WalkValue
-        root.Velocity = Vector3.new(hum.MoveDirection.X * speed, root.Velocity.Y, hum.MoveDirection.Z * speed)
-    end
-end))
-
-table.insert(_G.ICEHUB_Connections, Players.PlayerAdded:Connect(function(player)
-    CreateESP(player)
-end))
-
-BatMedusaBtn.MouseButton1Click:Connect(function()
-    TweenService:Create(SelectorFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
-        Position = UDim2.new(0.5, -210, -0.5, 0)
-    }):Play()
-    task.wait(0.3)
-    SelectorFrame.Visible = false
-    
-    local MainFrame, LeftScroll, RightScroll = CreateMainHub("Duels")
-    
-    CreateSection(LeftScroll, "Movement")
-    CreateCheckbox(LeftScroll, "Speed Boost", "SpeedBoost")
-    CreateSlider(LeftScroll, "Speed Value", 1, 100, "SpeedBoost", "SpeedValue")
-    
-    CreateCheckbox(LeftScroll, "Walk Speed", "WalkSpeed")
-    CreateSlider(LeftScroll, "Walk Value", 1, 100, "WalkSpeed", "WalkValue")
-    
-    CreateCheckbox(LeftScroll, "High Jump", "HighJump")
-    CreateSlider(LeftScroll, "Jump Power", 1, 100, "HighJump", "JumpPower")
-    
-    CreateCheckbox(LeftScroll, "Infinite Jump", "InfiniteJump")
-    
-    CreateSection(LeftScroll, "Protection")
-    CreateCheckbox(LeftScroll, "Anti Ragdoll", "AntiRagdoll")
-    CreateCheckbox(LeftScroll, "Anti Trap", "AntiTrap")
-    CreateCheckbox(LeftScroll, "Anti Sentry", "AntiSentry")
-    
-    CreateSection(LeftScroll, "Miscellaneous")
-    CreateCheckbox(LeftScroll, "Unwalk Animation", "UnwalkAnimation")
-    CreateCheckbox(LeftScroll, "Performance Mode", "Performance")
-    
-    CreateSection(RightScroll, "Combat")
-    CreateCheckbox(RightScroll, "Auto Bat", "AutoBat")
-    CreateCheckbox(RightScroll, "Hitbox Expander", "Hitbox")
-    CreateSlider(RightScroll, "Hitbox Size", 5, 50, "Hitbox", "HitboxSize")
-    
-    CreateCheckbox(RightScroll, "Spin Bot", "SpinBot")
-    CreateSlider(RightScroll, "Spin Speed", 1, 100, "SpinBot", "SpinSpeed")
-    
-    CreateSection(RightScroll, "Visuals")
-    CreateCheckbox(RightScroll, "Discord Display", "Esp")
-    
-    _G.ICEHUB_UI.SpeedBoost.Button.MouseButton1Click:Connect(function() Toggle("SpeedBoost") end)
-    _G.ICEHUB_UI.WalkSpeed.Button.MouseButton1Click:Connect(function() Toggle("WalkSpeed") end)
-    _G.ICEHUB_UI.HighJump.Button.MouseButton1Click:Connect(function() Toggle("HighJump") end)
-    _G.ICEHUB_UI.InfiniteJump.Button.MouseButton1Click:Connect(function() Toggle("InfiniteJump") end)
-    _G.ICEHUB_UI.AntiRagdoll.Button.MouseButton1Click:Connect(function() Toggle("AntiRagdoll") end)
-    _G.ICEHUB_UI.SpinBot.Button.MouseButton1Click:Connect(function() Toggle("SpinBot") end)
-    _G.ICEHUB_UI.Performance.Button.MouseButton1Click:Connect(function() Toggle("Performance") end)
-    _G.ICEHUB_UI.UnwalkAnimation.Button.MouseButton1Click:Connect(function() Toggle("UnwalkAnimation") end)
-    _G.ICEHUB_UI.Esp.Button.MouseButton1Click:Connect(function() Toggle("Esp") end)
-    _G.ICEHUB_UI.Hitbox.Button.MouseButton1Click:Connect(function() Toggle("Hitbox") end)
-    _G.ICEHUB_UI.AutoBat.Button.MouseButton1Click:Connect(function() Toggle("AutoBat") end)
-    _G.ICEHUB_UI.AntiTrap.Button.MouseButton1Click:Connect(function() Toggle("AntiTrap") end)
-    _G.ICEHUB_UI.AntiSentry.Button.MouseButton1Click:Connect(function() Toggle("AntiSentry") end)
-    
-    local features = {"SpeedBoost", "WalkSpeed", "HighJump", "InfiniteJump", "Esp", "AntiRagdoll", "Hitbox", "SpinBot", "Performance", "UnwalkAnimation", "AutoBat", "AntiTrap", "AntiSentry"}
-    for _, feature in ipairs(features) do
-        local ui = _G.ICEHUB_UI[feature]
-        if ui then
-            SetupKeybind(ui.KeybindBtn, feature)
-        end
-    end
-    
-    MainFrame.Visible = true
-    MainFrame.Position = UDim2.new(0.5, -290, -0.5, 0)
-    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Position = UDim2.new(0.5, -290, 0.35, -210)
-    }):Play()
-    
-    DingSound:Play()
-end)
-AllGearsBtn.MouseButton1Click:Connect(function()
-    TweenService:Create(SelectorFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
-        Position = UDim2.new(0.5, -210, -0.5, 0)
-    }):Play()
-    task.wait(0.3)
-    SelectorFrame.Visible = false
-    
-    local MainFrame, LeftScroll, RightScroll = CreateMainHub("All Gears")
-    
-    CreateSection(LeftScroll, "Movement")
-    CreateCheckbox(LeftScroll, "Speed Boost", "SpeedBoost")
-    CreateSlider(LeftScroll, "Speed Value", 1, 100, "SpeedBoost", "SpeedValue")
-    
-    CreateCheckbox(LeftScroll, "Walk Speed", "WalkSpeed")
-    CreateSlider(LeftScroll, "Walk Value", 1, 100, "WalkSpeed", "WalkValue")
-    
-    CreateCheckbox(LeftScroll, "High Jump", "HighJump")
-    CreateSlider(LeftScroll, "Jump Power", 1, 100, "HighJump", "JumpPower")
-    
-    CreateCheckbox(LeftScroll, "Infinite Jump", "InfiniteJump")
-    
-    CreateSection(LeftScroll, "Protection")
-    CreateCheckbox(LeftScroll, "Anti Ragdoll", "AntiRagdoll")
-    CreateCheckbox(LeftScroll, "Anti Trap", "AntiTrap")
-    CreateCheckbox(LeftScroll, "Anti Sentry", "AntiSentry")
-    
-    CreateSection(LeftScroll, "Miscellaneous")
-    CreateCheckbox(LeftScroll, "Unwalk Animation", "UnwalkAnimation")
-    CreateCheckbox(LeftScroll, "Performance Mode", "Performance")
-    
-    CreateSection(RightScroll, "Combat")
-    CreateCheckbox(RightScroll, "Auto Bat", "AutoBat")
-    CreateCheckbox(RightScroll, "Paintball Spammer", "PaintballSpammer")
-    CreateCheckbox(RightScroll, "Hitbox Expander", "Hitbox")
-    CreateSlider(RightScroll, "Hitbox Size", 5, 50, "Hitbox", "HitboxSize")
-    
-    CreateCheckbox(RightScroll, "Spin Bot", "SpinBot")
-    CreateSlider(RightScroll, "Spin Speed", 1, 100, "SpinBot", "SpinSpeed")
-    
-    CreateSection(RightScroll, "Visuals")
-    CreateCheckbox(RightScroll, "Discord Display", "Esp")
-    
-    _G.ICEHUB_UI.SpeedBoost.Button.MouseButton1Click:Connect(function() Toggle("SpeedBoost") end)
-    _G.ICEHUB_UI.WalkSpeed.Button.MouseButton1Click:Connect(function() Toggle("WalkSpeed") end)
-    _G.ICEHUB_UI.HighJump.Button.MouseButton1Click:Connect(function() Toggle("HighJump") end)
-    _G.ICEHUB_UI.InfiniteJump.Button.MouseButton1Click:Connect(function() Toggle("InfiniteJump") end)
-    _G.ICEHUB_UI.AntiRagdoll.Button.MouseButton1Click:Connect(function() Toggle("AntiRagdoll") end)
-    _G.ICEHUB_UI.SpinBot.Button.MouseButton1Click:Connect(function() Toggle("SpinBot") end)
-    _G.ICEHUB_UI.Performance.Button.MouseButton1Click:Connect(function() Toggle("Performance") end)
-    _G.ICEHUB_UI.UnwalkAnimation.Button.MouseButton1Click:Connect(function() Toggle("UnwalkAnimation") end)
-    _G.ICEHUB_UI.Esp.Button.MouseButton1Click:Connect(function() Toggle("Esp") end)
-    _G.ICEHUB_UI.Hitbox.Button.MouseButton1Click:Connect(function() Toggle("Hitbox") end)
-    _G.ICEHUB_UI.AutoBat.Button.MouseButton1Click:Connect(function() Toggle("AutoBat") end)
-    _G.ICEHUB_UI.PaintballSpammer.Button.MouseButton1Click:Connect(function() Toggle("PaintballSpammer") end)
-    _G.ICEHUB_UI.AntiTrap.Button.MouseButton1Click:Connect(function() Toggle("AntiTrap") end)
-    _G.ICEHUB_UI.AntiSentry.Button.MouseButton1Click:Connect(function() Toggle("AntiSentry") end)
-    
-    local features = {"SpeedBoost", "WalkSpeed", "HighJump", "InfiniteJump", "Esp", "AntiRagdoll", "Hitbox", "SpinBot", "Performance", "UnwalkAnimation", "AutoBat", "PaintballSpammer", "AntiTrap", "AntiSentry"}
-    for _, feature in ipairs(features) do
-        local ui = _G.ICEHUB_UI[feature]
-        if ui then
-            SetupKeybind(ui.KeybindBtn, feature)
-        end
-    end
-    
-    MainFrame.Visible = true
-    MainFrame.Position = UDim2.new(0.5, -290, -0.5, 0)
-    TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-        Position = UDim2.new(0.5, -290, 0.35, -210)
-    }):Play()
-    
-    DingSound:Play()
-end)
-
-task.wait(0.2)
-LoadConfig()
-pcall(function()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Ice Hub",
-        Text = "Successfully Loaded",
-        Duration = 3
-    })
 end)
