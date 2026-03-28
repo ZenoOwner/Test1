@@ -1,2336 +1,1635 @@
+-- Services
+print("NHH HUB LOADED SUCCESSFULY")
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local StarterGui = game:GetService("StarterGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local PathfindingService = game:GetService("PathfindingService")
+local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
-local PlayerGui = player:WaitForChild("PlayerGui")
-
+local lp = player
 local character = player.Character or player.CharacterAdded:Wait()
-if not character then
-    warn("Failed to load player character")
-    return
-end
-local humanoid = character:FindFirstChild("Humanoid")
-local root = character:FindFirstChild("HumanoidRootPart")
-if not (humanoid and root) then
-    warn("Humanoid or HumanoidRootPart not found")
-    return
-end
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
 
--- Settings file management
-local settingsFileName = "NamelessHubSettings.json"
-local HttpService = game:GetService("HttpService")
-
-local defaultSettings = {
-    walkspeedEnabled = false,
-    currentWalkSpeed = 80,
-    infiniteJumpEnabled = false,
-    boostJumpEnabled = false,
-    currentBoostStrength = 150,
-    espEnabled = false,
-    timerEspEnabled = false,
-    webSlingerAutoAimEnabled = false,
-    antiTrapEnabled = false,
-    antiHitEnabled = false,
-    brainrotEspEnabled = false,
-    flingEnabled = false,
-    guiPosition = {0, 10, 1, -60}
+local THEME = {
+    success = Color3.fromRGB(0, 255, 0),
+    btn = Color3.fromRGB(200, 200, 200)
 }
 
-local function saveSettings(settings)
+local SETTINGS_FILE = "CiganyHub_AutoJoiner_Settings.json"
+
+local settings = {
+    webSlingerEnabled = false,
+    autoStealEnabled = false,
+    lowGravityEnabled = false,
+    highJumpEnabled = false,
+    speedEnabled = false,
+    baseEspEnabled = false,
+    sentryEnabled = false,
+    thirdFloorEnabled = false,
+    antiKnockbackEnabled = false  -- New setting for No Knockback
+}
+
+-- Load settings from file
+local function loadSettings()
     local success, result = pcall(function()
-        local jsonString = HttpService:JSONEncode(settings)
-        writefile(settingsFileName, jsonString)
+        if isfile and readfile then
+            local settingsPath = "workspace/" .. SETTINGS_FILE
+            if isfile(settingsPath) then
+                local loadedSettings = HttpService:JSONDecode(readfile(settingsPath))
+                
+                -- Minden beállítás betöltése (csak ha létezik)
+                if loadedSettings.webSlingerEnabled ~= nil then
+                    settings.webSlingerEnabled = loadedSettings.webSlingerEnabled
+                end
+                if loadedSettings.autoStealEnabled ~= nil then
+                    settings.autoStealEnabled = loadedSettings.autoStealEnabled
+                end
+                if loadedSettings.lowGravityEnabled ~= nil then
+                    settings.lowGravityEnabled = loadedSettings.lowGravityEnabled
+                end
+                if loadedSettings.highJumpEnabled ~= nil then
+                    settings.highJumpEnabled = loadedSettings.highJumpEnabled
+                end
+                if loadedSettings.speedEnabled ~= nil then
+                    settings.speedEnabled = loadedSettings.speedEnabled
+                end
+                if loadedSettings.baseEspEnabled ~= nil then
+                    settings.baseEspEnabled = loadedSettings.baseEspEnabled
+                end
+                if loadedSettings.sentryEnabled ~= nil then
+                    settings.sentryEnabled = loadedSettings.sentryEnabled
+                end
+                if loadedSettings.thirdFloorEnabled ~= nil then
+                    settings.thirdFloorEnabled = loadedSettings.thirdFloorEnabled
+                end
+                if loadedSettings.antiKnockbackEnabled ~= nil then
+                    settings.antiKnockbackEnabled = loadedSettings.antiKnockbackEnabled
+                end
+            end
+        end
     end)
     if not success then
-        warn("Failed to save settings: " .. tostring(result))
+        print("[AutoJoiner] Failed to load settings: " .. tostring(result))
     end
 end
 
-local function loadSettings()
-    if isfile(settingsFileName) then
-        local jsonString = readfile(settingsFileName)
-        local decoded = HttpService:JSONDecode(jsonString)
-
-        -- Merge with default settings to ensure all keys exist
-        for key, value in pairs(defaultSettings) do
-            if decoded[key] == nil then
-                decoded[key] = value
-            end
+-- Save settings to file
+local function saveSettings()
+    local success, result = pcall(function()
+        if writefile then
+            local settingsPath = "workspace/" .. SETTINGS_FILE
+            writefile(settingsPath, HttpService:JSONEncode(settings))
         end
-
-        return decoded
-    else
-        warn("Settings file not found, using default settings.")
-        return defaultSettings
+    end)
+    if not success then
+        print("[AutoJoiner] Failed to save settings: " .. tostring(result))
     end
 end
 
-local settings = loadSettings()
+-- Load settings at script start
+loadSettings()
 
-local oldGui = PlayerGui:FindFirstChild("NamelessHubGui")
-if oldGui then oldGui:Destroy() end
-
+-- === Main GUI (CiganyHub_AutoJoiner) ===
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "NamelessHubGui"
+screenGui.Name = "CiganyHub_AutoJoiner"
+screenGui.Parent = lp:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
-screenGui.Parent = PlayerGui
 
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 50, 0, 50)
-mainFrame.Position = UDim2.new(settings.guiPosition[1], settings.guiPosition[2], settings.guiPosition[3], settings.guiPosition[4])
-mainFrame.AnchorPoint = Vector2.new(0, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-mainFrame.BorderSizePixel = 0
-mainFrame.ClipsDescendants = true
-mainFrame.Parent = screenGui
+-- Toggle button 
+local toggleButton = Instance.new("ImageButton")
+toggleButton.Size = UDim2.new(0, 50, 0, 50)
+toggleButton.Position = UDim2.new(0, 45, 0.5, -100)
+toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+toggleButton.BorderSizePixel = 0
+toggleButton.Image = "rbxassetid://91976245949603"
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0.5, 0)
+toggleCorner.Parent = toggleButton
+toggleButton.Parent = screenGui
+local isMenuOpen = false
 
-local mainCorner = Instance.new("UICorner", mainFrame)
-mainCorner.CornerRadius = UDim.new(0, 12)
+-- Main frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 420) -- Increased height for new buttons
+frame.Position = UDim2.new(0.5, -150, 0.5, -200)
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BackgroundTransparency = 0.3
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+frame.Visible = false
+frame.Active = true
+frame.Draggable = true
 
-local nhLabel = Instance.new("TextLabel")
-nhLabel.Name = "NHLabel"
-nhLabel.Size = UDim2.new(0, 50, 0, 50)
-nhLabel.Position = UDim2.new(0, 0, 0, 0)
-nhLabel.BackgroundTransparency = 1
-nhLabel.Text = "NH"
-nhLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-nhLabel.TextScaled = true
-nhLabel.Font = Enum.Font.GothamBold
-nhLabel.TextXAlignment = Enum.TextXAlignment.Center
-nhLabel.TextYAlignment = Enum.TextYAlignment.Center
-nhLabel.Parent = mainFrame
+-- Fehér outline hozzáadása
+local frameStroke = Instance.new("UIStroke")
+frameStroke.Color = Color3.fromRGB(255, 255, 255)
+frameStroke.Thickness = 2
+frameStroke.Parent = frame
 
-local hubLabel = Instance.new("TextLabel")
-hubLabel.Size = UDim2.new(0, 50, 0, 20)
-hubLabel.Position = UDim2.new(0, 0, 0, 30)
-hubLabel.BackgroundTransparency = 1
-hubLabel.Text = "Hub"
-hubLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-hubLabel.TextScaled = true
-hubLabel.Font = Enum.Font.GothamBold
-hubLabel.TextTransparency = 1
-hubLabel.Visible = false
-hubLabel.Parent = mainFrame
+-- Lekerekített sarkok hozzáadása
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 8)
+frameCorner.Parent = frame
 
-local openButton = Instance.new("TextButton")
-openButton.Size = UDim2.new(1, 0, 1, 0)
-openButton.BackgroundTransparency = 1
-openButton.Text = ""
-openButton.Parent = mainFrame
+local textLabel = Instance.new("TextLabel")
+textLabel.Size = UDim2.new(1, 0, 0, 60)
+textLabel.Position = UDim2.new(0, 0, 0, 0)
+textLabel.BackgroundTransparency = 1
+textLabel.Text = "NHH HUB"
+textLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+textLabel.TextSize = 30
+textLabel.Font = Enum.Font.GothamBold
+textLabel.Parent = frame
 
-local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0, 30, 0, 30)
-closeButton.Position = UDim2.new(1, -35, 0, 5)
-closeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-closeButton.Text = "âœ•"
-closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeButton.TextScaled = true
-closeButton.Font = Enum.Font.Gotham
-closeButton.Visible = false
-closeButton.BackgroundTransparency = 1
-closeButton.TextTransparency = 1
-closeButton.Parent = mainFrame
-
-local closeCorner = Instance.new("UICorner", closeButton)
-closeCorner.CornerRadius = UDim.new(1, 0)
-
-local dragging = false
-local dragStartPos
-local startFramePos
-local savedPosition = mainFrame.Position
-local openedPosition = UDim2.new(0.5, 0, 0.45, 0)
-
--- State variables
-local walkspeedEnabled = settings.walkspeedEnabled
-local walkspeedConnection = nil
-local flingEnabled = settings.flingEnabled
-local flingConnection = nil
-local espEnabled = settings.espEnabled
-local espConnections = {}
-local espBillboards = {}
-local timerEspEnabled = settings.timerEspEnabled
-local activeConnections = {}
-local webSlingerAutoAimEnabled = settings.webSlingerAutoAimEnabled
-local webSlingerConnection = nil
-local infiniteJumpEnabled = settings.infiniteJumpEnabled
-local infiniteJumpConnection = nil
-local boostJumpEnabled = settings.boostJumpEnabled
-local boostJumpConnections = {}
-local currentWalkSpeed = settings.currentWalkSpeed
-local currentBoostStrength = settings.currentBoostStrength
-local antiTrapEnabled = settings.antiTrapEnabled
-local antiTrapConnection = nil
-local antiHitEnabled = settings.antiHitEnabled
-local brainrotEspEnabled = settings.brainrotEspEnabled
-
-openButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStartPos = input.Position
-        startFramePos = mainFrame.Position
+-- Glowing effect
+spawn(function()
+    while wait(0.5) do
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+        wait(0.5)
+        textLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
     end
 end)
 
-openButton.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStartPos
-        local newPos = UDim2.new(
-            startFramePos.X.Scale,
-            startFramePos.X.Offset + delta.X,
-            startFramePos.Y.Scale,
-            startFramePos.Y.Offset + delta.Y
-        )
-        mainFrame.Position = newPos
-        savedPosition = newPos
-        -- Update settings
-        settings.guiPosition = {newPos.X.Scale, newPos.X.Offset, newPos.Y.Scale, newPos.Y.Offset}
-        saveSettings(settings)
-    end
-end)
+-- === Section Buttons ===
+local stealerBtn = Instance.new("TextButton")
+stealerBtn.Size = UDim2.new(0, 120, 0, 30)
+stealerBtn.Position = UDim2.new(0.5, -130, 0, 65)
+stealerBtn.BackgroundColor3 = Color3.fromRGB(128,128,128)
+stealerBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+stealerBtn.Text = "Stealer"
+stealerBtn.Font = Enum.Font.GothamBold
+stealerBtn.TextSize = 14
+stealerBtn.Parent = frame
 
-openButton.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-    end
-end)
+local miscBtn = Instance.new("TextButton")
+miscBtn.Size = UDim2.new(0, 120, 0, 30)
+miscBtn.Position = UDim2.new(0.5, 10, 0, 65)
+miscBtn.BackgroundColor3 = Color3.fromRGB(128,128,128)
+miscBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+miscBtn.Text = "Misc"
+miscBtn.Font = Enum.Font.GothamBold
+miscBtn.TextSize = 14
+miscBtn.Parent = frame
 
-local function createTabButton(name, yOffset)
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0.3, -10, 0, 40)
-    button.Position = UDim2.new(0, 5, 0, yOffset)
-    button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    button.Text = name
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 14
-    button.Font = Enum.Font.Gotham
-    button.BorderSizePixel = 0
-    button.Visible = false
-    button.BackgroundTransparency = 1
-    button.TextTransparency = 1
-    button.Parent = mainFrame
+-- Section corners
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 4)
+btnCorner.Parent = stealerBtn
+btnCorner:Clone().Parent = miscBtn
 
-    local corner = Instance.new("UICorner", button)
-    corner.CornerRadius = UDim.new(0, 8)
+-- === Section Containers ===
+local stealerContainer = Instance.new("Frame")
+stealerContainer.Size = UDim2.new(1, 0, 0, 350)
+stealerContainer.Position = UDim2.new(0, 0, 0, 100)
+stealerContainer.BackgroundTransparency = 1
+stealerContainer.Visible = true
+stealerContainer.Parent = frame
 
-    button.MouseButton1Down:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {
-            BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-        }):Play()
-    end)
-    
-    button.MouseButton1Up:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.3), {
-            BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        }):Play()
-    end)
-    
-    button.MouseLeave:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.3), {
-            BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        }):Play()
-    end)
+local miscContainer = Instance.new("Frame")
+miscContainer.Size = UDim2.new(1, 0, 0, 350)
+miscContainer.Position = UDim2.new(0, 0, 0, 100)
+miscContainer.BackgroundTransparency = 1
+miscContainer.Visible = false
+miscContainer.Parent = frame
 
-    return button
-end
+-- === TÉNYLEG MŰKÖDŐ NO KNOCKBACK ===
+local antiKnockbackConn = nil
+local lastSafeVelocity = Vector3.new(0, 0, 0)
+local VELOCITY_THRESHOLD = 35
+local UPDATE_INTERVAL = 0.016
 
-local tabMain = createTabButton("Main", 90)
-local tabSettings = createTabButton("Settings", 140)
-local tabESP = createTabButton("ESP", 190)
-local tabInfo = createTabButton("Info", 240)
+local function startNoKnockback()
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not (hrp and hum) then return end
+    if antiKnockbackConn then antiKnockbackConn:Disconnect() end
 
-local divider = Instance.new("Frame")
-divider.Size = UDim2.new(0, 2, 1, -20)
-divider.Position = UDim2.new(0.3, 0, 0, 10)
-divider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-divider.BackgroundTransparency = 1
-divider.BorderSizePixel = 0
-divider.Visible = false
-divider.Parent = mainFrame
+    lastSafeVelocity = hrp.Velocity
+    local lastCheck = tick()
+    local lastPosition = hrp.Position
 
-local tabContents = {}
+    antiKnockbackConn = game:GetService("RunService").Heartbeat:Connect(function()
+        local now = tick()
+        if now - lastCheck < UPDATE_INTERVAL then return end
+        lastCheck = now
 
-local function disableWalkspeed()
-    if walkspeedConnection then
-        walkspeedConnection:Disconnect()
-        walkspeedConnection = nil
-    end
-    local character = player.Character
-    if character then
-        local root = character:FindFirstChild("HumanoidRootPart")
-        if root then
-            local vectorForce = root:FindFirstChild("ConstantMoveForce")
-            if vectorForce then
-                vectorForce:Destroy()
-            end
-            local attachment = root:FindFirstChildOfClass("Attachment")
-            if attachment then
-                attachment:Destroy()
-            end
-        end
-    end
-    walkspeedEnabled = false
-    settings.walkspeedEnabled = false
-    saveSettings(settings)
-end
+        local currentVel = hrp.Velocity
+        local currentPos = hrp.Position
+        local positionChange = (currentPos - lastPosition).Magnitude
+        lastPosition = currentPos
 
-local function enableWalkspeed(actionButton, speedTextBox)
-    if walkspeedConnection then
-        walkspeedConnection:Disconnect()
-        walkspeedConnection = nil
-    end
-    -- Remove any existing vector force and attachment
-    local character = player.Character
-    if character then
-        local root = character:FindFirstChild("HumanoidRootPart")
-        if root then
-            local vectorForce = root:FindFirstChild("ConstantMoveForce")
-            if vectorForce then
-                vectorForce:Destroy()
-            end
-            local attachment = root:FindFirstChildOfClass("Attachment")
-            if attachment then
-                attachment:Destroy()
-            end
-        end
-    end
-    -- Set up new components
-    character = player.Character or player.CharacterAdded:Wait()
-    local root = character:WaitForChild("HumanoidRootPart")
-    local humanoid = character:WaitForChild("Humanoid")
+        local horizontalSpeed = Vector3.new(currentVel.X, 0, currentVel.Z).Magnitude
+        local lastHorizontalSpeed = Vector3.new(lastSafeVelocity.X, 0, lastSafeVelocity.Z).Magnitude
+        local isKnockback = false
 
-    local FORCE_MULTIPLIER = 100
-    local AIR_DRAG = 0.9
+        if horizontalSpeed > VELOCITY_THRESHOLD and horizontalSpeed > lastHorizontalSpeed * 4 then isKnockback = true end
+        if math.abs(currentVel.Y) > 70 then isKnockback = true end
+        if hum:GetState() == Enum.HumanoidStateType.Ragdoll or hum:GetState() == Enum.HumanoidStateType.FallingDown then isKnockback = true end
+        if positionChange > 10 and horizontalSpeed > 50 then isKnockback = true end
 
-    local function tryEquipAndUseTool()
-        local tool = player.Backpack:FindFirstChild("Invisibility Cloak") or (player.Character and player.Character:FindFirstChild("Invisibility Cloak"))
-        if tool and tool:IsA("Tool") then
-            if tool.Parent ~= character then
-                tool.Parent = character
+        if isKnockback then
+            if hum:GetState() == Enum.HumanoidStateType.Ragdoll or hum:GetState() == Enum.HumanoidStateType.FallingDown then
+                hum:ChangeState(Enum.HumanoidStateType.GettingUp)
                 task.wait(0.1)
             end
-            tool:Activate()
-        else
-            StarterGui:SetCore("SendNotification", {
-                Title = "Tool Not Found",
-                Text = "You don't have Invisibility Cloak in your backpack or equipped!",
-                Duration = 5
-            })
-        end
-    end
-
-    tryEquipAndUseTool()
-
-    local attachment = Instance.new("Attachment", root)
-    local vectorForce = Instance.new("VectorForce")
-    vectorForce.Name = "ConstantMoveForce"
-    vectorForce.Attachment0 = attachment
-    vectorForce.RelativeTo = Enum.ActuatorRelativeTo.World
-    vectorForce.ApplyAtCenterOfMass = true
-    vectorForce.Force = Vector3.zero
-    vectorForce.Parent = root
-
-    walkspeedConnection = RunService.RenderStepped:Connect(function()
-        local moveDir = humanoid.MoveDirection
-        if moveDir.Magnitude > 0 then
-            local targetVelocity = moveDir.Unit * currentWalkSpeed
-            local currentVelocity = root.Velocity
-            local flatVelocity = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
-            local diff = targetVelocity - flatVelocity
-            local corrected = diff * FORCE_MULTIPLIER - flatVelocity * AIR_DRAG
-            vectorForce.Force = Vector3.new(corrected.X, 0, corrected.Z)
-        else
-            vectorForce.Force = Vector3.zero
-        end
-    end)
-
-    walkspeedEnabled = true
-    settings.walkspeedEnabled = true
-    saveSettings(settings)
-    if actionButton then
-        actionButton.Text = "Disable Walkspeed"
-    end
-end
-
-local function updateWalkspeed(newSpeed)
-    currentWalkSpeed = newSpeed
-    settings.currentWalkSpeed = newSpeed
-    saveSettings(settings)
-end
-
-local function enableAntiTrap(antiTrapButton)
-    if antiTrapConnection then
-        antiTrapConnection:Disconnect()
-        antiTrapConnection = nil
-    end
-    antiTrapEnabled = true
-    if antiTrapButton then
-        antiTrapButton.Text = "Disable Anti Trap"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Anti Trap",
-        Text = "Anti Trap: ON",
-        Duration = 2
-    })
-
-    antiTrapConnection = RunService.Heartbeat:Connect(function()
-        local trap = Workspace:FindFirstChild("Trap")
-        if trap and trap:IsA("Model") then
-            trap:Destroy()
-        end
-    end)
-    
-    settings.antiTrapEnabled = true
-    saveSettings(settings)
-end
-
-local function disableAntiTrap(antiTrapButton)
-    if antiTrapConnection then
-        antiTrapConnection:Disconnect()
-        antiTrapConnection = nil
-    end
-    antiTrapEnabled = false
-    if antiTrapButton then
-        antiTrapButton.Text = "Enable Anti Trap"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Anti Trap",
-        Text = "Anti Trap: OFF",
-        Duration = 2
-    })
-    
-    settings.antiTrapEnabled = false
-    saveSettings(settings)
-end
-
-local function getRandomColor()
-    return Color3.fromRGB(math.random(50, 255), math.random(50, 255), math.random(50, 255))
-end
-
-local function enableESP(espButton)
-    -- Remove existing ESP if any
-    for _, targetPlayer in pairs(Players:GetPlayers()) do
-        if targetPlayer ~= player and targetPlayer.Character then
-            local highlight = targetPlayer.Character:FindFirstChild("ESPHighlight")
-            if highlight then
-                highlight:Destroy()
-            end
-            local billboard = espBillboards[targetPlayer]
-            if billboard then
-                billboard:Destroy()
-                espBillboards[targetPlayer] = nil
-            end
-        end
-    end
-    for _, connection in pairs(espConnections) do
-        connection:Disconnect()
-    end
-    espConnections = {}
-    -- Set up new ESP
-    espEnabled = true
-    if espButton then
-        espButton.Text = "Disable ESP"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "ESP",
-        Text = "ESP: ON",
-        Duration = 2
-    })
-
-    local function addHighlightAndName(targetPlayer)
-        if targetPlayer ~= player and targetPlayer.Character then
-            local randomColor = getRandomColor()
-            local highlight = Instance.new("Highlight")
-            highlight.Name = "ESPHighlight"
-            highlight.FillColor = randomColor
-            highlight.OutlineColor = randomColor
-            highlight.FillTransparency = 0.3
-            highlight.OutlineTransparency = 0
-            highlight.Adornee = targetPlayer.Character
-            highlight.Parent = targetPlayer.Character
-
-            local billboard = Instance.new("BillboardGui")
-            billboard.Name = "ESPName"
-            billboard.Adornee = targetPlayer.Character:FindFirstChild("Head")
-            billboard.Size = UDim2.new(0, 100, 0, 50)
-            billboard.StudsOffset = Vector3.new(0, 2, 0)
-            billboard.AlwaysOnTop = true
-            billboard.Parent = targetPlayer.Character
-
-            local nameLabel = Instance.new("TextLabel")
-            nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
-            nameLabel.Position = UDim2.new(0, 0, 0, 0)
-            nameLabel.BackgroundTransparency = 1
-            nameLabel.Text = targetPlayer.Name
-            nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            nameLabel.TextScaled = true
-            nameLabel.Font = Enum.Font.GothamBold
-            nameLabel.Parent = billboard
-
-            local displayNameLabel = Instance.new("TextLabel")
-            displayNameLabel.Size = UDim2.new(1, 0, 0.5, 0)
-            displayNameLabel.Position = UDim2.new(0, 0, 0.5, 0)
-            displayNameLabel.BackgroundTransparency = 1
-            displayNameLabel.Text = targetPlayer.DisplayName
-            displayNameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-            displayNameLabel.TextScaled = true
-            displayNameLabel.Font = Enum.Font.Gotham
-            displayNameLabel.Parent = billboard
-
-            espBillboards[targetPlayer] = billboard
-        end
-    end
-
-    for _, targetPlayer in pairs(Players:GetPlayers()) do
-        addHighlightAndName(targetPlayer)
-    end
-
-    espConnections["PlayerAdded"] = Players.PlayerAdded:Connect(function(targetPlayer)
-        targetPlayer.CharacterAdded:Connect(function()
-            addHighlightAndName(targetPlayer)
-        end)
-    end)
-
-    espConnections["PlayerRemoving"] = Players.PlayerRemoving:Connect(function(targetPlayer)
-        if targetPlayer.Character then
-            local highlight = targetPlayer.Character:FindFirstChild("ESPHighlight")
-            if highlight then
-                highlight:Destroy()
-            end
-            local billboard = espBillboards[targetPlayer]
-            if billboard then
-                billboard:Destroy()
-                espBillboards[targetPlayer] = nil
-            end
-        end
-    end)
-    
-    settings.espEnabled = true
-    saveSettings(settings)
-end
-
-local function disableESP(espButton)
-    espEnabled = false
-    if espButton then
-        espButton.Text = "Enable ESP"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "ESP",
-        Text = "ESP: OFF",
-        Duration = 2
-    })
-
-    for _, targetPlayer in pairs(Players:GetPlayers()) do
-        if targetPlayer ~= player and targetPlayer.Character then
-            local highlight = targetPlayer.Character:FindFirstChild("ESPHighlight")
-            if highlight then
-                highlight:Destroy()
-            end
-            local billboard = espBillboards[targetPlayer]
-            if billboard then
-                billboard:Destroy()
-                espBillboards[targetPlayer] = nil
-            end
-        end
-    end
-
-    for _, connection in pairs(espConnections) do
-        connection:Disconnect()
-    end
-    espConnections = {}
-    
-    settings.espEnabled = false
-    saveSettings(settings)
-end
-
-local function updateBillboard(mainPart, contentText, shouldShow)
-    local existing = mainPart:FindFirstChild("RemainingTimeGui")
-    if shouldShow then
-        if not existing then
-            local gui = Instance.new("BillboardGui")
-            gui.Name = "RemainingTimeGui"
-            gui.Adornee = mainPart
-            gui.Size = UDim2.new(0, 200, 0, 50)
-            gui.StudsOffset = Vector3.new(0, 5, 0)
-            gui.AlwaysOnTop = true
-            gui.Parent = mainPart
-
-            local label = Instance.new("TextLabel")
-            label.Name = "Text"
-            label.Size = UDim2.new(1, 0, 1, 0)
-            label.BackgroundTransparency = 1
-            label.TextScaled = true
-            label.TextColor3 = Color3.fromRGB(255, 255, 255)
-            label.TextStrokeTransparency = 0.2
-            label.Font = Enum.Font.GothamBold
-            label.Text = contentText
-            label.Parent = gui
-        else
-            local label = existing:FindFirstChild("Text")
-            if label then
-                label.Text = contentText
-            end
-        end
-    else
-        if existing then
-            existing:Destroy()
-        end
-    end
-end
-
-local function findLowestValidRemainingTime(purchases)
-    local lowest = nil
-    local lowestY = nil
-
-    for _, purchase in pairs(purchases:GetChildren()) do
-        local main = purchase:FindFirstChild("Main")
-        local gui = main and main:FindFirstChild("BillboardGui")
-        local remTime = gui and gui:FindFirstChild("RemainingTime")
-        local locked = gui and gui:FindFirstChild("Locked")
-
-        if main and remTime and locked and remTime:IsA("TextLabel") and locked:IsA("GuiObject") then
-            if locked.Visible then
-                local y = main.Position.Y
-                if not lowestY or y < lowestY then
-                    lowest = {remTime = remTime, locked = locked, main = main}
-                    lowestY = y
-                end
-            end
-        end
-    end
-
-    return lowest
-end
-
-local function scanAndConnect()
-    for _, plot in pairs(Workspace:FindFirstChild("Plots"):GetChildren()) do
-        local purchases = plot:FindFirstChild("Purchases")
-        if purchases then
-            local selected = findLowestValidRemainingTime(purchases)
-
-            for _, purchase in pairs(purchases:GetChildren()) do
-                local main = purchase:FindFirstChild("Main")
-                local gui = main and main:FindFirstChild("BillboardGui")
-                local remTime = gui and gui:FindFirstChild("RemainingTime")
-                local locked = gui and gui:FindFirstChild("Locked")
-
-                if main and remTime and locked and remTime:IsA("TextLabel") and locked:IsA("GuiObject") then
-                    local isTarget = selected and remTime == selected.remTime
-                    updateBillboard(main, remTime.Text, isTarget)
-
-                    local key = remTime:GetDebugId()
-                    if isTarget and not activeConnections[key] then
-                        local function refresh()
-                            local stillTarget = (findLowestValidRemainingTime(purchases) or {}).remTime == remTime
-                            updateBillboard(main, remTime.Text, stillTarget and locked.Visible)
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Velocity = Vector3.new(0, 0, 0)
+                    part.RotVelocity = Vector3.new(0, 0, 0)
+                    for _, force in ipairs(part:GetChildren()) do
+                        if force:IsA("BodyVelocity") or force:IsA("BodyForce") or force:IsA("BodyAngularVelocity") or force:IsA("BodyGyro") then
+                            force:Destroy()
                         end
-
-                        local conn1 = remTime:GetPropertyChangedSignal("Text"):Connect(refresh)
-                        local conn2 = locked:GetPropertyChangedSignal("Visible"):Connect(refresh)
-                        activeConnections[key] = {conn1, conn2}
                     end
                 end
             end
-        end
-    end
-end
-
-local function enableTimerESP(timerEspButton)
-    timerEspEnabled = true
-    if timerEspButton then
-        timerEspButton.Text = "Disable Timer ESP"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Timer ESP",
-        Text = "Timer ESP: ON",
-        Duration = 2
-    })
-
-    task.spawn(function()
-        while timerEspEnabled do
-            pcall(scanAndConnect)
-            task.wait(5)
-        end
-    end)
-    
-    settings.timerEspEnabled = true
-    saveSettings(settings)
-end
-
-local function disableTimerESP(timerEspButton)
-    timerEspEnabled = false
-    if timerEspButton then
-        timerEspButton.Text = "Enable Timer ESP"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Timer ESP",
-        Text = "Timer ESP: OFF",
-        Duration = 2
-    })
-
-    for _, plot in pairs(Workspace:FindFirstChild("Plots"):GetChildren()) do
-        local purchases = plot:FindFirstChild("Purchases")
-        if purchases then
-            for _, purchase in pairs(purchases:GetChildren()) do
-                local main = purchase:FindFirstChild("Main")
-                if main then
-                    local gui = main:FindFirstChild("RemainingTimeGui")
-                    if gui then
-                        gui:Destroy()
-                    end
-                end
-            end
-        end
-    end
-
-    for _, connections in pairs(activeConnections) do
-        for _, connection in ipairs(connections) do
-            connection:Disconnect()
-        end
-    end
-    activeConnections = {}
-    
-    settings.timerEspEnabled = false
-    saveSettings(settings)
-end
-
-local function enableWebSlingerAutoAim(webSlingerButton)
-    if webSlingerConnection then
-        webSlingerConnection:Disconnect()
-        webSlingerConnection = nil
-    end
-    local tool = player.Backpack:FindFirstChild("Web Slinger") or (player.Character and player.Character:FindFirstChild("Web Slinger"))
-    if not tool then
-        local args = {"Web Slinger"}
-        pcall(function()
-            game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RF/CoinsShopService/RequestBuy"):InvokeServer(unpack(args))
-            StarterGui:SetCore("SendNotification", {
-                Title = "Web Slinger Auto Aim",
-                Text = "Attempted to purchase Web Slinger",
-                Duration = 3
-            })
-        end)
-        task.wait(1)
-        tool = player.Backpack:FindFirstChild("Web Slinger") or (player.Character and player.Character:FindFirstChild("Web Slinger"))
-        if not tool then
-            StarterGui:SetCore("SendNotification", {
-                Title = "Web Slinger Auto Aim",
-                Text = "Failed to acquire Web Slinger",
-                Duration = 3
-            })
-            return
-        end
-    end
-
-    webSlingerAutoAimEnabled = true
-    if webSlingerButton then
-        webSlingerButton.Text = "Disable Web Slinger Auto Aim"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Web Slinger Auto Aim",
-        Text = "Web Slinger Auto Aim: ON",
-        Duration = 2
-    })
-
-    local character = player.Character or player.CharacterAdded:Wait()
-    local handle = tool:WaitForChild("Handle")
-
-    local function findNearestPlayer()
-        local closestPlayer = nil
-        local closestDistance = math.huge
-        local handlePosition = handle.Position
-
-        for _, targetPlayer in ipairs(Players:GetPlayers()) do
-            if targetPlayer ~= player and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
-                if humanoid and humanoid.Health > 0 then
-                    local targetHrp = targetPlayer.Character.HumanoidRootPart
-                    local distance = (handlePosition - targetHrp.Position).Magnitude
-                    if distance < closestDistance then
-                        closestDistance = distance
-                        closestPlayer = targetPlayer
-                    end
-                end
-            end
-        end
-        return closestPlayer
-    end
-
-    webSlingerConnection = tool.Activated:Connect(function()
-        local targetPlr = findNearestPlayer()
-        if targetPlr and targetPlr.Character then
-            local targetPart = targetPlr.Character:WaitForChild("HumanoidRootPart")
-            if targetPart then
-                local targetPos = targetPart.Position
-                local args = {
-                    vector.create(targetPos.X, targetPos.Y, targetPos.Z),
-                    targetPart,
-                    handle
-                }
-                ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RE/UseItem"):FireServer(unpack(args))
-                StarterGui:SetCore("SendNotification", {
-                    Title = "Web Slinger Auto Aim",
-                    Text = "Fired at " .. targetPlr.Name,
-                    Duration = 2
-                })
-            else
-                warn("Target has no HumanoidRootPart")
-                StarterGui:SetCore("SendNotification", {
-                    Title = "Web Slinger Auto Aim",
-                    Text = "Target has no HumanoidRootPart",
-                    Duration = 3
-                })
-            end
+            hum.PlatformStand = false
+            hum.AutoRotate = true
+            lastSafeVelocity = Vector3.new(0, 0, 0)
+            print("[ANTI-KB] Knockback blocked! Speed: " .. math.floor(horizontalSpeed))
         else
-            warn("No valid players found nearby.")
-            StarterGui:SetCore("SendNotification", {
-                Title = "Web Slinger Auto Aim",
-                Text = "No valid players found nearby",
-                Duration = 3
-            })
-        end
-    end)
-
-    settings.webSlingerAutoAimEnabled = true
-    saveSettings(settings)
-end
-
-local function disableWebSlingerAutoAim(webSlingerButton)
-    if webSlingerConnection then
-        webSlingerConnection:Disconnect()
-        webSlingerConnection = nil
-    end
-    webSlingerAutoAimEnabled = false
-    if webSlingerButton then
-        webSlingerButton.Text = "Enable Web Slinger Auto Aim"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Web Slinger Auto Aim",
-        Text = "Web Slinger Auto Aim: OFF",
-        Duration = 2
-    })
-    
-    settings.webSlingerAutoAimEnabled = false
-    saveSettings(settings)
-end
-
-local function enableInfiniteJump(infiniteJumpButton)
-    if infiniteJumpConnection then
-        infiniteJumpConnection:Disconnect()
-        infiniteJumpConnection = nil
-    end
-    infiniteJumpEnabled = true
-    if infiniteJumpButton then
-        infiniteJumpButton.Text = "Disable Infinite Jump"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Infinite Jump",
-        Text = "Infinite Jump: ON",
-        Duration = 2
-    })
-
-    infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
-        local char = player.Character
-        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-            local hrp = char.HumanoidRootPart
-            local humanoid = char.Humanoid
-            if humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
-                hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
+            local stable = hum:GetState() ~= Enum.HumanoidStateType.Freefall and hum:GetState() ~= Enum.HumanoidStateType.FallingDown and hum:GetState() ~= Enum.HumanoidStateType.Ragdoll
+            if stable and horizontalSpeed < VELOCITY_THRESHOLD then
+                lastSafeVelocity = currentVel
             end
         end
     end)
-    
-    settings.infiniteJumpEnabled = true
-    saveSettings(settings)
 end
 
-local function disableInfiniteJump(infiniteJumpButton)
-    if infiniteJumpConnection then
-        infiniteJumpConnection:Disconnect()
-        infiniteJumpConnection = nil
+local function stopNoKnockback()
+    if antiKnockbackConn then
+        antiKnockbackConn:Disconnect()
+        antiKnockbackConn = nil
     end
-    infiniteJumpEnabled = false
-    if infiniteJumpButton then
-        infiniteJumpButton.Text = "Enable Infinite Jump"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Infinite Jump",
-        Text = "Infinite Jump: OFF",
-        Duration = 2
-    })
-    
-    settings.infiniteJumpEnabled = false
-    saveSettings(settings)
 end
 
-local function enableBoostJump(boostJumpButton)
-    for _, connection in pairs(boostJumpConnections) do
-        connection:Disconnect()
-    end
-    boostJumpConnections = {}
-    boostJumpEnabled = true
-    if boostJumpButton then
-        boostJumpButton.Text = "Disable Boost Jump"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Boost Jump",
-        Text = "Boost Jump: ON",
-        Duration = 2
-    })
+-- === Websling Kill GUI ===
+local silentGui, silentFrame, silentButton, silentToggled, teleportLoop = nil, nil, nil, false, nil
 
-    local FORWARD_STRENGTH = 50
-    local MIN_MOVE_SPEED = 1
-    local canBoost = true
+local function createSilentHub()
+    if silentGui then return end
+    local LocalPlayer = Players.LocalPlayer
+    silentGui = Instance.new("ScreenGui")
+    silentGui.Name = "SilentHub"
+    silentGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    silentGui.ResetOnSpawn = false
 
-    boostJumpConnections["Stepped"] = RunService.Stepped:Connect(function()
-        local char = player.Character
-        if char and char:FindFirstChild("Humanoid") then
-            local state = char.Humanoid:GetState()
-            canBoost = (
-                state == Enum.HumanoidStateType.Running or
-                state == Enum.HumanoidStateType.RunningNoPhysics or
-                state == Enum.HumanoidStateType.Seated or
-                state == Enum.HumanoidStateType.Landed or
-                state == Enum.HumanoidStateType.PlatformStanding
-            )
-        end
-    end)
+    silentFrame = Instance.new("Frame")
+    silentFrame.Size = UDim2.new(0, 200, 0, 80)
+    silentFrame.Position = UDim2.new(0.75, 0, 0.05, 0)
+    silentFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    silentFrame.BorderSizePixel = 0
+    silentFrame.Active = true
+    silentFrame.Draggable = true
+    silentFrame.Parent = silentGui
 
-    boostJumpConnections["Jump"] = UserInputService.JumpRequest:Connect(function()
-        if not canBoost then return end
+    local frameCorner = Instance.new("UICorner", silentFrame)
+    frameCorner.CornerRadius = UDim.new(0, 16)
+    local shadow = Instance.new("UIStroke", silentFrame)
+    shadow.Thickness = 2
+    shadow.Color = Color3.fromRGB(255, 255, 255)
+    shadow.Transparency = 0.5
 
-        local char = player.Character
-        if not (char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid")) then return end
-        local hrp = char.HumanoidRootPart
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 20)
+    title.BackgroundTransparency = 1
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Font = Enum.Font.GothamBold
+    title.TextScaled = true
+    title.Text = "NHH HUB"
+    title.Parent = silentFrame
 
-        local moving = hrp.Velocity.Magnitude > MIN_MOVE_SPEED
-        local boostVector = Vector3.new(0, currentBoostStrength, 0)
+    silentButton = Instance.new("TextButton")
+    silentButton.Size = UDim2.new(0.9, 0, 0.5, 0)
+    silentButton.Position = UDim2.new(0.05, 0, 0.45, 0)
+    silentButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    silentButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    silentButton.Font = Enum.Font.GothamBold
+    silentButton.TextScaled = true
+    silentButton.Text = "Websling Kill"
+    silentButton.Parent = silentFrame
 
-        if moving then
-            boostVector += hrp.CFrame.LookVector * FORWARD_STRENGTH
-        end
+    local buttonCorner = Instance.new("UICorner", silentButton)
+    buttonCorner.CornerRadius = UDim.new(0, 12)
+    local buttonStroke = Instance.new("UIStroke", silentButton)
+    buttonStroke.Thickness = 2
+    buttonStroke.Color = Color3.fromRGB(255, 255, 255)
+    buttonStroke.Transparency = 0.3
 
-        hrp.Velocity = boostVector
-        canBoost = false
-    end)
-    
-    settings.boostJumpEnabled = true
-    saveSettings(settings)
-end
-
-local function disableBoostJump(boostJumpButton)
-    for _, connection in pairs(boostJumpConnections) do
-        connection:Disconnect()
-    end
-    boostJumpConnections = {}
-    boostJumpEnabled = false
-    if boostJumpButton then
-        boostJumpButton.Text = "Enable Boost Jump"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Boost Jump",
-        Text = "Boost Jump: OFF",
-        Duration = 2
-    })
-    
-    settings.boostJumpEnabled = false
-    saveSettings(settings)
-end
-
-local function updateBoostStrength(newStrength)
-    currentBoostStrength = newStrength
-    settings.currentBoostStrength = newStrength
-    saveSettings(settings)
-end
-
-local function enableAntiHit(antiHitButton)
-    antiHitEnabled = true
-    if antiHitButton then
-        antiHitButton.Text = "Disable Anti Hit"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Anti Hit",
-        Text = "Anti Hit: ON",
-        Duration = 2
-    })
-
-    local character = player.Character or player.CharacterAdded:Wait()
-    local humanoidRoot = character:WaitForChild("HumanoidRootPart")
-    local webName = "Web Slinger"
-    local remote = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RE/UseItem")
-    local buyRemote = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RF/CoinsShopService/RequestBuy")
-
-    local function getWebTool()
-        for _, tool in ipairs(player.Backpack:GetChildren()) do
-            if tool:IsA("Tool") and tool.Name == webName then
-                return tool
+    local function getNearestPlayer()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return nil end
+        local closest, distance = nil, math.huge
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local mag = (p.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+                if mag < distance then
+                    distance = mag
+                    closest = p
+                end
             end
         end
+        return closest
+    end
+
+    local function startTeleportLoop()
+        local target = getNearestPlayer()
+        if not target or not target.Character then return end
+        local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        if teleportLoop then teleportLoop:Disconnect() end
+        local above = true
+        teleportLoop = RunService.Heartbeat:Connect(function()
+            if target.Character and hrp then
+                hrp.CFrame = hrp.CFrame + Vector3.new(0, above and 20 or -20, 0)
+                above = not above
+            end
+            task.wait(0.5)
+        end)
+    end
+
+    local function stopTeleportLoop()
+        if teleportLoop then
+            teleportLoop:Disconnect()
+            teleportLoop = nil
+        end
+    end
+
+    local function animateButton(on)
+        local color = on and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(0, 0, 0)
+        TweenService:Create(silentButton, TweenInfo.new(0.3), {BackgroundColor3 = color}):Play()
+        silentButton.Text = on and "Stop" or "Websling Kill"
+    end
+
+    silentButton.MouseButton1Click:Connect(function()
+        silentToggled = not silentToggled
+        animateButton(silentToggled)
+        if silentToggled then startTeleportLoop() else stopTeleportLoop() end
+    end)
+end
+
+local function destroySilentHub()
+    if silentGui then
+        silentGui:Destroy()
+        silentGui, silentFrame, silentButton = nil, nil, nil
+    end
+    if teleportLoop then
+        teleportLoop:Disconnect()
+        teleportLoop = nil
+    end
+    silentToggled = false
+end
+
+-- === Auto Server Hop ===
+task.spawn(function()
+    local pagesToFetch = 6
+    local perPage = 100
+    local delayBetweenPages = 0.12
+    local delayBetweenScans = 1
+    local attemptCheckTime = 3
+    local retryWait = 1
+    local throttleWait = 180
+    local hopping = false
+    math.randomseed(tick())
+
+    local hopScreenGui = Instance.new("ScreenGui")
+    hopScreenGui.Name = "AutoServerHopRetryGUI"
+    hopScreenGui.ResetOnSpawn = false
+    hopScreenGui.Parent = lp:WaitForChild("PlayerGui")
+
+    local hopBtn = Instance.new("TextButton")
+    hopBtn.Size = UDim2.new(0, 240, 0, 36)
+    hopBtn.Position = UDim2.new(0.5, -30, -0, -16)
+    hopBtn.AnchorPoint = Vector2.new(0.5, 0)
+    hopBtn.BackgroundColor3 = Color3.fromRGB(38, 170, 0)
+    hopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    hopBtn.Font = Enum.Font.GothamBold
+    hopBtn.TextSize = 16
+    hopBtn.Text = "⏳ Server Hop (OFF)"
+    hopBtn.Parent = hopScreenGui
+    Instance.new("UICorner", hopBtn).CornerRadius = UDim.new(0, 8)
+
+    local function notify(t, m, d)
+        pcall(function()
+            StarterGui:SetCore("SendNotification", {Title = t, Text = m, Duration = d or 3})
+        end)
+    end
+
+    local function httpGetAny(url)
+        if type(syn) == "table" and type(syn.request) == "function" then
+            local ok, res = pcall(syn.request, {Url = url, Method = "GET"})
+            if ok and res and res.Body then return res.Body end
+        end
+        if type(http_request) == "function" then
+            local ok, res = pcall(http_request, {Url = url, Method = "GET"})
+            if ok and res and res.Body then return res.Body end
+        end
+        if type(request) == "function" then
+            local ok, res = pcall(request, {Url = url, Method = "GET"})
+            if ok and res and res.Body then return res.Body end
+        end
+        local ok, body = pcall(function() return HttpService:GetAsync(url) end)
+        if ok and body then return body end
+        local ok2, body2 = pcall(function() return game:HttpGet(url) end)
+        if ok2 and body2 then return body2 end
+        return nil, "no_http"
+    end
+
+    local function fetchPage(cursor, sortOrder)
+        sortOrder = sortOrder or "Desc"
+        local baseUrl = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=%s&limit=%d", game.PlaceId, sortOrder, perPage)
+        local url = baseUrl
+        if cursor then url = url .. "&cursor=" .. HttpService:UrlEncode(cursor) end
+        local body, err = httpGetAny(url)
+        if not body then return nil, err end
+        local ok, data = pcall(function() return HttpService:JSONDecode(body) end)
+        if not ok then return nil, "json_err" end
+        return data
+    end
+
+    local function collectServers(maxPages, sortOrder)
+        local servers = {}
+        local cursor = nil
+        for i = 1, maxPages do
+            local data, err = fetchPage(cursor, sortOrder)
+            if not data then return nil, err end
+            if data.data and type(data.data) == "table" then
+                for _,srv in ipairs(data.data) do
+                    if srv and srv.id and tostring(srv.id) ~= tostring(game.JobId) then
+                        table.insert(servers, srv)
+                    end
+                end
+            end
+            if data.nextPageCursor and data.nextPageCursor ~= "" then
+                cursor = data.nextPageCursor
+                task.wait(delayBetweenPages)
+            else
+                break
+            end
+        end
+        return servers
+    end
+
+    local function shuffle(t)
+        for i = #t, 2, -1 do
+            local j = math.random(1, i)
+            t[i], t[j] = t[j], t[i]
+        end
+    end
+
+    local function tryTeleportWithCheck(srv)
+        if not srv or not srv.id then return false, nil end
+        local targetId = tostring(srv.id)
+        local startJob = tostring(game.JobId)
+        local failedReason = nil
+        local connection = TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage)
+            if player == lp then
+                failedReason = teleportResult
+                connection:Disconnect()
+            end
+        end)
+        local ok, err = pcall(function()
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, targetId, lp)
+        end)
+        if not ok then
+            connection:Disconnect()
+            return false, nil
+        end
+        local waited = 0
+        while waited < attemptCheckTime and not failedReason do
+            task.wait(0.25)
+            waited = waited + 0.25
+            if tostring(game.JobId) ~= startJob then
+                connection:Disconnect()
+                return true, nil
+            end
+        end
+        connection:Disconnect()
+        if failedReason then
+            return false, failedReason
+        else
+            notify("Server Hop", "Teleport timeout, trying next server...", 2)
+            return false, nil
+        end
+    end
+
+    local function scanningLoop()
+        while hopping do
+            local servers, err = collectServers(pagesToFetch, "Desc")
+            if not servers or #servers == 0 then
+                servers, err = collectServers(pagesToFetch, "Asc")
+            end
+            if not servers or #servers == 0 then
+                notify("Server Hop", "No servers found; waiting before retry...", 2)
+                task.wait(delayBetweenScans)
+            else
+                shuffle(servers)
+                for _,srv in ipairs(servers) do
+                    if not hopping then break end
+                    local ok, reason = tryTeleportWithCheck(srv)
+                    if ok then
+                        return
+                    else
+                        if reason == Enum.TeleportResult.Flooded then
+                            notify("Server Hop", "Teleport throttled, waiting 3 minutes...", 5)
+                            task.wait(throttleWait)
+                            break
+                        else
+                            task.wait(retryWait)
+                        end
+                    end
+                end
+                task.wait(delayBetweenScans)
+            end
+        end
+    end
+
+    hopBtn.MouseButton1Click:Connect(function()
+        hopping = not hopping
+        if hopping then
+            hopBtn.Text = "⏳ Server Hop: ON"
+            notify("Server Hop", "Started server scanning...", 2)
+            task.spawn(scanningLoop)
+        else
+            hopBtn.Text = "⏸ Server Hop: OFF"
+            notify("Server Hop", "Stopped", 2)
+        end
+    end)
+end)
+
+-- === Web Slinger ===
+local WEBSLINGER_NAME = 'Web Slinger'
+local function getClosestPlayerWithLowerTorso()
+    local myChar = player.Character
+    local myHRP = myChar and myChar:FindFirstChild('HumanoidRootPart')
+    if not myHRP then
         return nil
     end
-
-    local function ensureWebTool()
-        if not getWebTool() then
-            buyRemote:InvokeServer(webName)
+    local closest, closestDist = nil, math.huge
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character and plr.Character:FindFirstChild('LowerTorso') then
+            local lt = plr.Character.LowerTorso
+            local dist = (lt.Position - myHRP.Position).Magnitude
+            if dist < closestDist then
+                closest, closestDist = plr, dist
+            end
         end
     end
-
-    local function equipWebSlinger()
-        local currentTool = character:FindFirstChildOfClass("Tool")
-        if currentTool and currentTool.Name ~= webName then
-            currentTool.Parent = player.Backpack
-        end
-        local tool = getWebTool()
-        if tool then
-            tool.Parent = character
-        end
+    return closest
+end
+local function fireWebSlingerLowerTorso()
+    if not settings.webSlingerEnabled then
+        return
     end
+    local bp = player:FindFirstChildOfClass('Backpack')
+    if bp and bp:FindFirstChild(WEBSLINGER_NAME) then
+        player.Character.Humanoid:EquipTool(bp[WEBSLINGER_NAME])
+    end
+    if not player.Character:FindFirstChild(WEBSLINGER_NAME) then
+        return
+    end
+    local remoteEvent = ReplicatedStorage:FindFirstChild('Packages') and ReplicatedStorage.Packages:FindFirstChild('Net') and ReplicatedStorage.Packages.Net:FindFirstChild('RE/UseItem')
+    if not remoteEvent then
+        return
+    end
+    local alvo = getClosestPlayerWithLowerTorso()
+    if alvo and alvo.Character and alvo.Character:FindFirstChild('LowerTorso') then
+        local lt = alvo.Character.LowerTorso
+        remoteEvent:FireServer(lt.Position, lt)
+    end
+end
 
-    local function useWebSlinger()
-        local tool = character:FindFirstChild(webName)
-        if tool and tool:FindFirstChild("Handle") then
-            local args = {
-                vector.create(-391.2049865722656, -7.293223857879639, 124.80510711669922),
-                character:WaitForChild("UpperTorso")
+-- === 3rd Floor ===
+local platform, connection
+local active = settings.thirdFloorEnabled
+local isRising = false
+local RISE_SPEED = 15
+local originalProps = {}
+local function safeDisconnect(conn)
+    if conn and typeof(conn) == "RBXScriptConnection" then
+        pcall(function() 
+            conn:Disconnect() 
+        end)
+    end
+end
+local function getHumanoid()
+    return player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+end
+local function getHRP()
+    return player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+end
+local function setPlotsTransparency(active)
+    local plots = workspace:FindFirstChild("Plots")
+    if not plots then
+        return
+    end
+    if active then
+        originalProps = {}
+        for _, plot in ipairs(plots:GetChildren()) do
+            local containers = {
+                plot:FindFirstChild("Decorations"),
+                plot:FindFirstChild("AnimalPodiums"),
             }
-            remote:FireServer(unpack(args))
-        end
-    end
-
-    local existingGui = player.PlayerGui:FindFirstChild("WebSlingerGUI")
-    if existingGui then
-        existingGui:Destroy()
-    end
-
-    local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-    gui.Name = "WebSlingerGUI"
-    gui.ResetOnSpawn = false
-
-    local buttonHolder = Instance.new("Frame")
-    buttonHolder.Size = UDim2.new(0, 180, 0, 60)
-    buttonHolder.Position = UDim2.new(1, -20, 0, 10)
-    buttonHolder.AnchorPoint = Vector2.new(1, 0)
-    buttonHolder.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    buttonHolder.BackgroundTransparency = 0.2
-    buttonHolder.BorderSizePixel = 0
-    buttonHolder.Active = true
-    buttonHolder.Draggable = true
-    buttonHolder.ZIndex = 3
-    buttonHolder.Parent = gui
-    Instance.new("UICorner", buttonHolder).CornerRadius = UDim.new(0, 16)
-
-    local mainButton = Instance.new("TextButton")
-    mainButton.Size = UDim2.new(1, -40, 1, -20)
-    mainButton.Position = UDim2.new(0, 20, 0, 10)
-    mainButton.Text = "ðŸŽ¯ Anti Hit v1"
-    mainButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-    mainButton.TextColor3 = Color3.new(1, 1, 1)
-    mainButton.Font = Enum.Font.SourceSansBold
-    mainButton.TextSize = 22
-    mainButton.BorderSizePixel = 0
-    mainButton.ZIndex = 4
-    mainButton.Parent = buttonHolder
-    Instance.new("UICorner", mainButton).CornerRadius = UDim.new(0, 12)
-
-    local autoButton = Instance.new("TextButton")
-    autoButton.Size = UDim2.new(0, 60, 0, 25)
-    autoButton.Position = UDim2.new(1, -65, 1, 5)
-    autoButton.AnchorPoint = Vector2.new(0, 0)
-    autoButton.Text = "Auto: OFF"
-    autoButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    autoButton.TextColor3 = Color3.new(1, 1, 1)
-    autoButton.Font = Enum.Font.SourceSansBold
-    autoButton.TextSize = 14
-    autoButton.BorderSizePixel = 0
-    autoButton.ZIndex = 5
-    autoButton.Parent = buttonHolder
-    Instance.new("UICorner", autoButton).CornerRadius = UDim.new(0, 8)
-
-    local autoMode = false
-    autoButton.MouseButton1Click:Connect(function()
-        autoMode = not autoMode
-        autoButton.Text = "Auto: " .. (autoMode and "ON" or "OFF")
-        autoButton.BackgroundColor3 = autoMode and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(100, 100, 100)
-    end)
-
-    mainButton.MouseButton1Click:Connect(function()
-        ensureWebTool()
-        task.wait(0.3)
-        equipWebSlinger()
-        task.wait(0.1)
-        useWebSlinger()
-    end)
-
-    local lastTriggered = 0
-    local cooldown = 3.5
-
-    local antiHitConnection
-    antiHitConnection = RunService.Heartbeat:Connect(function()
-        if autoMode then
-            local trappedFrame = humanoidRoot:FindFirstChild("TrappedTag")
-            local main = trappedFrame and trappedFrame:FindFirstChild("MainFrame")
-            local timeObj = main and main:FindFirstChild("Time")
-
-            if not timeObj and (tick() - lastTriggered) >= cooldown then
-                lastTriggered = tick()
-                ensureWebTool()
-                task.wait(0.3)
-                equipWebSlinger()
-                task.wait(3.5)
-                useWebSlinger()
-            end
-        end
-    end)
-
-    task.defer(function()
-        RunService.RenderStepped:Connect(function()
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.PlatformStand then
-                humanoid.PlatformStand = false
-            end
-        end)
-    end)
-
-    settings.antiHitEnabled = true
-    saveSettings(settings)
-end
-
-
-local function disableAntiHit(antiHitButton)
-    antiHitEnabled = false
-    if antiHitButton then
-        antiHitButton.Text = "Enable Anti Hit"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Anti Hit",
-        Text = "Anti Hit: OFF",
-        Duration = 2
-    })
-
-    local existingGui = player.PlayerGui:FindFirstChild("WebSlingerGUI")
-    if existingGui then
-        existingGui:Destroy()
-    end
-    
-    settings.antiHitEnabled = false
-    saveSettings(settings)
-end
-
-local function extractNumber(str)
-    if not str then return 0 end
-    local numberStr = str:match("%$(.-)/s")
-    if not numberStr then return 0 end
-    numberStr = numberStr:gsub("%s", "")
-    local multiplier = 1
-    if numberStr:lower():find("k") then
-        multiplier = 1_000
-        numberStr = numberStr:gsub("[kK]", "")
-    elseif numberStr:lower():find("m") then
-        multiplier = 1_000_000
-        numberStr = numberStr:gsub("[mM]", "")
-    elseif numberStr:lower():find("b") then
-        multiplier = 1_000_000_000
-        numberStr = numberStr:gsub("[bB]", "")
-    end
-    return (tonumber(numberStr) or 0) * multiplier
-end
-
-local mutationColors = {
-    Gold = Color3.fromRGB(255, 215, 0),
-    Diamond = Color3.fromRGB(0, 255, 255),
-    Lava = Color3.fromRGB(255, 100, 0),
-    Bloodrot = Color3.fromRGB(255, 0, 0),
-}
-
-local function getMutationTextAndColor(mutation)
-    if not mutation then
-        return "Default", Color3.fromRGB(255, 255, 255), false
-    end
-    if mutation.Visible == false then
-        return "Default", Color3.fromRGB(255, 255, 255), false
-    end
-    
-    local name = mutation.Text
-    if name == "" then
-        return "Default", Color3.fromRGB(255, 255, 255), false
-    end
-
-    if name == "Rainbow" then
-        return "Rainbow", Color3.new(1,1,1), true
-    end
-
-    local color = mutationColors[name] or Color3.fromRGB(255, 255, 255)
-    return name, color, false
-end
-
-local function createGui(base, overhead, labels)
-    if base:FindFirstChild("StatGui") then
-        base.StatGui:Destroy()
-    end
-
-    local gui = Instance.new("BillboardGui")
-    gui.Name = "StatGui"
-    gui.Size = UDim2.new(0, 200, 0, 60)
-    gui.StudsOffset = Vector3.new(0, 3, 0)
-    gui.AlwaysOnTop = true
-    gui.Adornee = base
-    gui.Parent = base
-
-    local labelList = {}
-
-    local function createLabel(order, text)
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 0.25, 0)
-        label.Position = UDim2.new(0, 0, 0.25 * (order - 1), 0)
-        label.BackgroundTransparency = 1
-        label.TextScaled = true
-        label.Font = Enum.Font.SourceSansBold
-        label.TextStrokeTransparency = 0.5
-        label.Text = text or "N/A"
-        label.TextColor3 = Color3.fromRGB(255, 255, 255)
-        label.Name = "StatLine"
-        label.Parent = gui
-        table.insert(labelList, label)
-    end
-
-    createLabel(1, labels.DisplayName)
-    createLabel(2, labels.Generation)
-    createLabel(3, labels.Mutation)
-    createLabel(4, labels.Rarity)
-
-    local mutationText = labels.Mutation
-    local color = Color3.fromRGB(255, 255, 255)
-    local isRainbow = false
-
-    if mutationText == "Rainbow" then
-        isRainbow = true
-    elseif mutationColors[mutationText] then
-        color = mutationColors[mutationText]
-    end
-
-    if not isRainbow then
-        for _, lbl in ipairs(labelList) do
-            lbl.TextColor3 = color
-        end
-    else
-        local t = 0
-        RunService.RenderStepped:Connect(function(dt)
-            if gui.Parent == nil then return end
-            t += dt * 0.2
-            local rainbowColor = Color3.fromHSV(t % 1, 1, 1)
-            for _, lbl in ipairs(labelList) do
-                lbl.TextColor3 = rainbowColor
-            end
-        end)
-    end
-end
--- GROK STOP HERE
-local function getAllPodiums()
-    local podiums = {}
-    for _, plot in pairs(workspace:WaitForChild("Plots"):GetChildren()) do
-        local animalPods = plot:FindFirstChild("AnimalPodiums")
-        if animalPods then
-            for _, pod in pairs(animalPods:GetChildren()) do
-                local base = pod:FindFirstChild("Base")
-                if base and base:FindFirstChild("Spawn") then
-                    local attach = base.Spawn:FindFirstChild("Attachment")
-                    if attach and attach:FindFirstChild("AnimalOverhead") then
-                        table.insert(podiums, attach.AnimalOverhead)
-                    end
-                end
-            end
-        end
-    end
-    return podiums
-end
-
-local currentBase = nil
-local currentGui = nil
-
-local function enableBrainrotEsp(brainrotButton)
-    brainrotEspEnabled = true
-    if brainrotButton then
-        brainrotButton.Text = "Disable Highest Value ESP"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Highest Value ESP",
-        Text = "Highest Value ESP: ON",
-        Duration = 2
-    })
-
-    task.spawn(function()
-        while brainrotEspEnabled do
-            local bestPodium = nil
-            local bestValue = -math.huge
-            local bestLabels = nil
-            local bestBase = nil
-
-            for _, overhead in pairs(getAllPodiums()) do
-                local base = overhead.Parent.Parent.Parent
-                if base and (base:IsA("BasePart") or base:IsA("Model")) then
-                    local genLabel = overhead:FindFirstChild("Generation")
-                    if genLabel then
-                        local genValue = extractNumber(genLabel.Text)
-                        local mutation = overhead:FindFirstChild("Mutation")
-                        local mutText, _, _ = getMutationTextAndColor(mutation)
-                        if genValue > bestValue then
-                            bestValue = genValue
-                            bestPodium = overhead
-                            bestBase = base
-                            bestLabels = {
-                                DisplayName = overhead:FindFirstChild("DisplayName") and overhead.DisplayName.Text or "Unknown",
-                                Generation = genLabel.Text,
-                                Mutation = mutText,
-                                Rarity = overhead:FindFirstChild("Rarity") and overhead.Rarity.Text or "None"
+            for _, container in ipairs(containers) do
+                if container then
+                    for _, obj in ipairs(container:GetDescendants()) do
+                        if obj:IsA("BasePart") then
+                            originalProps[obj] = {
+                                Transparency = obj.Transparency,
+                                Material = obj.Material,
                             }
+                            obj.Transparency = 0.7
                         end
                     end
                 end
             end
-
-            if bestPodium and bestBase then
-                if currentBase ~= bestBase then
-                    if currentGui and currentGui.Parent then
-                        currentGui:Destroy()
-                    end
-                    currentBase = bestBase
-                    createGui(bestBase, bestPodium, bestLabels)
-                    currentGui = bestBase:FindFirstChild("StatGui")
-                end
-            else
-                if currentGui and currentGui.Parent then
-                    currentGui:Destroy()
-                end
-                currentBase = nil
-                currentGui = nil
+        end
+    else
+        for part, props in pairs(originalProps) do
+            if part and part.Parent then
+                part.Transparency = props.Transparency
+                part.Material = props.Material
             end
+        end
+        originalProps = {}
+    end
+end
+local function destroyPlatform()
+    if platform then
+        pcall(function() 
+            platform:Destroy() 
+        end)
+        platform = nil
+    end
+    active = false
+    isRising = false
+    safeDisconnect(connection)
+    connection = nil
+    setPlotsTransparency(false)
+end
+local function canRise()
+    if not platform then
+        return false
+    end
+    local origin = platform.Position + Vector3.new(0, platform.Size.Y / 2, 0)
+    local direction = Vector3.new(0, 2, 0)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {platform, player.Character}
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    return not workspace:Raycast(origin, direction, rayParams)
+end
 
+-- === Low Gravity ===
+local lowGravityForce = 50
+local defaultGravity = game.Workspace.Gravity
+local bodyForce = nil
+local function updateGravity()
+    if settings.lowGravityEnabled then
+        local character = player.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            if bodyForce then
+                bodyForce:Destroy()
+            end
+            bodyForce = Instance.new("BodyForce")
+            bodyForce.Name = "LowGravityForce"
+            bodyForce.Parent = character.HumanoidRootPart
+            local force = (defaultGravity - lowGravityForce) * character.HumanoidRootPart:GetMass()
+            bodyForce.Force = Vector3.new(0, force, 0)
+        end
+    else
+        if bodyForce then
+            bodyForce:Destroy()
+            bodyForce = nil
+        end
+    end
+end
+
+-- === High Jump ===
+local JUMP_FORCE = 85
+local function hasCoilCombo()
+    if player.Character and player.Character:FindFirstChild("Coil Combo") then
+        return true
+    end
+    if player.Backpack:FindFirstChild("Coil Combo") then
+        return true
+    end
+    return false
+end
+
+-- === Speed Booster ===
+local baseSpeed = 27.5
+local speedConn
+local function GetCharacter()
+    local Char = player.Character or player.CharacterAdded:Wait()
+    local HRP = Char:WaitForChild("HumanoidRootPart")
+    local Hum = Char:FindFirstChildOfClass("Humanoid")
+    return Char, HRP, Hum
+end
+local function getMovementInput()
+    local Char, HRP, Hum = GetCharacter()
+    if not Char or not HRP or not Hum then
+        return Vector3.new(0,0,0)
+    end
+    local moveVector = Hum.MoveDirection
+    if moveVector.Magnitude > 0.1 then
+        return Vector3.new(moveVector.X, 0, moveVector.Z).Unit
+    end
+    return Vector3.new(0,0,0)
+end
+local function startSpeedControl()
+    if speedConn then
+        return
+    end
+    speedConn = RunService.Heartbeat:Connect(function()
+        local Char, HRP, Hum = GetCharacter()
+        if not Char or not HRP or not Hum then
+            return
+        end
+        local inputDirection = getMovementInput()
+        if inputDirection.Magnitude > 0 then
+            HRP.AssemblyLinearVelocity = Vector3.new(inputDirection.X * baseSpeed, HRP.AssemblyLinearVelocity.Y, inputDirection.Z * baseSpeed)
+        else
+            HRP.AssemblyLinearVelocity = Vector3.new(0, HRP.AssemblyLinearVelocity.Y, 0)
+        end
+    end)
+end
+local function stopSpeedControl()
+    if speedConn then
+        speedConn:Disconnect()
+        speedConn = nil
+    end
+    local Char, HRP = GetCharacter()
+    if HRP then
+        HRP.AssemblyLinearVelocity = Vector3.new(0, HRP.AssemblyLinearVelocity.Y, 0)
+    end
+end
+
+-- === Base ESP ===
+local espConnections = {}
+local function enableScript()
+    local function addHighlight(plot)
+        if plot:FindFirstChild("PlotSign") and plot.PlotSign:FindFirstChild("SurfaceGui") then
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "ESPHighlight"
+            highlight.FillColor = Color3.fromRGB(0, 255, 0)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.FillTransparency = 0.7
+            highlight.OutlineTransparency = 0
+            highlight.Adornee = plot
+            highlight.Parent = plot
+        end
+    end
+    local plotsFolder = workspace:FindFirstChild("Plots")
+    if plotsFolder then
+        for _, plot in ipairs(plotsFolder:GetChildren()) do
+            addHighlight(plot)
+        end
+        table.insert(espConnections, plotsFolder.ChildAdded:Connect(addHighlight))
+    end
+end
+local function disableScript()
+    local plotsFolder = workspace:FindFirstChild("Plots")
+    if plotsFolder then
+        for _, plot in ipairs(plotsFolder:GetChildren()) do
+            local highlight = plot:FindFirstChild("ESPHighlight")
+            if highlight then
+                highlight:Destroy()
+            end
+        end
+    end
+    for _, conn in ipairs(espConnections) do
+        if conn then conn:Disconnect() end
+    end
+    espConnections = {}
+end
+
+-- === Auto Destroy Sentry ===
+local sentryEnabled = settings.sentryEnabled
+local sentryConn = nil
+
+local function startSentryWatch()
+    if sentryConn then sentryConn:Disconnect() end
+    
+    sentryConn = workspace.DescendantAdded:Connect(function(desc)
+        if not sentryEnabled then return end
+        if not desc:IsA("Model") and not desc:IsA("BasePart") then return end
+        if not string.find(desc.Name:lower(), "sentry") then return end
+
+        local char = player.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        local hrp = char.HumanoidRootPart
+
+        task.wait(4.1)
+
+        if not desc.Parent or not sentryEnabled then return end
+
+        local backpack = player.Backpack
+        local batTool = backpack:FindFirstChild("Bat") or char:FindFirstChild("Bat")
+        if not batTool then
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("Tool") and obj.Name == "Bat" and obj.Parent == workspace then
+                    batTool = obj
+                    obj.Parent = backpack
+                    break
+                end
+            end
+        end
+
+        if not batTool then
+            warn("[Auto Destroy Sentry] No Bat tool!")
+            return
+        end
+
+        if batTool.Parent == backpack then
+            hum:EquipTool(batTool)
+            task.wait(0.25)  
+        end
+
+        local lookDir = hrp.CFrame.LookVector
+        local spawnOffset = lookDir * 3.5 + Vector3.new(0, 1.2, 0)
+        if desc:IsA("Model") and desc.PrimaryPart then
+            desc:SetPrimaryPartCFrame(hrp.CFrame + spawnOffset)
+        elseif desc:IsA("BasePart") then
+            desc.CFrame = hrp.CFrame + spawnOffset
+        end
+
+        if batTool.Parent == char and desc.Parent then
+            batTool:Activate()
+        end
+
+        local maxHits = 5
+        local hitCount = 0
+        while batTool.Parent == char and desc.Parent and sentryEnabled and hitCount < maxHits do
+            task.wait(0.12)
+            if desc.Parent then
+                batTool:Activate()
+                hitCount += 1
+            else
+                break
+            end
+        end
+
+        task.wait(0.1)
+        if batTool.Parent == char then
+            batTool.Parent = backpack
+        end
+    end)
+end
+
+local function stopSentryWatch()
+    sentryEnabled = false
+    if sentryConn then
+        sentryConn:Disconnect()
+        sentryConn = nil
+    end
+end
+
+-- === Float ===
+local guidedOn = false
+local guidedConn = nil
+
+local function startGuidedFly()
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    guidedOn = true
+    if guidedConn then guidedConn:Disconnect() end
+
+    guidedConn = RunService.RenderStepped:Connect(function()
+        if not guidedOn or not hrp or not hrp.Parent then
+            if guidedConn then guidedConn:Disconnect() guidedConn = nil end
+            return
+        end
+        hrp.Velocity = workspace.CurrentCamera.CFrame.LookVector * 25
+    end)
+end
+
+local function stopGuidedFly()
+    guidedOn = false
+    if guidedConn then
+        guidedConn:Disconnect()
+        guidedConn = nil
+    end
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+end
+
+-- === Invisibility ===
+local connections = {
+    SemiInvisible = {}
+}
+local isInvisible = false
+local clone, oldRoot, hip, animTrack, connection, characterConnection
+
+local function semiInvisibleFunction()
+    local TweenService = game:GetService("TweenService")
+    local LocalPlayer = Players.LocalPlayer
+    local DEPTH_OFFSET = 0.09
+
+    local function removeFolders()
+        local playerName = LocalPlayer.Name
+        local playerFolder = Workspace:FindFirstChild(playerName)
+        if not playerFolder then
+            return
+        end
+        local doubleRig = playerFolder:FindFirstChild("DoubleRig")
+        if doubleRig then
+            doubleRig:Destroy()
+        end
+        local constraints = playerFolder:FindFirstChild("Constraints")
+        if constraints then
+            constraints:Destroy()
+        end
+        local childAddedConn = playerFolder.ChildAdded:Connect(function(child)
+            if child.Name == "DoubleRig" or child.Name == "Constraints" then
+                child:Destroy()
+            end
+        end)
+        table.insert(connections.SemiInvisible, childAddedConn)
+    end
+
+    local function doClone()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character.Humanoid.Health > 0 then
+            hip = LocalPlayer.Character.Humanoid.HipHeight
+            oldRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not oldRoot or not oldRoot.Parent then
+                return false
+            end
+            local tempParent = Instance.new("Model")
+            tempParent.Parent = game
+            LocalPlayer.Character.Parent = tempParent
+            clone = oldRoot:Clone()
+            clone.Parent = LocalPlayer.Character
+            oldRoot.Parent = game.Workspace.CurrentCamera
+            clone.CFrame = oldRoot.CFrame
+            LocalPlayer.Character.PrimaryPart = clone
+            LocalPlayer.Character.Parent = game.Workspace
+            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+                if v:IsA("Weld") or v:IsA("Motor6D") then
+                    if v.Part0 == oldRoot then
+                        v.Part0 = clone
+                    end
+                    if v.Part1 == oldRoot then
+                        v.Part1 = clone
+                    end
+                end
+            end
+            tempParent:Destroy()
+            return true
+        end
+        return false
+    end
+
+    local function revertClone()
+        if not oldRoot or not oldRoot:IsDescendantOf(game.Workspace) or not LocalPlayer.Character or LocalPlayer.Character.Humanoid.Health <= 0 then
+            return false
+        end
+        local tempParent = Instance.new("Model")
+        tempParent.Parent = game
+        LocalPlayer.Character.Parent = tempParent
+        oldRoot.Parent = LocalPlayer.Character
+        LocalPlayer.Character.PrimaryPart = oldRoot
+        LocalPlayer.Character.Parent = game.Workspace
+        oldRoot.CanCollide = true
+        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+            if v:IsA("Weld") or v:IsA("Motor6D") then
+                if v.Part0 == clone then
+                    v.Part0 = oldRoot
+                end
+                if v.Part1 == clone then
+                    v.Part1 = oldRoot
+                end
+            end
+        end
+        if clone then
+            local oldPos = clone.CFrame
+            clone:Destroy()
+            clone = nil
+            oldRoot.CFrame = oldPos
+        end
+        oldRoot = nil
+        if LocalPlayer.Character and LocalPlayer.Character.Humanoid then
+            LocalPlayer.Character.Humanoid.HipHeight = hip
+        end
+    end
+
+    local function animationTrickery()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character.Humanoid.Health > 0 then
+            local anim = Instance.new("Animation")
+            anim.AnimationId = "http://www.roblox.com/asset/?id=18537363391"
+            local humanoid = LocalPlayer.Character.Humanoid
+            local animator = humanoid:FindFirstChild("Animator") or Instance.new("Animator", humanoid)
+            animTrack = animator:LoadAnimation(anim)
+            animTrack.Priority = Enum.AnimationPriority.Action4
+            animTrack:Play(0, 1, 0)
+            anim:Destroy()
+            local animStoppedConn = animTrack.Stopped:Connect(function()
+                if isInvisible then
+                    animationTrickery()
+                end
+            end)
+            table.insert(connections.SemiInvisible, animStoppedConn)
+            task.delay(0, function()
+                animTrack.TimePosition = 0.7
+                task.delay(1, function()
+                    animTrack:AdjustSpeed(math.huge)
+                end)
+            end)
+        end
+    end
+
+    local function enableInvisibility()
+        if not LocalPlayer.Character or LocalPlayer.Character.Humanoid.Health <= 0 then
+            return false
+        end
+        removeFolders()
+        local success = doClone()
+        if success then
+            task.wait(0.1)
+            animationTrickery()
+            connection = RunService.PreSimulation:Connect(function(dt)
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character.Humanoid.Health > 0 and oldRoot then
+                    local root = LocalPlayer.Character.PrimaryPart or LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        local cf = root.CFrame - Vector3.new(0, LocalPlayer.Character.Humanoid.HipHeight + (root.Size.Y / 2) - 1 + DEPTH_OFFSET, 0)
+                        oldRoot.CFrame = cf * CFrame.Angles(math.rad(180), 0, 0)
+                        oldRoot.Velocity = root.Velocity
+                        oldRoot.CanCollide = false
+                    end
+                end
+            end)
+            table.insert(connections.SemiInvisible, connection)
+            characterConnection = LocalPlayer.CharacterAdded:Connect(function(newChar)
+                if isInvisible then
+                    if animTrack then
+                        animTrack:Stop()
+                        animTrack:Destroy()
+                        animTrack = nil
+                    end
+                    if connection then connection:Disconnect() end
+                    revertClone()
+                    removeFolders()
+                    isInvisible = false
+                    for _, conn in ipairs(connections.SemiInvisible) do
+                        if conn then conn:Disconnect() end
+                    end
+                    connections.SemiInvisible = {}
+                end
+            end)
+            table.insert(connections.SemiInvisible, characterConnection)
+            return true
+        end
+        return false
+    end
+
+    local function disableInvisibility()
+        if animTrack then
+            animTrack:Stop()
+            animTrack:Destroy()
+            animTrack = nil
+        end
+        if connection then connection:Disconnect() end
+        if characterConnection then characterConnection:Disconnect() end
+        revertClone()
+        removeFolders()
+    end
+
+    local function setupGodmode()
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local hum = char:WaitForChild("Humanoid")
+        local mt = getrawmetatable(game)
+        local oldNC = mt.__namecall
+        local oldNI = mt.__newindex
+        setreadonly(mt, false)
+        mt.__namecall = newcclosure(function(self, ...)
+            local m = getnamecallmethod()
+            if self == hum then
+                if m == "ChangeState" and select(1, ...) == Enum.HumanoidStateType.Dead then
+                    return
+                end
+                if m == "SetStateEnabled" then
+                    local st, en = ...
+                    if st == Enum.HumanoidStateType.Dead and en == true then
+                        return
+                    end
+                end
+                if m == "Destroy" then
+                    return
+                end
+            end
+            if self == char and m == "BreakJoints" then
+                return
+            end
+            return oldNC(self, ...)
+        end)
+        mt.__newindex = newcclosure(function(self, k, v)
+            if self == hum then
+                if k == "Health" and type(v) == "number" and v <= 0 then
+                    return
+                end
+                if k == "MaxHealth" and type(v) == "number" and v < hum.MaxHealth then
+                    return
+                end
+                if k == "BreakJointsOnDeath" and v == true then
+                    return
+                end
+                if k == "Parent" and v == nil then
+                    return
+                end
+            end
+            return oldNI(self, k, v)
+        end)
+        setreadonly(mt, true)
+    end
+
+    if not isInvisible then
+        removeFolders()
+        setupGodmode()
+        if enableInvisibility() then
+            isInvisible = true
+        end
+    else
+        disableInvisibility()
+        isInvisible = false
+        for _, conn in ipairs(connections.SemiInvisible) do
+            if conn then conn:Disconnect() end
+        end
+        connections.SemiInvisible = {}
+    end
+end
+
+-- === Stealer Section Buttons ===
+
+-- 3rd Floor Button
+local floorButton = Instance.new("TextButton")
+floorButton.Size = UDim2.new(0, 180, 0, 40)
+floorButton.Position = UDim2.new(0.5, -90, 0, 10)
+floorButton.BackgroundColor3 = active and THEME.success or THEME.btn
+floorButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+floorButton.Text = active and "3rd Floor: ON" or "3rd Floor: OFF"
+floorButton.Font = Enum.Font.GothamBold
+floorButton.TextSize = 16
+floorButton.Parent = stealerContainer
+local floorCorner = Instance.new("UICorner")
+floorCorner.CornerRadius = UDim.new(0, 4)
+floorCorner.Parent = floorButton
+floorButton.Activated:Connect(function()
+    active = not active
+    settings.thirdFloorEnabled = active
+    floorButton.BackgroundColor3 = active and THEME.success or THEME.btn
+    floorButton.Text = active and "3rd Floor: ON" or "3rd Floor: OFF"
+    saveSettings()
+    
+    if active then
+        platform = Instance.new("Part")
+        platform.Size = Vector3.new(6, 0.5, 6)
+        platform.Anchored = true
+        platform.CanCollide = true
+        platform.Transparency = 0
+        platform.Material = Enum.Material.Plastic
+        platform.Color = Color3.fromRGB(255, 200, 0)
+        platform.Position = rootPart.Position - Vector3.new(0, rootPart.Size.Y / 2 + platform.Size.Y / 2, 0)
+        platform.Parent = workspace
+        setPlotsTransparency(true)
+        isRising = true
+        safeDisconnect(connection)
+        connection = RunService.Heartbeat:Connect(function(dt)
+            if platform and active then
+                local cur = platform.Position
+                local newXZ = Vector3.new(rootPart.Position.X, cur.Y, rootPart.Position.Z)
+                if isRising and canRise() then
+                    platform.Position = newXZ + Vector3.new(0, dt * RISE_SPEED, 0)
+                else
+                    isRising = false
+                    platform.Position = newXZ
+                end
+            end
+        end)
+    else
+        destroyPlatform()
+    end
+end)
+
+-- Low Gravity Button
+local lowGravityBtn = Instance.new("TextButton")
+lowGravityBtn.Name = "LowGravityToggle"
+lowGravityBtn.Size = UDim2.new(0, 180, 0, 40)
+lowGravityBtn.Position = UDim2.new(0.5, -90, 0, 60)
+lowGravityBtn.BackgroundColor3 = settings.lowGravityEnabled and THEME.success or THEME.btn
+lowGravityBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+lowGravityBtn.Text = settings.lowGravityEnabled and "Low Gravity: ON" or "Low Gravity: OFF"
+lowGravityBtn.Font = Enum.Font.GothamBold
+lowGravityBtn.TextSize = 16
+lowGravityBtn.Parent = stealerContainer
+local gravityCorner = Instance.new("UICorner")
+gravityCorner.CornerRadius = UDim.new(0, 4)
+gravityCorner.Parent = lowGravityBtn
+lowGravityBtn.Activated:Connect(function()
+    settings.lowGravityEnabled = not settings.lowGravityEnabled
+    lowGravityBtn.BackgroundColor3 = settings.lowGravityEnabled and THEME.success or THEME.btn
+    lowGravityBtn.Text = settings.lowGravityEnabled and "Low Gravity: ON" or "Low Gravity: OFF"
+    updateGravity()
+    saveSettings()
+end)
+
+-- High Jump Button
+local highJumpBtn = Instance.new("TextButton")
+highJumpBtn.Name = "HighJumpToggle"
+highJumpBtn.Size = UDim2.new(0, 180, 0, 40)
+highJumpBtn.Position = UDim2.new(0.5, -90, 0, 110)
+highJumpBtn.BackgroundColor3 = settings.highJumpEnabled and THEME.success or THEME.btn
+highJumpBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+highJumpBtn.Text = settings.highJumpEnabled and "High Jump: ON" or "High Jump: OFF"
+highJumpBtn.Font = Enum.Font.GothamBold
+highJumpBtn.TextSize = 16
+highJumpBtn.Parent = stealerContainer
+local jumpCorner = Instance.new("UICorner")
+jumpCorner.CornerRadius = UDim.new(0, 4)
+jumpCorner.Parent = highJumpBtn
+highJumpBtn.Activated:Connect(function()
+    settings.highJumpEnabled = not settings.highJumpEnabled
+    highJumpBtn.BackgroundColor3 = settings.highJumpEnabled and THEME.success or THEME.btn
+    highJumpBtn.Text = settings.highJumpEnabled and "High Jump: ON" or "High Jump: OFF"
+    saveSettings()
+end)
+
+-- Speed Booster Button
+local speedBtn = Instance.new("TextButton")
+speedBtn.Name = "SpeedBoosterToggle"
+speedBtn.Size = UDim2.new(0, 180, 0, 40)
+speedBtn.Position = UDim2.new(0.5, -90, 0, 160)
+speedBtn.BackgroundColor3 = settings.speedEnabled and THEME.success or THEME.btn
+speedBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+speedBtn.Text = settings.speedEnabled and "Speed: ON" or "Speed: OFF"
+speedBtn.Font = Enum.Font.GothamBold
+speedBtn.TextSize = 16
+speedBtn.Parent = stealerContainer
+local speedCorner = Instance.new("UICorner")
+speedCorner.CornerRadius = UDim.new(0, 4)
+speedCorner.Parent = speedBtn
+speedBtn.Activated:Connect(function()
+    settings.speedEnabled = not settings.speedEnabled
+    speedBtn.BackgroundColor3 = settings.speedEnabled and THEME.success or THEME.btn
+    speedBtn.Text = settings.speedEnabled and "Speed: ON" or "Speed: OFF"
+    if settings.speedEnabled then
+        startSpeedControl()
+    else
+        stopSpeedControl()
+    end
+    saveSettings()
+end)
+
+-- === Misc Section Buttons ===
+
+-- Aimbot Button
+local webSlingerBtn = Instance.new("TextButton")
+webSlingerBtn.Name = "WebSlingerToggle"
+webSlingerBtn.Size = UDim2.new(0, 180, 0, 40)
+webSlingerBtn.Position = UDim2.new(0.5, -90, 0, 10)
+webSlingerBtn.BackgroundColor3 = settings.webSlingerEnabled and THEME.success or THEME.btn
+webSlingerBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+webSlingerBtn.Text = settings.webSlingerEnabled and "Aimbot: ON" or "Aimbot: OFF"
+webSlingerBtn.Font = Enum.Font.GothamBold
+webSlingerBtn.TextSize = 16
+webSlingerBtn.Parent = miscContainer
+local webSlingerCorner = Instance.new("UICorner")
+webSlingerCorner.CornerRadius = UDim.new(0, 4)
+webSlingerCorner.Parent = webSlingerBtn
+webSlingerBtn.Activated:Connect(function()
+    settings.webSlingerEnabled = not settings.webSlingerEnabled
+    webSlingerBtn.BackgroundColor3 = settings.webSlingerEnabled and THEME.success or THEME.btn
+    webSlingerBtn.Text = settings.webSlingerEnabled and "Aimbot: ON" or "Aimbot: OFF"
+    saveSettings()
+    if settings.webSlingerEnabled then
+        spawn(function()
+            while settings.webSlingerEnabled and player.Character and player.Character.Humanoid.Health > 0 do
+                fireWebSlingerLowerTorso()
+                task.wait(1)
+            end
+        end)
+    end
+end)
+
+-- Auto Destroy Sentry Button
+local sentryBtn = Instance.new("TextButton")
+sentryBtn.Name = "SentryDestroyToggle"
+sentryBtn.Size = UDim2.new(0, 180, 0, 40)
+sentryBtn.Position = UDim2.new(0.5, -90, 0, 60)
+sentryBtn.BackgroundColor3 = sentryEnabled and THEME.success or THEME.btn
+sentryBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+sentryBtn.Text = sentryEnabled and "Auto Destroy Sentry: ON" or "Auto Destroy Sentry: OFF"
+sentryBtn.Font = Enum.Font.GothamBold
+sentryBtn.TextSize = 16
+sentryBtn.Parent = miscContainer
+local sentryCorner = Instance.new("UICorner")
+sentryCorner.CornerRadius = UDim.new(0, 4)
+sentryCorner.Parent = sentryBtn
+sentryBtn.Activated:Connect(function()
+    sentryEnabled = not sentryEnabled
+    settings.sentryEnabled = sentryEnabled
+    sentryBtn.BackgroundColor3 = sentryEnabled and THEME.success or THEME.btn
+    sentryBtn.Text = sentryEnabled and "Auto Destroy Sentry: ON" or "Auto Destroy Sentry: OFF"
+    saveSettings()
+    
+    if sentryEnabled then
+        startSentryWatch()
+    else
+        stopSentryWatch()
+    end
+end)
+
+-- Float Button
+local floatBtn = Instance.new("TextButton")
+floatBtn.Name = "FloatToggle"
+floatBtn.Size = UDim2.new(0, 180, 0, 40)
+floatBtn.Position = UDim2.new(0.5, -90, 0, 110)
+floatBtn.BackgroundColor3 = guidedOn and THEME.success or THEME.btn
+floatBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+floatBtn.Text = guidedOn and "Float: ON" or "Float: OFF"
+floatBtn.Font = Enum.Font.GothamBold
+floatBtn.TextSize = 16
+floatBtn.Parent = miscContainer
+local floatCorner = Instance.new("UICorner")
+floatCorner.CornerRadius = UDim.new(0, 4)
+floatCorner.Parent = floatBtn
+floatBtn.Activated:Connect(function()
+    guidedOn = not guidedOn
+    floatBtn.BackgroundColor3 = guidedOn and THEME.success or THEME.btn
+    floatBtn.Text = guidedOn and "Float: ON" or "Float: OFF"
+
+    if guidedOn then
+        startGuidedFly()
+    else
+        stopGuidedFly()
+    end
+end)
+
+-- Base ESP Button
+local baseEspBtn = Instance.new("TextButton")
+baseEspBtn.Name = "BaseESPToggle"
+baseEspBtn.Size = UDim2.new(0, 180, 0, 40)
+baseEspBtn.Position = UDim2.new(0.5, -90, 0, 160)
+baseEspBtn.BackgroundColor3 = settings.baseEspEnabled and THEME.success or THEME.btn
+baseEspBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+baseEspBtn.Text = settings.baseEspEnabled and "Base ESP: ON" or "Base ESP: OFF"
+baseEspBtn.Font = Enum.Font.GothamBold
+baseEspBtn.TextSize = 16
+baseEspBtn.Parent = miscContainer
+local baseEspCorner = Instance.new("UICorner")
+baseEspCorner.CornerRadius = UDim.new(0, 4)
+baseEspCorner.Parent = baseEspBtn
+baseEspBtn.Activated:Connect(function()
+    settings.baseEspEnabled = not settings.baseEspEnabled
+    saveSettings()
+    if settings.baseEspEnabled then
+        baseEspBtn.Text = "Base ESP: ON"
+        baseEspBtn.BackgroundColor3 = THEME.success
+        enableScript()
+    else
+        baseEspBtn.Text = "Base ESP: OFF"
+        baseEspBtn.BackgroundColor3 = THEME.btn
+        disableScript()
+    end
+end)
+
+-- No Knockback Button
+local antiKnockbackBtn = Instance.new("TextButton")
+antiKnockbackBtn.Name = "AntiKnockbackToggle"
+antiKnockbackBtn.Size = UDim2.new(0, 180, 0, 40)
+antiKnockbackBtn.Position = UDim2.new(0.5, -90, 0, 210)
+antiKnockbackBtn.BackgroundColor3 = settings.antiKnockbackEnabled and THEME.success or THEME.btn
+antiKnockbackBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+antiKnockbackBtn.Text = settings.antiKnockbackEnabled and "No Knockback: ON" or "No Knockback: OFF"
+antiKnockbackBtn.Font = Enum.Font.GothamBold
+antiKnockbackBtn.TextSize = 16
+antiKnockbackBtn.Parent = miscContainer
+local antiKnockbackCorner = Instance.new("UICorner")
+antiKnockbackCorner.CornerRadius = UDim.new(0, 4)
+antiKnockbackCorner.Parent = antiKnockbackBtn
+antiKnockbackBtn.Activated:Connect(function()
+    settings.antiKnockbackEnabled = not settings.antiKnockbackEnabled
+    antiKnockbackBtn.BackgroundColor3 = settings.antiKnockbackEnabled and THEME.success or THEME.btn
+    antiKnockbackBtn.Text = settings.antiKnockbackEnabled and "No Knockback: ON" or "No Knockback: OFF"
+    saveSettings()
+    if settings.antiKnockbackEnabled then
+        startNoKnockback()
+    else
+        stopNoKnockback()
+    end
+end)
+
+-- Websling Kill Button
+local webslingKillBtn = Instance.new("TextButton")
+webslingKillBtn.Name = "WebslingKillToggle"
+webslingKillBtn.Size = UDim2.new(0, 180, 0, 40)
+webslingKillBtn.Position = UDim2.new(0.5, -90, 0, 260)
+webslingKillBtn.BackgroundColor3 = silentToggled and THEME.success or THEME.btn
+webslingKillBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+webslingKillBtn.Text = silentToggled and "Websling Kill: ON" or "Websling Kill: OFF"
+webslingKillBtn.Font = Enum.Font.GothamBold
+webslingKillBtn.TextSize = 16
+webslingKillBtn.Parent = miscContainer
+local webslingKillCorner = Instance.new("UICorner")
+webslingKillCorner.CornerRadius = UDim.new(0, 4)
+webslingKillCorner.Parent = webslingKillBtn
+webslingKillBtn.Activated:Connect(function()
+    if silentGui then
+        destroySilentHub()
+        webslingKillBtn.BackgroundColor3 = THEME.btn
+        webslingKillBtn.Text = "Websling Kill: OFF"
+    else
+        createSilentHub()
+        webslingKillBtn.BackgroundColor3 = THEME.success
+        webslingKillBtn.Text = "Websling Kill: ON"
+    end
+end)
+
+-- Invisibility Button in Misc
+local invisibilityBtn = Instance.new("TextButton")
+invisibilityBtn.Name = "InvisibilityToggle"
+invisibilityBtn.Size = UDim2.new(0, 180, 0, 40)
+invisibilityBtn.Position = UDim2.new(0.5, -90, 0, 210)
+invisibilityBtn.BackgroundColor3 = isInvisible and THEME.success or THEME.btn
+invisibilityBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+invisibilityBtn.Text = isInvisible and "Invisibility: ON" or "Invisibility: OFF"
+invisibilityBtn.Font = Enum.Font.GothamBold
+invisibilityBtn.TextSize = 16
+invisibilityBtn.Parent = stealerContainer
+local invisibilityCorner = Instance.new("UICorner")
+invisibilityCorner.CornerRadius = UDim.new(0, 4)
+invisibilityCorner.Parent = invisibilityBtn
+invisibilityBtn.Activated:Connect(function()
+    semiInvisibleFunction()
+    invisibilityBtn.BackgroundColor3 = isInvisible and THEME.success or THEME.btn
+    invisibilityBtn.Text = isInvisible and "Invisibility: ON" or "Invisibility: OFF"
+end)
+
+-- === Section Toggle Logic ===
+stealerBtn.Activated:Connect(function()
+    stealerContainer.Visible = true
+    miscContainer.Visible = false
+    stealerBtn.BackgroundColor3 = Color3.fromRGB(128,128,128)
+    miscBtn.BackgroundColor3 = Color3.fromRGB(128,128,128)
+end)
+
+miscBtn.Activated:Connect(function()
+    stealerContainer.Visible = false
+    miscContainer.Visible = true
+    stealerBtn.BackgroundColor3 = Color3.fromRGB(128,128,128)
+    miscBtn.BackgroundColor3 = Color3.fromRGB(128,128,128)
+end)
+
+-- === Button Connections ===
+toggleButton.Activated:Connect(function()
+    isMenuOpen = not isMenuOpen
+    frame.Visible = isMenuOpen
+end)
+
+-- Float Keybind (F)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.F and not gameProcessed then
+        guidedOn = not guidedOn
+        floatBtn.BackgroundColor3 = guidedOn and THEME.success or THEME.btn
+        floatBtn.Text = guidedOn and "Float: ON" or "Float: OFF"
+        if guidedOn then
+            startGuidedFly()
+        else
+            stopGuidedFly()
+        end
+    end
+end)
+
+-- Invisibility Keybind (G)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.G and not gameProcessed then
+        semiInvisibleFunction()
+        invisibilityBtn.BackgroundColor3 = isInvisible and THEME.success or THEME.btn
+        invisibilityBtn.Text = isInvisible and "Invisibility: ON" or "Invisibility: OFF"
+    end
+end)
+
+-- High Jump Input Handler
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp or input.KeyCode ~= Enum.KeyCode.Space then
+        return
+    end
+    if settings.highJumpEnabled then
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hum and hrp then
+            task.defer(function()
+                RunService.Heartbeat:Wait()
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, JUMP_FORCE, hrp.Velocity.Z)
+            end)
+        end
+    end
+end)
+
+-- Character event handlers
+player.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    if guidedOn then
+        stopGuidedFly()
+        floatBtn.BackgroundColor3 = THEME.btn
+        floatBtn.Text = "Float: OFF"
+        guidedOn = false
+    end
+    if sentryEnabled then
+        stopSentryWatch()
+        sentryEnabled = false
+        sentryBtn.BackgroundColor3 = THEME.btn
+        sentryBtn.Text = "Auto Destroy Sentry: OFF"
+    end
+    if settings.lowGravityEnabled then
+        task.wait(1)
+        updateGravity()
+    end
+    if settings.speedEnabled then
+        task.wait(1)
+        startSpeedControl()
+    end
+    if isInvisible then
+        isInvisible = false
+        invisibilityBtn.BackgroundColor3 = THEME.btn
+        invisibilityBtn.Text = "Invisibility: OFF"
+    end
+    if settings.antiKnockbackEnabled then
+        task.wait(1)
+        startNoKnockback()
+    end
+    if silentToggled then
+        destroySilentHub()
+        webslingKillBtn.BackgroundColor3 = THEME.btn
+        webslingKillBtn.Text = "Websling Kill: OFF"
+    end
+end)
+
+-- Initialize features based on loaded settings
+if settings.webSlingerEnabled then
+    spawn(function()
+        while settings.webSlingerEnabled and player.Character and player.Character.Humanoid.Health > 0 do
+            fireWebSlingerLowerTorso()
             task.wait(1)
         end
     end)
-    
-    settings.brainrotEspEnabled = true
-    saveSettings(settings)
 end
-
-local function disableBrainrotEsp(brainrotButton)
-    brainrotEspEnabled = false
-    if brainrotButton then
-        brainrotButton.Text = "Enable Highest Value ESP"
-    end
-    StarterGui:SetCore("SendNotification", {
-        Title = "Highest Value ESP",
-        Text = "Highest Value ESP: OFF",
-        Duration = 2
-    })
-
-    if currentGui and currentGui.Parent then
-        currentGui:Destroy()
-    end
-    currentBase = nil
-    currentGui = nil
-    
-    settings.brainrotEspEnabled = false
-    saveSettings(settings)
+if settings.lowGravityEnabled then
+    updateGravity()
 end
-
-local function createTabContent(name)
-    local contentFrame = Instance.new("Frame")
-    contentFrame.Size = UDim2.new(1.2, -10, 1, -80)
-    contentFrame.Position = UDim2.new(0.3, 50, 0, 80)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.Visible = false
-    contentFrame.Parent = mainFrame
-
-    if name == "Main" then
-        local infiniteJumpButton = Instance.new("TextButton")
-        infiniteJumpButton.Size = UDim2.new(0, 250, 0, 40)
-        infiniteJumpButton.Position = UDim2.new(0, -35, 0, 10)
-        infiniteJumpButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        infiniteJumpButton.Text = infiniteJumpEnabled and "Disable Infinite Jump" or "Enable Infinite Jump"
-        infiniteJumpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        infiniteJumpButton.TextSize = 14
-        infiniteJumpButton.Font = Enum.Font.Gotham
-        infiniteJumpButton.Parent = contentFrame
-        local infiniteJumpCorner = Instance.new("UICorner", infiniteJumpButton)
-        infiniteJumpCorner.CornerRadius = UDim.new(0, 8)
-
-        infiniteJumpButton.MouseButton1Down:Connect(function()
-            TweenService:Create(infiniteJumpButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            }):Play()
-        end)
-        
-        infiniteJumpButton.MouseButton1Up:Connect(function()
-            TweenService:Create(infiniteJumpButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-        
-        infiniteJumpButton.MouseLeave:Connect(function()
-            TweenService:Create(infiniteJumpButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-
-        infiniteJumpButton.MouseButton1Click:Connect(function()
-            if not infiniteJumpEnabled then
-                enableInfiniteJump(infiniteJumpButton)
+if settings.speedEnabled then
+    startSpeedControl()
+end
+if settings.baseEspEnabled then
+    enableScript()
+end
+if settings.sentryEnabled then
+    startSentryWatch()
+end
+if settings.antiKnockbackEnabled then
+    startNoKnockback()
+end
+if settings.thirdFloorEnabled then
+    active = true
+    platform = Instance.new("Part")
+    platform.Size = Vector3.new(6, 0.5, 6)
+    platform.Anchored = true
+    platform.CanCollide = true
+    platform.Transparency = 0
+    platform.Material = Enum.Material.Plastic
+    platform.Color = Color3.fromRGB(255, 200, 0)
+    platform.Position = rootPart.Position - Vector3.new(0, rootPart.Size.Y / 2 + platform.Size.Y / 2, 0)
+    platform.Parent = workspace
+    setPlotsTransparency(true)
+    isRising = true
+    connection = RunService.Heartbeat:Connect(function(dt)
+        if platform and active then
+            local cur = platform.Position
+            local newXZ = Vector3.new(rootPart.Position.X, cur.Y, rootPart.Position.Z)
+            if isRising and canRise() then
+                platform.Position = newXZ + Vector3.new(0, dt * RISE_SPEED, 0)
             else
-                disableInfiniteJump(infiniteJumpButton)
+                isRising = false
+                platform.Position = newXZ
             end
-        end)
-
-        local actionButton = Instance.new("TextButton")
-        actionButton.Size = UDim2.new(0, 200, 0, 40)
-        actionButton.Position = UDim2.new(0, -35, 0, 60)
-        actionButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        actionButton.Text = walkspeedEnabled and "Disable Walkspeed" or "Enable Walkspeed"
-        actionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        actionButton.TextSize = 14
-        actionButton.Font = Enum.Font.Gotham
-        actionButton.Parent = contentFrame
-        local buttonCorner = Instance.new("UICorner", actionButton)
-        buttonCorner.CornerRadius = UDim.new(0, 8)
-
-        local speedTextBox = Instance.new("TextBox")
-        speedTextBox.Size = UDim2.new(0, 40, 0, 40)
-        speedTextBox.Position = UDim2.new(0, 170, 0, 0)
-        speedTextBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        speedTextBox.Text = tostring(currentWalkSpeed)
-        speedTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-        speedTextBox.TextSize = 14
-        speedTextBox.Font = Enum.Font.Gotham
-        speedTextBox.TextXAlignment = Enum.TextXAlignment.Center
-        speedTextBox.Parent = actionButton
-        local textBoxCorner = Instance.new("UICorner", speedTextBox)
-        textBoxCorner.CornerRadius = UDim.new(0, 8)
-
-        speedTextBox.FocusLost:Connect(function()
-            local input = tonumber(speedTextBox.Text)
-            if input and input >= 50 and input <= 100 then
-                updateWalkspeed(input)
-                speedTextBox.Text = tostring(currentWalkSpeed)
-                StarterGui:SetCore("SendNotification", {
-                    Title = "Walkspeed Updated",
-                    Text = "Walkspeed set to " .. currentWalkSpeed,
-                    Duration = 3
-                })
-            else
-                speedTextBox.Text = tostring(currentWalkSpeed)
-                StarterGui:SetCore("SendNotification", {
-                    Title = "Invalid Speed",
-                    Text = "Speed must be between 50 and 100",
-                    Duration = 3
-                })
-            end
-        end)
-
-        actionButton.MouseButton1Down:Connect(function()
-            TweenService:Create(actionButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            }):Play()
-        end)
-        
-        actionButton.MouseButton1Up:Connect(function()
-            TweenService:Create(actionButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-        
-        actionButton.MouseLeave:Connect(function()
-            TweenService:Create(actionButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-
-        actionButton.MouseButton1Click:Connect(function()
-            if not walkspeedEnabled then
-                enableWalkspeed(actionButton, speedTextBox)
-            else
-                disableWalkspeed()
-                actionButton.Text = "Enable Walkspeed"
-            end
-        end)
-
-        local tweenStealButton = Instance.new("TextButton")
-        tweenStealButton.Size = UDim2.new(0, 250, 0, 40)
-        tweenStealButton.Position = UDim2.new(0, -35, 0, 110)
-        tweenStealButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        tweenStealButton.Text = "Tween Steal"
-        tweenStealButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        tweenStealButton.TextSize = 14
-        tweenStealButton.Font = Enum.Font.Gotham
-        tweenStealButton.Parent = contentFrame
-        local tweenButtonCorner = Instance.new("UICorner", tweenStealButton)
-        tweenButtonCorner.CornerRadius = UDim.new(0, 8)
-
-        tweenStealButton.MouseButton1Down:Connect(function()
-            TweenService:Create(tweenStealButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            }):Play()
-        end)
-        
-        tweenStealButton.MouseButton1Up:Connect(function()
-            TweenService:Create(tweenStealButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-        
-        tweenStealButton.MouseLeave:Connect(function()
-            TweenService:Create(tweenStealButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-
-        tweenStealButton.MouseButton1Click:Connect(function()
-            local wasWalkspeedEnabled = walkspeedEnabled
-            if wasWalkspeedEnabled then
-                disableWalkspeed()
-            end
-
-            local existingTeleportGui = PlayerGui:FindFirstChild("TeleportGUI")
-            if existingTeleportGui then
-                existingTeleportGui:Destroy()
-            end
-
-            local gui = Instance.new("ScreenGui", PlayerGui)
-            gui.Name = "TeleportGUI"
-            gui.ResetOnSpawn = false
-
-            local buttonHolder = Instance.new("Frame")
-            buttonHolder.Size = UDim2.new(0, 180, 0, 60)
-            buttonHolder.Position = UDim2.new(1, -20, 0, 10)
-            buttonHolder.AnchorPoint = Vector2.new(1, 0)
-            buttonHolder.BackgroundColor3 = Color3.new(0, 0, 0)
-            buttonHolder.BackgroundTransparency = 0.2
-            buttonHolder.BorderSizePixel = 0
-            buttonHolder.Active = true
-            buttonHolder.Draggable = true
-            buttonHolder.ZIndex = 3
-            buttonHolder.Parent = gui
-            Instance.new("UICorner", buttonHolder).CornerRadius = UDim.new(0, 16)
-
-            local tweenButton = Instance.new("TextButton")
-            tweenButton.Size = UDim2.new(1, -40, 0, 35)
-            tweenButton.Position = UDim2.new(0, 20, 0, 10)
-            tweenButton.Text = "â†“ Tween"
-            tweenButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-            tweenButton.TextColor3 = Color3.new(1, 1, 1)
-            tweenButton.Font = Enum.Font.SourceSansBold
-            tweenButton.TextSize = 22
-            tweenButton.BorderSizePixel = 0
-            tweenButton.ZIndex = 4
-            tweenButton.Parent = buttonHolder
-            Instance.new("UICorner", tweenButton).CornerRadius = UDim.new(0, 12)
-
-            local function FindDelivery()
-                local plots = workspace:FindFirstChild("Plots")
-                if not plots then
-                    warn("Plots folder not found in workspace")
-                    return
-                end
-                for _, plot in pairs(plots:GetChildren()) do
-                    local sign = plot:FindFirstChild("PlotSign")
-                    if sign then
-                        local yourBase = sign:FindFirstChild("YourBase")
-                        if yourBase and yourBase.Enabled then
-                            local hitbox = plot:FindFirstChild("DeliveryHitbox")
-                            if hitbox then return hitbox end
-                        end
-                    end
-                end
-                warn("No valid DeliveryHitbox found")
-            end
-
-            tweenButton.MouseButton1Click:Connect(function()
-                local character = player.Character or player.CharacterAdded:Wait()
-                local root = character:FindFirstChild("HumanoidRootPart")
-                local humanoid = character:FindFirstChildWhichIsA("Humanoid")
-                if not (root and humanoid) then return end
-
-                local target = FindDelivery()
-                if not target then return end
-
-                local finalPos = Vector3.new(target.Position.X, root.Position.Y, target.Position.Z)
-                print("Pushing to DeliveryHitbox...")
-
-                local bodyVelocity = Instance.new("BodyVelocity")
-                bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-                bodyVelocity.Parent = root
-
-                local speed = 100
-                local stopDistance = 55
-                local maxTime = 10
-                local gravity = workspace.Gravity or 196.2
-                local antiGravityVelocity = math.sqrt(2 * gravity * 0.1)
-
-                local startTime = tick()
-                local reached = false
-
-                while tick() - startTime < maxTime do
-                    local currentPos = root.Position
-                    local horizontalDistance = Vector3.new(finalPos.X, 0, finalPos.Z) - Vector3.new(currentPos.X, 0, currentPos.Z)
-                    local distance = horizontalDistance.Magnitude
-
-                    if distance <= stopDistance then
-                        reached = true
-                        break
-                    end
-
-                    local direction = horizontalDistance.Unit
-                    bodyVelocity.Velocity = Vector3.new(direction.X * speed, antiGravityVelocity, direction.Z * speed)
-                    task.wait()
-                end
-
-                bodyVelocity:Destroy()
-
-                if humanoid and humanoid:GetState() ~= Enum.HumanoidStateType.Freefall then
-                    humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
-                end
-
-                if reached then
-                    print("reached DeliveryHitbox, falling.")
-                    StarterGui:SetCore("SendNotification", {
-                        Title = "Warning!",
-                        Text = "You need to leave after steal because anti-cheat will kick you!",
-                        Duration = 8
-                    })
-                    if wasWalkspeedEnabled then
-                        enableWalkspeed(actionButton, speedTextBox)
-                    end
-                else
-                    warn("Failed to reach DeliveryHitbox within time.")
-                    if wasWalkspeedEnabled then
-                        enableWalkspeed(actionButton, speedTextBox)
-                    end
-                end
-            end)
-        end)
-
-        local touchFlingButton = Instance.new("TextButton")
-        touchFlingButton.Size = UDim2.new(0, 250, 0, 40)
-        touchFlingButton.Position = UDim2.new(0, -35, 0, 160)
-        touchFlingButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        touchFlingButton.Text = flingEnabled and "Disable Touch Fling" or "Enable Touch Fling"
-        touchFlingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        touchFlingButton.TextSize = 14
-        touchFlingButton.Font = Enum.Font.Gotham
-        touchFlingButton.Parent = contentFrame
-        local flingButtonCorner = Instance.new("UICorner", touchFlingButton)
-        flingButtonCorner.CornerRadius = UDim.new(0, 8)
-
-        touchFlingButton.MouseButton1Down:Connect(function()
-            TweenService:Create(touchFlingButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            }):Play()
-        end)
-        
-        touchFlingButton.MouseButton1Up:Connect(function()
-            TweenService:Create(touchFlingButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-        
-        touchFlingButton.MouseLeave:Connect(function()
-            TweenService:Create(touchFlingButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-
-        touchFlingButton.MouseButton1Click:Connect(function()
-            local wasWalkspeedEnabled = walkspeedEnabled
-            flingEnabled = not flingEnabled
-
-            if flingEnabled then
-                if wasWalkspeedEnabled then
-                    disableWalkspeed()
-                end
-                touchFlingButton.Text = "Disable Touch Fling"
-                StarterGui:SetCore("SendNotification", {
-                    Title = "WalkFling",
-                    Text = "WalkFling: ON",
-                    Duration = 2
-                })
-
-                pcall(function()
-                    local humanoid = player.Character and player.Character:FindFirstChildWhichIsA("Humanoid")
-                    if humanoid and humanoid.AutoJumpEnabled ~= nil then
-                        humanoid.AutoJumpEnabled = false
-                    end
-                end)
-
-                if not ReplicatedStorage:FindFirstChild("juisdfj0i32i0eidsuf0iok") then
-                    local marker = Instance.new("Decal")
-                    marker.Name = "juisdfj0i32i0eidsuf0iok"
-                    marker.Parent = ReplicatedStorage
-                end
-
-                flingConnection = RunService.Heartbeat:Connect(function()
-                    local char = player.Character
-                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        local v = hrp.Velocity
-                        hrp.Velocity = v * 10000 + Vector3.new(0, 10000, 0)
-                        RunService.RenderStepped:Wait()
-                        hrp.Velocity = v
-                        RunService.Stepped:Wait()
-                        hrp.Velocity = v + Vector3.new(0, 0.1, 0)
-                    end
-                end)
-            else
-                touchFlingButton.Text = "Enable Touch Fling"
-                StarterGui:SetCore("SendNotification", {
-                    Title = "WalkFling",
-                    Text = "WalkFling: OFF",
-                    Duration = 2
-                })
-                if flingConnection then
-                    capConnection:Disconnect()
-                    flingConnection = nil
-                end
-                if wasWalkspeedEnabled then
-                    enableWalkspeed(actionButton, speedTextBox)
-                end
-            end
-            
-            settings.flingEnabled = flingEnabled
-            saveSettings(settings)
-        end)
-
-        local boostJumpButton = Instance.new("TextButton")
-        boostJumpButton.Size = UDim2.new(0, 200, 0, 40)
-        boostJumpButton.Position = UDim2.new(0, -35, 0, -40)
-        boostJumpButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        boostJumpButton.Text = boostJumpEnabled and "Disable Boost Jump" or "Enable Boost Jump"
-        boostJumpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        boostJumpButton.TextSize = 14
-        boostJumpButton.Font = Enum.Font.Gotham
-        boostJumpButton.Parent = contentFrame
-        local boostJumpCorner = Instance.new("UICorner", boostJumpButton)
-        boostJumpCorner.CornerRadius = UDim.new(0, 8)
-
-        local boostTextBox = Instance.new("TextBox")
-        boostTextBox.Size = UDim2.new(0, 40, 0, 40)
-        boostTextBox.Position = UDim2.new(0, 170, 0, 0)
-        boostTextBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        boostTextBox.Text = tostring(currentBoostStrength)
-        boostTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-        boostTextBox.TextSize = 14
-        boostTextBox.Font = Enum.Font.Gotham
-        boostTextBox.TextXAlignment = Enum.TextXAlignment.Center
-        boostTextBox.Parent = boostJumpButton
-        local boostTextBoxCorner = Instance.new("UICorner", boostTextBox)
-        boostTextBoxCorner.CornerRadius = UDim.new(0, 8)
-
-        boostTextBox.FocusLost:Connect(function()
-            local input = tonumber(boostTextBox.Text)
-            if input and input >= 50 and input <= 300 then
-                updateBoostStrength(input)
-                boostTextBox.Text = tostring(currentBoostStrength)
-                StarterGui:SetCore("SendNotification", {
-                    Title = "Boost Strength Updated",
-                    Text = "Boost strength set to " .. currentBoostStrength,
-                    Duration = 3
-                })
-            else
-                boostTextBox.Text = tostring(currentBoostStrength)
-                StarterGui:SetCore("SendNotification", {
-                    Title = "Invalid Strength",
-                    Text = "Boost strength must be between 50 and 300",
-                    Duration = 3
-                })
-            end
-        end)
-
-        boostJumpButton.MouseButton1Down:Connect(function()
-            TweenService:Create(boostJumpButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            }):Play()
-        end)
-        
-        boostJumpButton.MouseButton1Up:Connect(function()
-            TweenService:Create(boostJumpButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-        
-        boostJumpButton.MouseLeave:Connect(function()
-            TweenService:Create(boostJumpButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-
-        boostJumpButton.MouseButton1Click:Connect(function()
-            if not boostJumpEnabled then
-                enableBoostJump(boostJumpButton)
-            else
-                disableBoostJump(boostJumpButton)
-            end
-        end)
-    elseif name == "Settings" then
-        local antiHitButton = Instance.new("TextButton")
-        antiHitButton.Size = UDim2.new(0, 250, 0, 40)
-        antiHitButton.Position = UDim2.new(0, -35, 0, -40)
-        antiHitButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        antiHitButton.Text = antiHitEnabled and "Disable Anti Hit" or "Enable Anti Hit"
-        antiHitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        antiHitButton.TextSize = 14
-        antiHitButton.Font = Enum.Font.Gotham
-        antiHitButton.Parent = contentFrame
-        local antiHitButtonCorner = Instance.new("UICorner", antiHitButton)
-        antiHitButtonCorner.CornerRadius = UDim.new(0, 8)
-
-        antiHitButton.MouseButton1Down:Connect(function()
-            TweenService:Create(antiHitButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            }):Play()
-        end)
-        
-        antiHitButton.MouseButton1Up:Connect(function()
-            TweenService:Create(antiHitButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-        
-        antiHitButton.MouseLeave:Connect(function()
-            TweenService:Create(antiHitButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-
-        antiHitButton.MouseButton1Click:Connect(function()
-            if not antiHitEnabled then
-                enableAntiHit(antiHitButton)
-            else
-                disableAntiHit(antiHitButton)
-            end
-        end)
-
-        local antiTrapButton = Instance.new("TextButton")
-        antiTrapButton.Size = UDim2.new(0, 250, 0, 40)
-        antiTrapButton.Position = UDim2.new(0, -35, 0, 10)
-        antiTrapButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        antiTrapButton.Text = antiTrapEnabled and "Disable Anti Trap" or "Enable Anti Trap"
-        antiTrapButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        antiTrapButton.TextSize = 14
-        antiTrapButton.Font = Enum.Font.Gotham
-        antiTrapButton.Parent = contentFrame
-        local antiTrapButtonCorner = Instance.new("UICorner", antiTrapButton)
-        antiTrapButtonCorner.CornerRadius = UDim.new(0, 8)
-
-        antiTrapButton.MouseButton1Down:Connect(function()
-            TweenService:Create(antiTrapButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            }):Play()
-        end)
-        
-        antiTrapButton.MouseButton1Up:Connect(function()
-            TweenService:Create(antiTrapButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-        
-        antiTrapButton.MouseLeave:Connect(function()
-            TweenService:Create(antiTrapButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-
-        antiTrapButton.MouseButton1Click:Connect(function()
-            if not antiTrapEnabled then
-                enableAntiTrap(antiTrapButton)
-            else
-                disableAntiTrap(antiTrapButton)
-            end
-        end)
-    elseif name == "ESP" then
-        local espButton = Instance.new("TextButton")
-        espButton.Size = UDim2.new(0, 250, 0, 40)
-        espButton.Position = UDim2.new(0, -35, 0, 10)
-        espButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        espButton.Text = espEnabled and "Disable ESP" or "Enable ESP"
-        espButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        espButton.TextSize = 14
-        espButton.Font = Enum.Font.Gotham
-        espButton.Parent = contentFrame
-        local buttonCorner = Instance.new("UICorner", espButton)
-        buttonCorner.CornerRadius = UDim.new(0, 8)
-
-        espButton.MouseButton1Down:Connect(function()
-            TweenService:Create(espButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            }):Play()
-        end)
-        
-        espButton.MouseButton1Up:Connect(function()
-            TweenService:Create(espButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-        
-        espButton.MouseLeave:Connect(function()
-            TweenService:Create(espButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-
-        espButton.MouseButton1Click:Connect(function()
-            if not espEnabled then
-                enableESP(espButton)
-            else
-                disableESP(espButton)
-            end
-        end)
-
-        local timerEspButton = Instance.new("TextButton")
-        timerEspButton.Size = UDim2.new(0, 250, 0, 40)
-        timerEspButton.Position = UDim2.new(0, -35, 0, 60)
-        timerEspButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        timerEspButton.Text = timerEspEnabled and "Disable Timer ESP" or "Enable Timer ESP"
-        timerEspButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        timerEspButton.TextSize = 14
-        timerEspButton.Font = Enum.Font.Gotham
-        timerEspButton.Parent = contentFrame
-        local timerButtonCorner = Instance.new("UICorner", timerEspButton)
-        timerButtonCorner.CornerRadius = UDim.new(0, 8)
-
-        timerEspButton.MouseButton1Down:Connect(function()
-            TweenService:Create(timerEspButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            }):Play()
-        end)
-        
-        timerEspButton.MouseButton1Up:Connect(function()
-            TweenService:Create(timerEspButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-        
-        timerEspButton.MouseLeave:Connect(function()
-            TweenService:Create(timerEspButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-
-        timerEspButton.MouseButton1Click:Connect(function()
-            if not timerEspEnabled then
-                enableTimerESP(timerEspButton)
-            else
-                disableTimerESP(timerEspButton)
-            end
-        end)
-
-        local webSlingerButton = Instance.new("TextButton")
-        webSlingerButton.Size = UDim2.new(0, 250, 0, 40)
-        webSlingerButton.Position = UDim2.new(0, -35, 0, 110)
-        webSlingerButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        webSlingerButton.Text = webSlingerAutoAimEnabled and "Disable Web Slinger Auto Aim" or "Enable Web Slinger Auto Aim"
-        webSlingerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        webSlingerButton.TextSize = 14
-        webSlingerButton.Font = Enum.Font.Gotham
-        webSlingerButton.Parent = contentFrame
-        local webSlingerButtonCorner = Instance.new("UICorner", webSlingerButton)
-        webSlingerButtonCorner.CornerRadius = UDim.new(0, 8)
-
-        webSlingerButton.MouseButton1Down:Connect(function()
-            TweenService:Create(webSlingerButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            }):Play()
-        end)
-        
-        webSlingerButton.MouseButton1Up:Connect(function()
-            TweenService:Create(webSlingerButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-        
-        webSlingerButton.MouseLeave:Connect(function()
-            TweenService:Create(webSlingerButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-
-        webSlingerButton.MouseButton1Click:Connect(function()
-            if not webSlingerAutoAimEnabled then
-                enableWebSlingerAutoAim(webSlingerButton)
-            else
-                disableWebSlingerAutoAim(webSlingerButton)
-            end
-        end)
-
-        local brainrotButton = Instance.new("TextButton")
-        brainrotButton.Size = UDim2.new(0, 250, 0, 40)
-        brainrotButton.Position = UDim2.new(0, -35, 0, 160)
-        brainrotButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        brainrotButton.Text = brainrotEspEnabled and "Disable Highest Value ESP" or "Enable Highest Value ESP"
-        brainrotButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        brainrotButton.TextSize = 14
-        brainrotButton.Font = Enum.Font.Gotham
-        brainrotButton.Parent = contentFrame
-        local brainrotButtonCorner = Instance.new("UICorner", brainrotButton)
-        brainrotButtonCorner.CornerRadius = UDim.new(0, 8)
-
-        brainrotButton.MouseButton1Down:Connect(function()
-            TweenService:Create(brainrotButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            }):Play()
-        end)
-        
-        brainrotButton.MouseButton1Up:Connect(function()
-            TweenService:Create(brainrotButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-        
-        brainrotButton.MouseLeave:Connect(function()
-            TweenService:Create(brainrotButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-
-        brainrotButton.MouseButton1Click:Connect(function()
-            if not brainrotEspEnabled then
-                enableBrainrotEsp(brainrotButton)
-            else
-                disableBrainrotEsp(brainrotButton)
-            end
-        end)
-    elseif name == "Info" then
-        local discordButton = Instance.new("TextButton")
-        discordButton.Size = UDim2.new(0, 250, 0, 40)
-        discordButton.Position = UDim2.new(0, -35, 0, 10)
-        discordButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        discordButton.Text = "Copy Discord"
-        discordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        discordButton.TextSize = 14
-        discordButton.Font = Enum.Font.Gotham
-        discordButton.Parent = contentFrame
-        local buttonCorner = Instance.new("UICorner", discordButton)
-        buttonCorner.CornerRadius = UDim.new(0, 8)
-
-        discordButton.MouseButton1Down:Connect(function()
-            TweenService:Create(discordButton, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-            }):Play()
-        end)
-        
-        discordButton.MouseButton1Up:Connect(function()
-            TweenService:Create(discordButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-        
-        discordButton.MouseLeave:Connect(function()
-            TweenService:Create(discordButton, TweenInfo.new(0.3), {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-            }):Play()
-        end)
-
-        discordButton.MouseButton1Click:Connect(function()
-            pcall(function()
-                setclipboard("https://discord.gg/aXYUkzDR")
-                StarterGui:SetCore("SendNotification", {
-                    Title = "Discord",
-                    Text = "Link copied to clipboard!",
-                    Duration = 3
-                })
-            end)
-        end)
-    end
-
-    return contentFrame
-end
-
-tabContents["Main"] = createTabContent("Main")
-tabContents["Settings"] = createTabContent("Settings")
-tabContents["ESP"] = createTabContent("ESP")
-tabContents["Info"] = createTabContent("Info")
-
-local currentTab = "Main"
-local function switchTab(tabName)
-    for name, frame in pairs(tabContents) do
-        frame.Visible = (name == tabName)
-    end
-end
-
-local opened = false
-
-local function openGUI()
-    opened = true
-
-    tabMain.Visible = true
-    tabSettings.Visible = true
-    tabESP.Visible = true
-    tabInfo.Visible = true
-    closeButton.Visible = true
-    divider.Visible = true
-    hubLabel.Visible = true
-    tabContents[currentTab].Visible = true
-
-    -- Update open position to current position when GUI is opened via dragging
-    openedPosition = UDim2.new(0.5, 0, 0.45, 0)
-
-    local tweenInfo = TweenInfo.new(0.55, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-
-    nhLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nhLabel.TextYAlignment = Enum.TextYAlignment.Top
-
-    local sizeTween = TweenService:Create(mainFrame, tweenInfo, {
-        Size = UDim2.new(0, 400, 0, 300),
-        Position = openedPosition,
-        AnchorPoint = Vector2.new(0.5, 0.5)
-    })
-    local cornerTween = TweenService:Create(mainCorner, tweenInfo, {
-        CornerRadius = UDim.new(0, 18)
-    })
-    local nhMoveTween = TweenService:Create(nhLabel, tweenInfo, {
-        Position = UDim2.new(0, 15, 0, 15),
-        Size = UDim2.new(0, 90, 0, 30)
-    })
-    local hubMoveTween = TweenService:Create(hubLabel, tweenInfo, {
-        Position = UDim2.new(0, 25, 0, 35),
-        Size = UDim2.new(0, 120, 0, 20)
-    })
-    local textTween = TweenService:Create(nhLabel, tweenInfo, {
-        TextTransparency = 1
-    })
-    local hubTextTween = TweenService:Create(hubLabel, TweenInfo.new(0.3), {
-        TextTransparency = 0
-    })
-
-    sizeTween:Play()
-    cornerTween:Play()
-    nhMoveTween:Play()
-    hubMoveTween:Play()
-    textTween:Play()
-    hubTextTween:Play()
-
-    textTween.Completed:Connect(function()
-        nhLabel.Text = "Nameless"
-        local nameTween = TweenService:Create(nhLabel, TweenInfo.new(0.3), {
-            TextTransparency = 0
-        })
-        local hubTween = TweenService:Create(hubLabel, TweenInfo.new(0.3), {
-            TextTransparency = 0
-        })
-        nameTween:Play()
-        hubTween:Play()
-    end)
-
-    local tabFadeIns = {
-        TweenService:Create(tabMain, tweenInfo, { BackgroundTransparency = 0, TextTransparency = 0 }),
-        TweenService:Create(tabSettings, tweenInfo, { BackgroundTransparency = 0, TextTransparency = 0 }),
-        TweenService:Create(tabESP, tweenInfo, { BackgroundTransparency = 0, TextTransparency = 0 }),
-        TweenService:Create(tabInfo, tweenInfo, { BackgroundTransparency = 0, TextTransparency = 0 }),
-        TweenService:Create(closeButton, tweenInfo, { BackgroundTransparency = 0, TextTransparency = 0 }),
-        TweenService:Create(divider, tweenInfo, { BackgroundTransparency = 0 }),
-    }
-
-    for _, frame in pairs(tabContents) do
-        for _, child in pairs(frame:GetChildren()) do
-            if child:IsA("TextButton") then
-                table.insert(tabFadeIns, TweenService:Create(child, tweenInfo, {
-                    BackgroundTransparency = 0,
-                    TextTransparency = 0
-                }))
-            end
-        end
-    end
-
-    for _, tween in ipairs(tabFadeIns) do
-        tween:Play()
-    end
-end
-
-local function closeGUI()
-    opened = false
-
-    local tweenInfo = TweenInfo.new(0.55, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-
-    nhLabel.TextXAlignment = Enum.TextXAlignment.Center
-    nhLabel.TextYAlignment = Enum.TextYAlignment.Center
-
-    local sizeTween = TweenService:Create(mainFrame, tweenInfo, {
-        Size = UDim2.new(0, 50, 0, 50),
-        Position = savedPosition,
-        AnchorPoint = Vector2.new(0, 0)
-    })
-    local cornerTween = TweenService:Create(mainCorner, tweenInfo, {
-        CornerRadius = UDim.new(0, 12)
-    })
-    local nhResetTween = TweenService:Create(nhLabel, tweenInfo, {
-        Position = UDim2.new(0, 0, 0, 0),
-        Size = UDim2.new(0, 50, 0, 50)
-    })
-    local hubResetTween = TweenService:Create(hubLabel, tweenInfo, {
-        Position = UDim2.new(0, 0, 0, 30),
-        Size = UDim2.new(0, 50, 0, 20)
-    })
-    local textTween = TweenService:Create(nhLabel, tweenInfo, {
-        TextTransparency = 1
-    })
-    local hubTextTween = TweenService:Create(hubLabel, TweenInfo.new(0.3), {
-        TextTransparency = 1
-    })
-
-    textTween:Play()
-    hubTextTween:Play()
-    textTween.Completed:Connect(function()
-        nhLabel.Text = "NH"
-        local nameTween = TweenService:Create(nhLabel, TweenInfo.new(0.3), {
-            TextTransparency = 0
-        })
-        nameTween:Play()
-    end)
-
-    local tabFadeOuts = {
-        TweenService:Create(tabMain, tweenInfo, { BackgroundTransparency = 1, TextTransparency = 1 }),
-        TweenService:Create(tabSettings, tweenInfo, { BackgroundTransparency = 1, TextTransparency = 1 }),
-        TweenService:Create(tabESP, tweenInfo, { BackgroundTransparency = 1, TextTransparency = 1 }),
-        TweenService:Create(tabInfo, tweenInfo, { BackgroundTransparency = 1, TextTransparency = 1 }),
-        TweenService:Create(closeButton, tweenInfo, { BackgroundTransparency = 1, TextTransparency = 1 }),
-        TweenService:Create(divider, tweenInfo, { BackgroundTransparency = 1 }),
-    }
-
-    for _, frame in pairs(tabContents) do
-        for _, child in pairs(frame:GetChildren()) do
-            if child:IsA("TextButton") then
-                table.insert(tabFadeOuts, TweenService:Create(child, tweenInfo, {
-                    BackgroundTransparency = 1,
-                    TextTransparency = 1
-                }))
-            end
-        end
-    end
-
-    for _, tween in ipairs(tabFadeOuts) do
-        tween:Play()
-    end
-
-    sizeTween:Play()
-    cornerTween:Play()
-    nhResetTween:Play()
-    hubResetTween:Play()
-
-    task.wait(0.55)
-
-    tabMain.Visible = false
-    tabSettings.Visible = false
-    tabESP.Visible = false
-    tabInfo.Visible = false
-    closeButton.Visible = false
-    divider.Visible = false
-    hubLabel.Visible = false
-    for _, frame in pairs(tabContents) do
-        frame.Visible = false
-    end
-end
-
-openButton.MouseButton1Click:Connect(function()
-    if not opened then
-        openGUI()
-    end
-end)
-
-closeButton.MouseButton1Click:Connect(function()
-    if opened then
-        closeGUI()
-    end
-end)
-
-tabMain.MouseButton1Click:Connect(function()
-    currentTab = "Main"
-    switchTab(currentTab)
-end)
-
-tabSettings.MouseButton1Click:Connect(function()
-    currentTab = "Settings"
-    switchTab(currentTab)
-end)
-
-tabESP.MouseButton1Click:Connect(function()
-    currentTab = "ESP"
-    switchTab(currentTab)
-end)
-
-tabInfo.MouseButton1Click:Connect(function()
-    currentTab = "Info"
-    switchTab(currentTab)
-end)
--- Auto-enable features based on saved settings on startup
-task.wait(1) -- Wait for GUI to be created
-
-if settings.walkspeedEnabled then
-    enableWalkspeed()
-end
-
-if settings.infiniteJumpEnabled then
-    enableInfiniteJump()
-end
-
-if settings.boostJumpEnabled then
-    enableBoostJump()
-end
-
-if settings.espEnabled then
-    enableESP()
-end
-
-if settings.timerEspEnabled then
-    enableTimerESP()
-end
-
-if settings.webSlingerAutoAimEnabled then
-    enableWebSlingerAutoAim()
-end
-
-if settings.antiTrapEnabled then
-    enableAntiTrap()
-end
-
-if settings.antiHitEnabled then
-    enableAntiHit()
-end
-
-if settings.brainrotEspEnabled then
-    enableBrainrotEsp()
-end
-
-if settings.flingEnabled then
-    flingEnabled = true
-    
-    pcall(function()
-        local humanoid = player.Character and player.Character:FindFirstChildWhichIsA("Humanoid")
-        if humanoid and humanoid.AutoJumpEnabled ~= nil then
-            humanoid.AutoJumpEnabled = false
-        end
-    end)
-
-    if not ReplicatedStorage:FindFirstChild("juisdfj0i32i0eidsuf0iok") then
-        local marker = Instance.new("Decal")
-        marker.Name = "juisdfj0i32i0eidsuf0iok"
-        marker.Parent = ReplicatedStorage
-    end
-
-    flingConnection = RunService.Heartbeat:Connect(function()
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            local v = hrp.Velocity
-            hrp.Velocity = v * 10000 + Vector3.new(0, 10000, 0)
-            RunService.RenderStepped:Wait()
-            hrp.Velocity = v
-            RunService.Stepped:Wait()
-            hrp.Velocity = v + Vector3.new(0, 0.1, 0)
         end
     end)
 end
-
-openGUI()
-switchTab("Main")
