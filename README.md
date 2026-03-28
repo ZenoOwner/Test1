@@ -1,1043 +1,2336 @@
-local player = game.Players.LocalPlayer
-local inputService = game:GetService("UserInputService")
-local tweenService = game:GetService("TweenService")
-local runService = game:GetService("RunService")
-local workspace = game:GetService("Workspace")
-local scaleFactor = 0.68
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
-local function antiKickHumanoid()
-    local character = player.Character
-    if not character then return end
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
 
-    local lastState = Enum.HumanoidStateType.RunningNoPhysics
-    local lastGroundState = true -- Track if we were grounded last frame
-
-    runService.Heartbeat:Connect(function()
-        local isGrounded = humanoid.FloorMaterial ~= Enum.Material.Air
-        
-        -- Only force state change if we're in an unwanted state AND not jumping
-        -- And only if we were grounded last frame (to preserve mid-air movement)
-        if (humanoid:GetState() == Enum.HumanoidStateType.Freefall or 
-            humanoid:GetState() == Enum.HumanoidStateType.Physics) and
-            humanoid:GetState() ~= Enum.HumanoidStateType.Jumping and
-            lastGroundState then
-            humanoid:ChangeState(lastState)
-        end
-        
-        lastGroundState = isGrounded
-    end)
-
-    humanoid.StateChanged:Connect(function(_, newState)
-        if newState == Enum.HumanoidStateType.RunningNoPhysics or 
-           newState == Enum.HumanoidStateType.Running then
-            lastState = newState
-        end
-        
-        if newState == Enum.HumanoidStateType.Seated or 
-           newState == Enum.HumanoidStateType.Dead then
-            humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
-        end
-    end)
+local character = player.Character or player.CharacterAdded:Wait()
+if not character then
+    warn("Failed to load player character")
+    return
+end
+local humanoid = character:FindFirstChild("Humanoid")
+local root = character:FindFirstChild("HumanoidRootPart")
+if not (humanoid and root) then
+    warn("Humanoid or HumanoidRootPart not found")
+    return
 end
 
-local languageGui = Instance.new("ScreenGui", player.PlayerGui)
-languageGui.Name = "LanguageSelection"
-languageGui.ResetOnSpawn = false
-languageGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- Settings file management
+local settingsFileName = "NamelessHubSettings.json"
+local HttpService = game:GetService("HttpService")
 
-
-local container = Instance.new("Frame")
-container.Size = UDim2.new(0, 280, 0, 240)
-container.Position = UDim2.new(0.5, -140, 0.5, -120)
-container.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-container.ZIndex = 2
-container.Parent = languageGui
-
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 12)
-corner.Parent = container
-
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 50)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.BackgroundTransparency = 1
-title.Text = "SELECT LANGUAGE"
-title.Font = Enum.Font.GothamBold
-title.TextSize = 20
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.ZIndex = 3
-title.Parent = container
-
-
-local languages = {
-    {name = "English", code = "en", color = Color3.fromRGB(52, 152, 219)}, -- Blue
-    {name = "Kurdish | Ú©ÙˆØ±Ø¯ÛŒ", code = "ku", color = Color3.fromRGB(231, 76, 60)}, -- Red
-    {name = "Arabic | Ø¹Ø±Ø¨ÙŠ", code = "ar", color = Color3.fromRGB(50, 50, 50)} -- Darker blue
+local defaultSettings = {
+    walkspeedEnabled = false,
+    currentWalkSpeed = 80,
+    infiniteJumpEnabled = false,
+    boostJumpEnabled = false,
+    currentBoostStrength = 150,
+    espEnabled = false,
+    timerEspEnabled = false,
+    webSlingerAutoAimEnabled = false,
+    antiTrapEnabled = false,
+    antiHitEnabled = false,
+    brainrotEspEnabled = false,
+    flingEnabled = false,
+    guiPosition = {0, 10, 1, -60}
 }
 
-local buttonHeight = 50
-local buttonSpacing = 10
-local startY = 60
-
-local function createMainGui(languageCode)
-    
-    local buttonTranslations = {
-        en = {
-            "Speed ðŸŽï¸", 
-            "v.High Speed ðŸš€", 
-            "Infinite JumpðŸ¦µ", 
-            "Anti die ðŸ©¸", 
-            "Anti Hit ðŸ‘‹ðŸ¼", 
-            "Secret Server ðŸ‘‘",
-            "Base Esp ðŸ”Ž",
-            "Esp brainrotðŸ¦…", 
-            "Super Jump ðŸ¦˜", 
-            "Player esp ðŸ‘€",
-            "Auto knock âš”ï¸",
-            "Auto Steal ðŸ”¥"
-        },
-        ku = {
-            "Ø®ÛŽØ±Ø§ÛŒÛŒ ðŸŽï¸", 
-            "Ø®ÛŽØ±Ø§ÛŒ Ø²ÙˆØ± ðŸš€", 
-            "Ø¨Ø§Ø²Ø¯Ø§Ù†ÛŽÚ©ÛŒ Ø¨Ø¦ Ú©ÙˆØªØ§ ðŸ¦µ", 
-            "Ù†Ø§Ù…Ø±ÛŒØªðŸ©¸", 
-            "Ø¯Ú˜Û• Ù„ÛŽØ¯Ø§Ù† ðŸ‘‹ðŸ¼", 
-            "Ø³ÛŽØ±ÙÛ•Ø±ÛŒ Ø¨Û•Ù‚Û•ÙˆÛ•Øª ðŸ‘‘",
-            "Ø¨ÛŒÙ†ÛŒÙ†ÛŒ Ú©Ø§Øª ðŸ”Ž",
-            "Ø¨ÛŒÙ†ÛŒÙ†ÛŒ Ø¨Ø±Û•ÛŒÙ†Ø±ÙˆØªðŸ¦…", 
-            "Ø¨Ø§Ø²Ø¯Ø§Ù†ÛŒ Ø¨Û•Ø±Ø² ðŸ¦˜", 
-            "Ø¨ÛŒÙ†ÛŒÙ†ÛŒ ÛŒØ§Ø±ÛŒØ²Ø§Ù† ðŸ‘€",
-            "Ù„ÛŽØ¯Ø§Ù† Ø®Û†Ú©Ø§Ø± âš”ï¸",
-            "Ø¯Ø²ÛŒÙ†ÛŒ Ø®ÛŽØ±Ø§ ðŸ”¥"
-        },
-        ar = {
-            "Ø§Ù„Ø³Ø±Ø¹Ø© ðŸŽï¸", 
-            "Ø³Ø±Ø¹Ø© Ø¹Ø§Ù„ÙŠØ© ðŸš€", 
-            "Ù‚ÙØ² Ù„Ø§ Ù†Ù‡Ø§Ø¦ÙŠ ðŸ¦µ", 
-            "Ù…Ø§ ØªÙ…ÙˆØªðŸ©¸", 
-            "Ù…Ø¶Ø§Ø¯ Ù„Ù„Ø¶Ø±Ø¨ ðŸ‘‹ðŸ¼", 
-            "Ø³ÙŠØ±ÙØ±Ø§Øª Ù‚ÙˆÙŠØ© ðŸ‘‘",
-            "ÙƒØ´Ù ÙˆÙ‚Øª ðŸ”Ž",
-            "ÙƒØ´Ù Ø¨Ø±ÙŠÙ†Ø±ÙˆØªðŸ¦…", 
-            "Ø§Ù„Ù‚ÙØ² Ø§Ù„Ø¹Ø§Ù„ÙŠ ðŸ¦˜", 
-            "ÙƒØ´Ù Ø§Ù„Ù„Ø§Ø¹Ø¨ÙŠÙ† ðŸ‘€",
-            "ØµÙØ¹ ØªÙ„Ù‚Ø§Ø¦ÙŠ âš”ï¸",
-            "Ø³Ø±Ù‚Û• ØªÙ„Ù‚Ø§Ø¦ÛŒÛ•ðŸ”¥"
-        }
-    }
-
-    local buttonNames = buttonTranslations[languageCode] or buttonTranslations.en
-
-    
-    local buttonCount = #buttonNames
-    local buttonHeight = math.floor(50 * scaleFactor)
-    local buttonSpacing = math.floor(10 * scaleFactor)
-    local headerHeight = math.floor(50 * scaleFactor)
-    local footerHeight = math.floor(20 * scaleFactor)
-    local instructionHeight = math.floor(18 * scaleFactor)
-    local versionHeight = math.floor(10 * scaleFactor)
-    local bottomMargin = math.floor(6 * scaleFactor)
-    local buttonsPerRow = 2
-    local rows = math.ceil(buttonCount / buttonsPerRow)
-    local buttonWidth = math.floor(150 * scaleFactor)
-
-    -- Calculate menu dimensions
-    local menuWidth = (buttonWidth * buttonsPerRow) + (buttonSpacing * (buttonsPerRow + 1))
-    local menuHeight = headerHeight + (rows * buttonHeight) + ((rows - 1) * buttonSpacing) + 
-                      instructionHeight + footerHeight + versionHeight + bottomMargin
-
-    local shadowWidth = menuWidth + math.floor(6 * scaleFactor)
-    local shadowHeight = menuHeight + math.floor(6 * scaleFactor)
-
-    local mainGui = Instance.new("ScreenGui", player.PlayerGui)
-    mainGui.Name = "kurdhubMenu"
-    mainGui.ResetOnSpawn = false
-    mainGui.Enabled = true
-    mainGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-    local shadow = Instance.new("Frame", mainGui)
-    shadow.Size = UDim2.new(0, shadowWidth, 0, shadowHeight)
-    shadow.Position = UDim2.new(0.5, -shadowWidth // 2, 0.5, -shadowHeight // 2)
-    shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    shadow.BorderSizePixel = 0
-    shadow.ZIndex = 0
-    shadow.Visible = false -- Shadow starts hidden
-
-    local shadowCorner = Instance.new("UICorner", shadow)
-    shadowCorner.CornerRadius = UDim.new(0, math.floor(18 * scaleFactor))
-
-    local menuFrame = Instance.new("Frame", mainGui)
-    menuFrame.Size = UDim2.new(0, menuWidth, 0, menuHeight)
-    menuFrame.Position = UDim2.new(0.5, -menuWidth // 2, 0.5, -menuHeight // 2)
-    menuFrame.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
-    menuFrame.BorderSizePixel = 0
-    menuFrame.Active = true
-    menuFrame.ZIndex = 1
-    menuFrame.Visible = true -- Menu starts visible
-
-    local menuCorner = Instance.new("UICorner", menuFrame)
-    menuCorner.CornerRadius = UDim.new(0, math.floor(16 * scaleFactor))
-
-    -- Create header
-    local header = Instance.new("Frame", menuFrame)
-    header.Size = UDim2.new(1, 0, 0, headerHeight)
-    header.Position = UDim2.new(0, 0, 0, 0)
-    header.BackgroundTransparency = 1
-    header.ZIndex = 2
-
-    local logo = Instance.new("ImageLabel", header)
-    logo.Size = UDim2.new(0, math.floor(48 * scaleFactor), 0, math.floor(48 * scaleFactor))
-    logo.Position = UDim2.new(0, math.floor(8 * scaleFactor), 0, math.floor(3 * scaleFactor))
-    logo.BackgroundTransparency = 1
-    logo.Image = ""
-    logo.ZIndex = 2
-
-    local logoCorner = Instance.new("UICorner", logo)
-    logoCorner.CornerRadius = UDim.new(1, 0)
-
-    local titleTexts = {
-        en = "   Kurd hub",
-        ku = "   Kurd hub",
-        ar = "   Kurd hub"
-    }
-    local title = Instance.new("TextLabel", header)
-    title.Size = UDim2.new(1, math.floor(-70 * scaleFactor), 1, 0)
-    title.Position = UDim2.new(0, math.floor(64 * scaleFactor), 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = titleTexts[languageCode] or titleTexts.en
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 36 * scaleFactor
-    title.TextColor3 = Color3.fromRGB(22, 22, 22)
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.ZIndex = 2
-
-    local toggleButton = Instance.new("TextButton", mainGui)
-    toggleButton.Size = UDim2.new(0, 40, 0, 40)
-    toggleButton.Position = UDim2.new(0, 500, 0.5, -20)
-    toggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    toggleButton.Text = "kurdhub"
-    toggleButton.Font = Enum.Font.GothamBold
-    toggleButton.TextSize = 10
-    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleButton.BorderSizePixel = 0
-    toggleButton.ZIndex = 4
-
-    local toggleCorner = Instance.new("UICorner", toggleButton)
-    toggleCorner.CornerRadius = UDim.new(0, 8)
-
-    -- Dragging functionality for toggle button
-    local dragging, dragInput, dragStart, startPos
-
-    toggleButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = toggleButton.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
+local function saveSettings(settings)
+    local success, result = pcall(function()
+        local jsonString = HttpService:JSONEncode(settings)
+        writefile(settingsFileName, jsonString)
     end)
-
-    toggleButton.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-
-    inputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            toggleButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-
-    -- Toggle menu visibility
-    toggleButton.MouseButton1Click:Connect(function()
-        menuFrame.Visible = not menuFrame.Visible
-        shadow.Visible = menuFrame.Visible
-    end)
-
-    -- Menu drag functionality
-    do
-        local menuDragging, menuDragInput, menuDragStart, menuStartPos
-        
-        header.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Touch then
-                menuDragging = true
-                menuDragStart = input.Position
-                menuStartPos = menuFrame.Position
-                input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        menuDragging = false
-                    end
-                end)
-            end
-        end)
-        
-        header.InputChanged:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Touch then
-                menuDragInput = input
-            end
-        end)
-        
-        inputService.InputChanged:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Touch and menuDragging then
-                local delta = input.Position - menuDragStart
-                menuFrame.Position = UDim2.new(menuStartPos.X.Scale, menuStartPos.X.Offset + delta.X, menuStartPos.Y.Scale, menuStartPos.Y.Offset + delta.Y)
-                shadow.Position = UDim2.new(menuFrame.Position.X.Scale, menuFrame.Position.X.Offset - 4, menuFrame.Position.Y.Scale, menuFrame.Position.Y.Offset - 4)
-            end
-        end)
-        
-        menuFrame:GetPropertyChangedSignal("Position"):Connect(function()
-            shadow.Position = UDim2.new(menuFrame.Position.X.Scale, menuFrame.Position.X.Offset - 4, menuFrame.Position.Y.Scale, menuFrame.Position.Y.Offset - 4)
-        end)
+    if not success then
+        warn("Failed to save settings: " .. tostring(result))
     end
-
-    local buttons = {}
-    for index, buttonName in ipairs(buttonNames) do
-        local row = math.ceil(index / buttonsPerRow) - 1
-        local col = (index - 1) % buttonsPerRow
-        
-        local buttonPosX = buttonSpacing + (col * (buttonWidth + buttonSpacing))
-        local buttonPosY = headerHeight + buttonSpacing + (row * (buttonHeight + buttonSpacing))
-        
-        local buttonFrame = Instance.new("Frame", menuFrame)
-        buttonFrame.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
-        buttonFrame.Position = UDim2.new(0, buttonPosX, 0, buttonPosY)
-        buttonFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        buttonFrame.BorderSizePixel = 0
-        buttonFrame.ZIndex = 2
-        
-        local buttonFrameCorner = Instance.new("UICorner", buttonFrame)
-        buttonFrameCorner.CornerRadius = UDim.new(0, math.floor(16 * scaleFactor))
-        
-        local button = Instance.new("TextButton", buttonFrame)
-        button.Size = UDim2.new(1, -math.floor(4 * scaleFactor), 1, -math.floor(4 * scaleFactor))  -- Reduced padding
-        button.Position = UDim2.new(0, math.floor(2 * scaleFactor), 0, math.floor(2 * scaleFactor))  -- Reduced padding
-        button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        button.Text = buttonName
-        button.Font = Enum.Font.GothamBlack
-        button.TextSize = 20 * scaleFactor  -- Slightly larger text
-        button.TextColor3 = Color3.fromRGB(26, 26, 26)
-        button.BorderSizePixel = 0
-        button.AutoButtonColor = true
-        button.ZIndex = 3
-        button.TextWrapped = true  -- Ensure text wraps if needed
-        
-        local buttonCorner = Instance.new("UICorner", button)
-        buttonCorner.CornerRadius = UDim.new(0, math.floor(12 * scaleFactor))
-        
-        -- Make the button highlight area larger than visible area
-        button.MouseEnter:Connect(function()
-            button.BackgroundColor3 = button.BackgroundColor3 == Color3.fromRGB(0, 255, 0) and 
-                                     Color3.fromRGB(0, 255, 0) or Color3.fromRGB(240, 240, 240)
-        end)
-        
-        button.MouseLeave:Connect(function()
-            button.BackgroundColor3 = button.BackgroundColor3 == Color3.fromRGB(0, 255, 0) and 
-                                     Color3.fromRGB(0, 255, 0) or Color3.new(1, 1, 1)
-        end)
-        
-        -- Make the entire frame clickable, not just the inner button
-        buttonFrame.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-                button:SetAttribute("Pressed", true)
-                button.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
-            end
-        end)
-        
-        buttonFrame.InputEnded:Connect(function(input)
-            if button:GetAttribute("Pressed") and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) then
-                button:SetAttribute("Pressed", false)
-                if button.BackgroundColor3 ~= Color3.fromRGB(0, 255, 0) then
-                    button.BackgroundColor3 = Color3.new(1, 1, 1)
-                end
-                -- Trigger the button click
-                button:Fire("MouseButton1Click")
-            end
-        end)
-        
-        buttons[index] = button
-    end
-
-    -- Speed Boost System
--- Speed Boost System (Button 1)
-local speedBoostEnabled = false
-local desiredSpeed = 50
-local defaultSpeed = 34
-
--- Function to apply speed to humanoid
-local function applySpeed(humanoid)
-    if not humanoid then return end
-    humanoid.WalkSpeed = desiredSpeed
-    humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-        if speedBoostEnabled and humanoid.WalkSpeed ~= desiredSpeed then
-            humanoid.WalkSpeed = desiredSpeed
-        end
-    end)
 end
 
--- Function to reset speed
-local function resetSpeed(humanoid)
-    if not humanoid then return end
-    humanoid.WalkSpeed = defaultSpeed
+local function loadSettings()
+    if isfile(settingsFileName) then
+        local jsonString = readfile(settingsFileName)
+        local decoded = HttpService:JSONDecode(jsonString)
+
+        -- Merge with default settings to ensure all keys exist
+        for key, value in pairs(defaultSettings) do
+            if decoded[key] == nil then
+                decoded[key] = value
+            end
+        end
+
+        return decoded
+    else
+        warn("Settings file not found, using default settings.")
+        return defaultSettings
+    end
 end
 
--- Speed toggle logic
-buttons[1].MouseButton1Click:Connect(function()
-    speedBoostEnabled = not speedBoostEnabled
+local settings = loadSettings()
 
-    if speedBoostEnabled then
-        buttons[1].BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-        antiKickHumanoid()
-        buttons[1].Text = (languageCode == "en" and "Speed: ON") or 
-                          (languageCode == "ku" and "Ø®ÛŽØ±Ø§ÛŒÛŒ: Ú†Ø§Ù„Ø§Ú©Û•") or 
-                          "Ø§Ù„Ø³Ø±Ø¹Ø©: ØªØ´ØºÙŠÙ„"
-    else
-        buttons[1].BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        buttons[1].Text = (languageCode == "en" and "Speed: OFF") or 
-                          (languageCode == "ku" and "Ø®ÛŽØ±Ø§ÛŒÛŒ: Ù†Ø§Ú†Ø§Ù„Ø§Ú©Û•") or 
-                          "Ø§Ù„Ø³Ø±Ø¹Ø©: Ø¥ÙŠÙ‚Ø§Ù"
-    end
+local oldGui = PlayerGui:FindFirstChild("NamelessHubGui")
+if oldGui then oldGui:Destroy() end
 
-    if player.Character then
-        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            if speedBoostEnabled then
-                applySpeed(humanoid)
-            else
-                resetSpeed(humanoid)
-            end
-        end
-    end
-end)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "NamelessHubGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
 
--- Speed persistence
-game:GetService("RunService").Heartbeat:Connect(function()
-    if player.Character then
-        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            if speedBoostEnabled and humanoid.WalkSpeed ~= desiredSpeed then
-                humanoid.WalkSpeed = desiredSpeed
-            elseif not speedBoostEnabled and humanoid.WalkSpeed ~= defaultSpeed then
-                humanoid.WalkSpeed = defaultSpeed
-            end
-        end
-    end
-end)
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 50, 0, 50)
+mainFrame.Position = UDim2.new(settings.guiPosition[1], settings.guiPosition[2], settings.guiPosition[3], settings.guiPosition[4])
+mainFrame.AnchorPoint = Vector2.new(0, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+mainFrame.Parent = screenGui
 
-player.CharacterAdded:Connect(function(character)
-    local humanoid = character:WaitForChild("Humanoid")
-    if speedBoostEnabled then
-        applySpeed(humanoid)
-    else
-        resetSpeed(humanoid)
-    end
-end)
+local mainCorner = Instance.new("UICorner", mainFrame)
+mainCorner.CornerRadius = UDim.new(0, 12)
 
+local nhLabel = Instance.new("TextLabel")
+nhLabel.Name = "NHLabel"
+nhLabel.Size = UDim2.new(0, 50, 0, 50)
+nhLabel.Position = UDim2.new(0, 0, 0, 0)
+nhLabel.BackgroundTransparency = 1
+nhLabel.Text = "NH"
+nhLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+nhLabel.TextScaled = true
+nhLabel.Font = Enum.Font.GothamBold
+nhLabel.TextXAlignment = Enum.TextXAlignment.Center
+nhLabel.TextYAlignment = Enum.TextYAlignment.Center
+nhLabel.Parent = mainFrame
 
-    -- Get All Tools Button (Button 2)
-buttons[2].MouseButton1Click:Connect(function()
-    -- Check if button 4 ("You do not die") is ON (green)
-    if buttons[4].BackgroundColor3 ~= Color3.fromRGB(0, 255, 0) then
-        -- Show notification if button 4 is OFF
-        game.StarterGui:SetCore("SendNotification", {
-            Title = "Warning",
-            Text = "Please enable 'Anti DieðŸ©¸' first!",
-            Duration = 5,
-        })
-    else
-        -- If button 4 is ON, load the speed script
-        loadstring(game:HttpGet("https://ninja68.serv00.net/krdNINJA123oki/speed"))()
-    end
-end)
+local hubLabel = Instance.new("TextLabel")
+hubLabel.Size = UDim2.new(0, 50, 0, 20)
+hubLabel.Position = UDim2.new(0, 0, 0, 30)
+hubLabel.BackgroundTransparency = 1
+hubLabel.Text = "Hub"
+hubLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+hubLabel.TextScaled = true
+hubLabel.Font = Enum.Font.GothamBold
+hubLabel.TextTransparency = 1
+hubLabel.Visible = false
+hubLabel.Parent = mainFrame
 
+local openButton = Instance.new("TextButton")
+openButton.Size = UDim2.new(1, 0, 1, 0)
+openButton.BackgroundTransparency = 1
+openButton.Text = ""
+openButton.Parent = mainFrame
 
-local infiniteJumpEnabled = false
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -35, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+closeButton.Text = "âœ•"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.TextScaled = true
+closeButton.Font = Enum.Font.Gotham
+closeButton.Visible = false
+closeButton.BackgroundTransparency = 1
+closeButton.TextTransparency = 1
+closeButton.Parent = mainFrame
+
+local closeCorner = Instance.new("UICorner", closeButton)
+closeCorner.CornerRadius = UDim.new(1, 0)
+
+local dragging = false
+local dragStartPos
+local startFramePos
+local savedPosition = mainFrame.Position
+local openedPosition = UDim2.new(0.5, 0, 0.45, 0)
+
+-- State variables
+local walkspeedEnabled = settings.walkspeedEnabled
+local walkspeedConnection = nil
+local flingEnabled = settings.flingEnabled
+local flingConnection = nil
+local espEnabled = settings.espEnabled
+local espConnections = {}
+local espBillboards = {}
+local timerEspEnabled = settings.timerEspEnabled
+local activeConnections = {}
+local webSlingerAutoAimEnabled = settings.webSlingerAutoAimEnabled
+local webSlingerConnection = nil
+local infiniteJumpEnabled = settings.infiniteJumpEnabled
 local infiniteJumpConnection = nil
-local initialJumpSetupDone = false
+local boostJumpEnabled = settings.boostJumpEnabled
+local boostJumpConnections = {}
+local currentWalkSpeed = settings.currentWalkSpeed
+local currentBoostStrength = settings.currentBoostStrength
+local antiTrapEnabled = settings.antiTrapEnabled
+local antiTrapConnection = nil
+local antiHitEnabled = settings.antiHitEnabled
+local brainrotEspEnabled = settings.brainrotEspEnabled
 
-local function buyToolIfNotOwned(toolName)
-    local backpack = player:WaitForChild("Backpack")
-    if not backpack:FindFirstChild(toolName) then
-        local args = {toolName}
+openButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStartPos = input.Position
+        startFramePos = mainFrame.Position
+    end
+end)
+
+openButton.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStartPos
+        local newPos = UDim2.new(
+            startFramePos.X.Scale,
+            startFramePos.X.Offset + delta.X,
+            startFramePos.Y.Scale,
+            startFramePos.Y.Offset + delta.Y
+        )
+        mainFrame.Position = newPos
+        savedPosition = newPos
+        -- Update settings
+        settings.guiPosition = {newPos.X.Scale, newPos.X.Offset, newPos.Y.Scale, newPos.Y.Offset}
+        saveSettings(settings)
+    end
+end)
+
+openButton.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+local function createTabButton(name, yOffset)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0.3, -10, 0, 40)
+    button.Position = UDim2.new(0, 5, 0, yOffset)
+    button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    button.Text = name
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.TextSize = 14
+    button.Font = Enum.Font.Gotham
+    button.BorderSizePixel = 0
+    button.Visible = false
+    button.BackgroundTransparency = 1
+    button.TextTransparency = 1
+    button.Parent = mainFrame
+
+    local corner = Instance.new("UICorner", button)
+    corner.CornerRadius = UDim.new(0, 8)
+
+    button.MouseButton1Down:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        }):Play()
+    end)
+    
+    button.MouseButton1Up:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.3), {
+            BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        }):Play()
+    end)
+    
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.3), {
+            BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        }):Play()
+    end)
+
+    return button
+end
+
+local tabMain = createTabButton("Main", 90)
+local tabSettings = createTabButton("Settings", 140)
+local tabESP = createTabButton("ESP", 190)
+local tabInfo = createTabButton("Info", 240)
+
+local divider = Instance.new("Frame")
+divider.Size = UDim2.new(0, 2, 1, -20)
+divider.Position = UDim2.new(0.3, 0, 0, 10)
+divider.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+divider.BackgroundTransparency = 1
+divider.BorderSizePixel = 0
+divider.Visible = false
+divider.Parent = mainFrame
+
+local tabContents = {}
+
+local function disableWalkspeed()
+    if walkspeedConnection then
+        walkspeedConnection:Disconnect()
+        walkspeedConnection = nil
+    end
+    local character = player.Character
+    if character then
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if root then
+            local vectorForce = root:FindFirstChild("ConstantMoveForce")
+            if vectorForce then
+                vectorForce:Destroy()
+            end
+            local attachment = root:FindFirstChildOfClass("Attachment")
+            if attachment then
+                attachment:Destroy()
+            end
+        end
+    end
+    walkspeedEnabled = false
+    settings.walkspeedEnabled = false
+    saveSettings(settings)
+end
+
+local function enableWalkspeed(actionButton, speedTextBox)
+    if walkspeedConnection then
+        walkspeedConnection:Disconnect()
+        walkspeedConnection = nil
+    end
+    -- Remove any existing vector force and attachment
+    local character = player.Character
+    if character then
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if root then
+            local vectorForce = root:FindFirstChild("ConstantMoveForce")
+            if vectorForce then
+                vectorForce:Destroy()
+            end
+            local attachment = root:FindFirstChildOfClass("Attachment")
+            if attachment then
+                attachment:Destroy()
+            end
+        end
+    end
+    -- Set up new components
+    character = player.Character or player.CharacterAdded:Wait()
+    local root = character:WaitForChild("HumanoidRootPart")
+    local humanoid = character:WaitForChild("Humanoid")
+
+    local FORCE_MULTIPLIER = 100
+    local AIR_DRAG = 0.9
+
+    local function tryEquipAndUseTool()
+        local tool = player.Backpack:FindFirstChild("Invisibility Cloak") or (player.Character and player.Character:FindFirstChild("Invisibility Cloak"))
+        if tool and tool:IsA("Tool") then
+            if tool.Parent ~= character then
+                tool.Parent = character
+                task.wait(0.1)
+            end
+            tool:Activate()
+        else
+            StarterGui:SetCore("SendNotification", {
+                Title = "Tool Not Found",
+                Text = "You don't have Invisibility Cloak in your backpack or equipped!",
+                Duration = 5
+            })
+        end
+    end
+
+    tryEquipAndUseTool()
+
+    local attachment = Instance.new("Attachment", root)
+    local vectorForce = Instance.new("VectorForce")
+    vectorForce.Name = "ConstantMoveForce"
+    vectorForce.Attachment0 = attachment
+    vectorForce.RelativeTo = Enum.ActuatorRelativeTo.World
+    vectorForce.ApplyAtCenterOfMass = true
+    vectorForce.Force = Vector3.zero
+    vectorForce.Parent = root
+
+    walkspeedConnection = RunService.RenderStepped:Connect(function()
+        local moveDir = humanoid.MoveDirection
+        if moveDir.Magnitude > 0 then
+            local targetVelocity = moveDir.Unit * currentWalkSpeed
+            local currentVelocity = root.Velocity
+            local flatVelocity = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
+            local diff = targetVelocity - flatVelocity
+            local corrected = diff * FORCE_MULTIPLIER - flatVelocity * AIR_DRAG
+            vectorForce.Force = Vector3.new(corrected.X, 0, corrected.Z)
+        else
+            vectorForce.Force = Vector3.zero
+        end
+    end)
+
+    walkspeedEnabled = true
+    settings.walkspeedEnabled = true
+    saveSettings(settings)
+    if actionButton then
+        actionButton.Text = "Disable Walkspeed"
+    end
+end
+
+local function updateWalkspeed(newSpeed)
+    currentWalkSpeed = newSpeed
+    settings.currentWalkSpeed = newSpeed
+    saveSettings(settings)
+end
+
+local function enableAntiTrap(antiTrapButton)
+    if antiTrapConnection then
+        antiTrapConnection:Disconnect()
+        antiTrapConnection = nil
+    end
+    antiTrapEnabled = true
+    if antiTrapButton then
+        antiTrapButton.Text = "Disable Anti Trap"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Anti Trap",
+        Text = "Anti Trap: ON",
+        Duration = 2
+    })
+
+    antiTrapConnection = RunService.Heartbeat:Connect(function()
+        local trap = Workspace:FindFirstChild("Trap")
+        if trap and trap:IsA("Model") then
+            trap:Destroy()
+        end
+    end)
+    
+    settings.antiTrapEnabled = true
+    saveSettings(settings)
+end
+
+local function disableAntiTrap(antiTrapButton)
+    if antiTrapConnection then
+        antiTrapConnection:Disconnect()
+        antiTrapConnection = nil
+    end
+    antiTrapEnabled = false
+    if antiTrapButton then
+        antiTrapButton.Text = "Enable Anti Trap"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Anti Trap",
+        Text = "Anti Trap: OFF",
+        Duration = 2
+    })
+    
+    settings.antiTrapEnabled = false
+    saveSettings(settings)
+end
+
+local function getRandomColor()
+    return Color3.fromRGB(math.random(50, 255), math.random(50, 255), math.random(50, 255))
+end
+
+local function enableESP(espButton)
+    -- Remove existing ESP if any
+    for _, targetPlayer in pairs(Players:GetPlayers()) do
+        if targetPlayer ~= player and targetPlayer.Character then
+            local highlight = targetPlayer.Character:FindFirstChild("ESPHighlight")
+            if highlight then
+                highlight:Destroy()
+            end
+            local billboard = espBillboards[targetPlayer]
+            if billboard then
+                billboard:Destroy()
+                espBillboards[targetPlayer] = nil
+            end
+        end
+    end
+    for _, connection in pairs(espConnections) do
+        connection:Disconnect()
+    end
+    espConnections = {}
+    -- Set up new ESP
+    espEnabled = true
+    if espButton then
+        espButton.Text = "Disable ESP"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "ESP",
+        Text = "ESP: ON",
+        Duration = 2
+    })
+
+    local function addHighlightAndName(targetPlayer)
+        if targetPlayer ~= player and targetPlayer.Character then
+            local randomColor = getRandomColor()
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "ESPHighlight"
+            highlight.FillColor = randomColor
+            highlight.OutlineColor = randomColor
+            highlight.FillTransparency = 0.3
+            highlight.OutlineTransparency = 0
+            highlight.Adornee = targetPlayer.Character
+            highlight.Parent = targetPlayer.Character
+
+            local billboard = Instance.new("BillboardGui")
+            billboard.Name = "ESPName"
+            billboard.Adornee = targetPlayer.Character:FindFirstChild("Head")
+            billboard.Size = UDim2.new(0, 100, 0, 50)
+            billboard.StudsOffset = Vector3.new(0, 2, 0)
+            billboard.AlwaysOnTop = true
+            billboard.Parent = targetPlayer.Character
+
+            local nameLabel = Instance.new("TextLabel")
+            nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+            nameLabel.Position = UDim2.new(0, 0, 0, 0)
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.Text = targetPlayer.Name
+            nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            nameLabel.TextScaled = true
+            nameLabel.Font = Enum.Font.GothamBold
+            nameLabel.Parent = billboard
+
+            local displayNameLabel = Instance.new("TextLabel")
+            displayNameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+            displayNameLabel.Position = UDim2.new(0, 0, 0.5, 0)
+            displayNameLabel.BackgroundTransparency = 1
+            displayNameLabel.Text = targetPlayer.DisplayName
+            displayNameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+            displayNameLabel.TextScaled = true
+            displayNameLabel.Font = Enum.Font.Gotham
+            displayNameLabel.Parent = billboard
+
+            espBillboards[targetPlayer] = billboard
+        end
+    end
+
+    for _, targetPlayer in pairs(Players:GetPlayers()) do
+        addHighlightAndName(targetPlayer)
+    end
+
+    espConnections["PlayerAdded"] = Players.PlayerAdded:Connect(function(targetPlayer)
+        targetPlayer.CharacterAdded:Connect(function()
+            addHighlightAndName(targetPlayer)
+        end)
+    end)
+
+    espConnections["PlayerRemoving"] = Players.PlayerRemoving:Connect(function(targetPlayer)
+        if targetPlayer.Character then
+            local highlight = targetPlayer.Character:FindFirstChild("ESPHighlight")
+            if highlight then
+                highlight:Destroy()
+            end
+            local billboard = espBillboards[targetPlayer]
+            if billboard then
+                billboard:Destroy()
+                espBillboards[targetPlayer] = nil
+            end
+        end
+    end)
+    
+    settings.espEnabled = true
+    saveSettings(settings)
+end
+
+local function disableESP(espButton)
+    espEnabled = false
+    if espButton then
+        espButton.Text = "Enable ESP"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "ESP",
+        Text = "ESP: OFF",
+        Duration = 2
+    })
+
+    for _, targetPlayer in pairs(Players:GetPlayers()) do
+        if targetPlayer ~= player and targetPlayer.Character then
+            local highlight = targetPlayer.Character:FindFirstChild("ESPHighlight")
+            if highlight then
+                highlight:Destroy()
+            end
+            local billboard = espBillboards[targetPlayer]
+            if billboard then
+                billboard:Destroy()
+                espBillboards[targetPlayer] = nil
+            end
+        end
+    end
+
+    for _, connection in pairs(espConnections) do
+        connection:Disconnect()
+    end
+    espConnections = {}
+    
+    settings.espEnabled = false
+    saveSettings(settings)
+end
+
+local function updateBillboard(mainPart, contentText, shouldShow)
+    local existing = mainPart:FindFirstChild("RemainingTimeGui")
+    if shouldShow then
+        if not existing then
+            local gui = Instance.new("BillboardGui")
+            gui.Name = "RemainingTimeGui"
+            gui.Adornee = mainPart
+            gui.Size = UDim2.new(0, 200, 0, 50)
+            gui.StudsOffset = Vector3.new(0, 5, 0)
+            gui.AlwaysOnTop = true
+            gui.Parent = mainPart
+
+            local label = Instance.new("TextLabel")
+            label.Name = "Text"
+            label.Size = UDim2.new(1, 0, 1, 0)
+            label.BackgroundTransparency = 1
+            label.TextScaled = true
+            label.TextColor3 = Color3.fromRGB(255, 255, 255)
+            label.TextStrokeTransparency = 0.2
+            label.Font = Enum.Font.GothamBold
+            label.Text = contentText
+            label.Parent = gui
+        else
+            local label = existing:FindFirstChild("Text")
+            if label then
+                label.Text = contentText
+            end
+        end
+    else
+        if existing then
+            existing:Destroy()
+        end
+    end
+end
+
+local function findLowestValidRemainingTime(purchases)
+    local lowest = nil
+    local lowestY = nil
+
+    for _, purchase in pairs(purchases:GetChildren()) do
+        local main = purchase:FindFirstChild("Main")
+        local gui = main and main:FindFirstChild("BillboardGui")
+        local remTime = gui and gui:FindFirstChild("RemainingTime")
+        local locked = gui and gui:FindFirstChild("Locked")
+
+        if main and remTime and locked and remTime:IsA("TextLabel") and locked:IsA("GuiObject") then
+            if locked.Visible then
+                local y = main.Position.Y
+                if not lowestY or y < lowestY then
+                    lowest = {remTime = remTime, locked = locked, main = main}
+                    lowestY = y
+                end
+            end
+        end
+    end
+
+    return lowest
+end
+
+local function scanAndConnect()
+    for _, plot in pairs(Workspace:FindFirstChild("Plots"):GetChildren()) do
+        local purchases = plot:FindFirstChild("Purchases")
+        if purchases then
+            local selected = findLowestValidRemainingTime(purchases)
+
+            for _, purchase in pairs(purchases:GetChildren()) do
+                local main = purchase:FindFirstChild("Main")
+                local gui = main and main:FindFirstChild("BillboardGui")
+                local remTime = gui and gui:FindFirstChild("RemainingTime")
+                local locked = gui and gui:FindFirstChild("Locked")
+
+                if main and remTime and locked and remTime:IsA("TextLabel") and locked:IsA("GuiObject") then
+                    local isTarget = selected and remTime == selected.remTime
+                    updateBillboard(main, remTime.Text, isTarget)
+
+                    local key = remTime:GetDebugId()
+                    if isTarget and not activeConnections[key] then
+                        local function refresh()
+                            local stillTarget = (findLowestValidRemainingTime(purchases) or {}).remTime == remTime
+                            updateBillboard(main, remTime.Text, stillTarget and locked.Visible)
+                        end
+
+                        local conn1 = remTime:GetPropertyChangedSignal("Text"):Connect(refresh)
+                        local conn2 = locked:GetPropertyChangedSignal("Visible"):Connect(refresh)
+                        activeConnections[key] = {conn1, conn2}
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function enableTimerESP(timerEspButton)
+    timerEspEnabled = true
+    if timerEspButton then
+        timerEspButton.Text = "Disable Timer ESP"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Timer ESP",
+        Text = "Timer ESP: ON",
+        Duration = 2
+    })
+
+    task.spawn(function()
+        while timerEspEnabled do
+            pcall(scanAndConnect)
+            task.wait(5)
+        end
+    end)
+    
+    settings.timerEspEnabled = true
+    saveSettings(settings)
+end
+
+local function disableTimerESP(timerEspButton)
+    timerEspEnabled = false
+    if timerEspButton then
+        timerEspButton.Text = "Enable Timer ESP"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Timer ESP",
+        Text = "Timer ESP: OFF",
+        Duration = 2
+    })
+
+    for _, plot in pairs(Workspace:FindFirstChild("Plots"):GetChildren()) do
+        local purchases = plot:FindFirstChild("Purchases")
+        if purchases then
+            for _, purchase in pairs(purchases:GetChildren()) do
+                local main = purchase:FindFirstChild("Main")
+                if main then
+                    local gui = main:FindFirstChild("RemainingTimeGui")
+                    if gui then
+                        gui:Destroy()
+                    end
+                end
+            end
+        end
+    end
+
+    for _, connections in pairs(activeConnections) do
+        for _, connection in ipairs(connections) do
+            connection:Disconnect()
+        end
+    end
+    activeConnections = {}
+    
+    settings.timerEspEnabled = false
+    saveSettings(settings)
+end
+
+local function enableWebSlingerAutoAim(webSlingerButton)
+    if webSlingerConnection then
+        webSlingerConnection:Disconnect()
+        webSlingerConnection = nil
+    end
+    local tool = player.Backpack:FindFirstChild("Web Slinger") or (player.Character and player.Character:FindFirstChild("Web Slinger"))
+    if not tool then
+        local args = {"Web Slinger"}
         pcall(function()
             game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RF/CoinsShopService/RequestBuy"):InvokeServer(unpack(args))
+            StarterGui:SetCore("SendNotification", {
+                Title = "Web Slinger Auto Aim",
+                Text = "Attempted to purchase Web Slinger",
+                Duration = 3
+            })
         end)
-    end
-end
-
-local function unequipAllTools()
-    local character = player.Character
-    if not character then return end
-
-    for _, tool in ipairs(character:GetChildren()) do
-        if tool:IsA("Tool") then
-            tool.Parent = player.Backpack
+        task.wait(1)
+        tool = player.Backpack:FindFirstChild("Web Slinger") or (player.Character and player.Character:FindFirstChild("Web Slinger"))
+        if not tool then
+            StarterGui:SetCore("SendNotification", {
+                Title = "Web Slinger Auto Aim",
+                Text = "Failed to acquire Web Slinger",
+                Duration = 3
+            })
+            return
         end
     end
-end
 
-local function equipTool(toolName)
-    local backpack = player:WaitForChild("Backpack")
-    local tool = backpack:FindFirstChild(toolName)
-    if tool then
-        tool.Parent = player.Character
-        return true
+    webSlingerAutoAimEnabled = true
+    if webSlingerButton then
+        webSlingerButton.Text = "Disable Web Slinger Auto Aim"
     end
-    return false
-end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Web Slinger Auto Aim",
+        Text = "Web Slinger Auto Aim: ON",
+        Duration = 2
+    })
 
-buttons[3].MouseButton1Click:Connect(function()
-    infiniteJumpEnabled = not infiniteJumpEnabled
+    local character = player.Character or player.CharacterAdded:Wait()
+    local handle = tool:WaitForChild("Handle")
 
-    buttons[3].BackgroundColor3 = infiniteJumpEnabled and Color3.fromRGB(0, 255, 0) or Color3.new(1, 1, 1)
+    local function findNearestPlayer()
+        local closestPlayer = nil
+        local closestDistance = math.huge
+        local handlePosition = handle.Position
 
-    if infiniteJumpEnabled then
-        antiKickHumanoid()
-
-        if not initialJumpSetupDone then
-            initialJumpSetupDone = true
-            task.spawn(function()
-                buyToolIfNotOwned("Speed Coil")
-                task.wait(0.2)
-
-                -- Attempt to equip up to 3 times
-                for i = 1, 3 do
-                    if equipTool("Speed Coil") then break end
-                    task.wait(0.15)
-                end
-
-                local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-                if humanoid then
-                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                end
-            end)
-        end
-
-        if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
-        infiniteJumpConnection = inputService.JumpRequest:Connect(function()
-            if infiniteJumpEnabled then
-                local character = player.Character
-                if character then
-                    local humanoid = character:FindFirstChildOfClass("Humanoid")
-                    if humanoid and humanoid:GetState() ~= Enum.HumanoidStateType.Jumping then
-                        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        for _, targetPlayer in ipairs(Players:GetPlayers()) do
+            if targetPlayer ~= player and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
+                if humanoid and humanoid.Health > 0 then
+                    local targetHrp = targetPlayer.Character.HumanoidRootPart
+                    local distance = (handlePosition - targetHrp.Position).Magnitude
+                    if distance < closestDistance then
+                        closestDistance = distance
+                        closestPlayer = targetPlayer
                     end
                 end
             end
-        end)
-    else
-        if infiniteJumpConnection then
-            infiniteJumpConnection:Disconnect()
-            infiniteJumpConnection = nil
         end
+        return closestPlayer
     end
-end)
 
-
-
-
-local godModeEnabled = false
-local godModeConnections = {}
-local godModeCharacterConn = nil
-
-local function clearGodMode()
-    for _, conns in pairs(godModeConnections) do
-        for _, conn in ipairs(conns) do
-            conn:Disconnect()
+    webSlingerConnection = tool.Activated:Connect(function()
+        local targetPlr = findNearestPlayer()
+        if targetPlr and targetPlr.Character then
+            local targetPart = targetPlr.Character:WaitForChild("HumanoidRootPart")
+            if targetPart then
+                local targetPos = targetPart.Position
+                local args = {
+                    vector.create(targetPos.X, targetPos.Y, targetPos.Z),
+                    targetPart,
+                    handle
+                }
+                ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RE/UseItem"):FireServer(unpack(args))
+                StarterGui:SetCore("SendNotification", {
+                    Title = "Web Slinger Auto Aim",
+                    Text = "Fired at " .. targetPlr.Name,
+                    Duration = 2
+                })
+            else
+                warn("Target has no HumanoidRootPart")
+                StarterGui:SetCore("SendNotification", {
+                    Title = "Web Slinger Auto Aim",
+                    Text = "Target has no HumanoidRootPart",
+                    Duration = 3
+                })
+            end
+        else
+            warn("No valid players found nearby.")
+            StarterGui:SetCore("SendNotification", {
+                Title = "Web Slinger Auto Aim",
+                Text = "No valid players found nearby",
+                Duration = 3
+            })
         end
-    end
-    godModeConnections = {}
+    end)
 
-    if godModeCharacterConn then
-        godModeCharacterConn:Disconnect()
-        godModeCharacterConn = nil
-    end
+    settings.webSlingerAutoAimEnabled = true
+    saveSettings(settings)
 end
 
-local function setupGodMode(character)
-    if not character then return end
-
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then
-        humanoid = character:WaitForChild("Humanoid", 3)
+local function disableWebSlingerAutoAim(webSlingerButton)
+    if webSlingerConnection then
+        webSlingerConnection:Disconnect()
+        webSlingerConnection = nil
     end
-    if not humanoid then return end
-
-    local conns = {}
-
-    table.insert(conns, humanoid.HealthChanged:Connect(function()
-        if humanoid.Health < humanoid.MaxHealth then
-            humanoid.Health = humanoid.MaxHealth
-        end
-    end))
-
-    table.insert(conns, humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(function()
-        if humanoid.Health < humanoid.MaxHealth then
-            humanoid.Health = humanoid.MaxHealth
-        end
-    end))
-
-    -- Initial heal (only once)
-    humanoid.Health = humanoid.MaxHealth
-
-    godModeConnections[character] = conns
+    webSlingerAutoAimEnabled = false
+    if webSlingerButton then
+        webSlingerButton.Text = "Enable Web Slinger Auto Aim"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Web Slinger Auto Aim",
+        Text = "Web Slinger Auto Aim: OFF",
+        Duration = 2
+    })
+    
+    settings.webSlingerAutoAimEnabled = false
+    saveSettings(settings)
 end
 
-buttons[4].MouseButton1Click:Connect(function()
-    godModeEnabled = not godModeEnabled
-    buttons[4].BackgroundColor3 = godModeEnabled and Color3.fromRGB(0, 255, 0) or Color3.new(1, 1, 1)
+local function enableInfiniteJump(infiniteJumpButton)
+    if infiniteJumpConnection then
+        infiniteJumpConnection:Disconnect()
+        infiniteJumpConnection = nil
+    end
+    infiniteJumpEnabled = true
+    if infiniteJumpButton then
+        infiniteJumpButton.Text = "Disable Infinite Jump"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Infinite Jump",
+        Text = "Infinite Jump: ON",
+        Duration = 2
+    })
 
-    clearGodMode()
+    infiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
+            local hrp = char.HumanoidRootPart
+            local humanoid = char.Humanoid
+            if humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
+            end
+        end
+    end)
+    
+    settings.infiniteJumpEnabled = true
+    saveSettings(settings)
+end
 
-    if godModeEnabled then
-        -- Setup for current character
-        if player.Character then
-            setupGodMode(player.Character)
+local function disableInfiniteJump(infiniteJumpButton)
+    if infiniteJumpConnection then
+        infiniteJumpConnection:Disconnect()
+        infiniteJumpConnection = nil
+    end
+    infiniteJumpEnabled = false
+    if infiniteJumpButton then
+        infiniteJumpButton.Text = "Enable Infinite Jump"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Infinite Jump",
+        Text = "Infinite Jump: OFF",
+        Duration = 2
+    })
+    
+    settings.infiniteJumpEnabled = false
+    saveSettings(settings)
+end
+
+local function enableBoostJump(boostJumpButton)
+    for _, connection in pairs(boostJumpConnections) do
+        connection:Disconnect()
+    end
+    boostJumpConnections = {}
+    boostJumpEnabled = true
+    if boostJumpButton then
+        boostJumpButton.Text = "Disable Boost Jump"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Boost Jump",
+        Text = "Boost Jump: ON",
+        Duration = 2
+    })
+
+    local FORWARD_STRENGTH = 50
+    local MIN_MOVE_SPEED = 1
+    local canBoost = true
+
+    boostJumpConnections["Stepped"] = RunService.Stepped:Connect(function()
+        local char = player.Character
+        if char and char:FindFirstChild("Humanoid") then
+            local state = char.Humanoid:GetState()
+            canBoost = (
+                state == Enum.HumanoidStateType.Running or
+                state == Enum.HumanoidStateType.RunningNoPhysics or
+                state == Enum.HumanoidStateType.Seated or
+                state == Enum.HumanoidStateType.Landed or
+                state == Enum.HumanoidStateType.PlatformStanding
+            )
+        end
+    end)
+
+    boostJumpConnections["Jump"] = UserInputService.JumpRequest:Connect(function()
+        if not canBoost then return end
+
+        local char = player.Character
+        if not (char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid")) then return end
+        local hrp = char.HumanoidRootPart
+
+        local moving = hrp.Velocity.Magnitude > MIN_MOVE_SPEED
+        local boostVector = Vector3.new(0, currentBoostStrength, 0)
+
+        if moving then
+            boostVector += hrp.CFrame.LookVector * FORWARD_STRENGTH
         end
 
-        -- Setup once for future spawns
-        godModeCharacterConn = player.CharacterAdded:Connect(function(char)
-            setupGodMode(char)
-        end)
+        hrp.Velocity = boostVector
+        canBoost = false
+    end)
+    
+    settings.boostJumpEnabled = true
+    saveSettings(settings)
+end
+
+local function disableBoostJump(boostJumpButton)
+    for _, connection in pairs(boostJumpConnections) do
+        connection:Disconnect()
     end
-end)
+    boostJumpConnections = {}
+    boostJumpEnabled = false
+    if boostJumpButton then
+        boostJumpButton.Text = "Enable Boost Jump"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Boost Jump",
+        Text = "Boost Jump: OFF",
+        Duration = 2
+    })
+    
+    settings.boostJumpEnabled = false
+    saveSettings(settings)
+end
 
+local function updateBoostStrength(newStrength)
+    currentBoostStrength = newStrength
+    settings.currentBoostStrength = newStrength
+    saveSettings(settings)
+end
 
+local function enableAntiHit(antiHitButton)
+    antiHitEnabled = true
+    if antiHitButton then
+        antiHitButton.Text = "Disable Anti Hit"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Anti Hit",
+        Text = "Anti Hit: ON",
+        Duration = 2
+    })
 
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoidRoot = character:WaitForChild("HumanoidRootPart")
+    local webName = "Web Slinger"
+    local remote = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RE/UseItem")
+    local buyRemote = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RF/CoinsShopService/RequestBuy")
 
-buttons[5].MouseButton1Click:Connect(function()
-    loadstring(game:HttpGet("https://ninja68.serv00.net/krdNINJA123oki/Hi"))()
-end)
-
-buttons[6].MouseButton1Click:Connect(function()
-    loadstring(game:HttpGet("https://ninja67.serv00.net/Brainrot/pet"))()
-end)
-    -- Base ESP Logic
-    local baseEspInstances = {}
-    local espThread = nil
-    local baseEspEnabled = false
-    local ESP_CONFIG = {
-        MAX_DISTANCE = 1000,
-        UPDATE_INTERVAL = 0.5,
-        BASE_SIZE = UDim2.new(0, 180, 0, 40),
-        OFFSET = Vector3.new(0, 5, 0),
-        COLORS = {
-            yourPlot = Color3.fromRGB(0, 255, 0),
-            locked = Color3.fromRGB(255, 255, 0),
-            unlocked = Color3.fromRGB(255, 50, 50)
-        }
-    }
-
-    local function findPlayerPlot()
-        local plotsFolder = workspace:FindFirstChild("Plots")
-        if not plotsFolder then return nil end
-        
-        for _, plot in plotsFolder:GetChildren() do
-            local yourBase = plot:FindFirstChild("YourBase", true)
-            if yourBase and yourBase:IsA("BoolValue") and yourBase.Value then
-                return plot.Name
+    local function getWebTool()
+        for _, tool in ipairs(player.Backpack:GetChildren()) do
+            if tool:IsA("Tool") and tool.Name == webName then
+                return tool
             end
         end
         return nil
     end
 
-    local function createBaseESP(plot, mainPart)
-        if baseEspInstances[plot.Name] then
-            baseEspInstances[plot.Name]:Destroy()
+    local function ensureWebTool()
+        if not getWebTool() then
+            buyRemote:InvokeServer(webName)
         end
+    end
 
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = "PlotESP_" .. plot.Name
-        billboard.Size = ESP_CONFIG.BASE_SIZE
-        billboard.StudsOffset = ESP_CONFIG.OFFSET
-        billboard.AlwaysOnTop = true
-        billboard.Adornee = mainPart
-        billboard.MaxDistance = ESP_CONFIG.MAX_DISTANCE
-        billboard.Parent = plot
+    local function equipWebSlinger()
+        local currentTool = character:FindFirstChildOfClass("Tool")
+        if currentTool and currentTool.Name ~= webName then
+            currentTool.Parent = player.Backpack
+        end
+        local tool = getWebTool()
+        if tool then
+            tool.Parent = character
+        end
+    end
 
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(1, 0, 1, 0)
-        frame.BackgroundTransparency = 0.8
-        frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        frame.BorderSizePixel = 0
+    local function useWebSlinger()
+        local tool = character:FindFirstChild(webName)
+        if tool and tool:FindFirstChild("Handle") then
+            local args = {
+                vector.create(-391.2049865722656, -7.293223857879639, 124.80510711669922),
+                character:WaitForChild("UpperTorso")
+            }
+            remote:FireServer(unpack(args))
+        end
+    end
 
+    local existingGui = player.PlayerGui:FindFirstChild("WebSlingerGUI")
+    if existingGui then
+        existingGui:Destroy()
+    end
+
+    local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+    gui.Name = "WebSlingerGUI"
+    gui.ResetOnSpawn = false
+
+    local buttonHolder = Instance.new("Frame")
+    buttonHolder.Size = UDim2.new(0, 180, 0, 60)
+    buttonHolder.Position = UDim2.new(1, -20, 0, 10)
+    buttonHolder.AnchorPoint = Vector2.new(1, 0)
+    buttonHolder.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    buttonHolder.BackgroundTransparency = 0.2
+    buttonHolder.BorderSizePixel = 0
+    buttonHolder.Active = true
+    buttonHolder.Draggable = true
+    buttonHolder.ZIndex = 3
+    buttonHolder.Parent = gui
+    Instance.new("UICorner", buttonHolder).CornerRadius = UDim.new(0, 16)
+
+    local mainButton = Instance.new("TextButton")
+    mainButton.Size = UDim2.new(1, -40, 1, -20)
+    mainButton.Position = UDim2.new(0, 20, 0, 10)
+    mainButton.Text = "ðŸŽ¯ Anti Hit v1"
+    mainButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    mainButton.TextColor3 = Color3.new(1, 1, 1)
+    mainButton.Font = Enum.Font.SourceSansBold
+    mainButton.TextSize = 22
+    mainButton.BorderSizePixel = 0
+    mainButton.ZIndex = 4
+    mainButton.Parent = buttonHolder
+    Instance.new("UICorner", mainButton).CornerRadius = UDim.new(0, 12)
+
+    local autoButton = Instance.new("TextButton")
+    autoButton.Size = UDim2.new(0, 60, 0, 25)
+    autoButton.Position = UDim2.new(1, -65, 1, 5)
+    autoButton.AnchorPoint = Vector2.new(0, 0)
+    autoButton.Text = "Auto: OFF"
+    autoButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    autoButton.TextColor3 = Color3.new(1, 1, 1)
+    autoButton.Font = Enum.Font.SourceSansBold
+    autoButton.TextSize = 14
+    autoButton.BorderSizePixel = 0
+    autoButton.ZIndex = 5
+    autoButton.Parent = buttonHolder
+    Instance.new("UICorner", autoButton).CornerRadius = UDim.new(0, 8)
+
+    local autoMode = false
+    autoButton.MouseButton1Click:Connect(function()
+        autoMode = not autoMode
+        autoButton.Text = "Auto: " .. (autoMode and "ON" or "OFF")
+        autoButton.BackgroundColor3 = autoMode and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(100, 100, 100)
+    end)
+
+    mainButton.MouseButton1Click:Connect(function()
+        ensureWebTool()
+        task.wait(0.3)
+        equipWebSlinger()
+        task.wait(0.1)
+        useWebSlinger()
+    end)
+
+    local lastTriggered = 0
+    local cooldown = 3.5
+
+    local antiHitConnection
+    antiHitConnection = RunService.Heartbeat:Connect(function()
+        if autoMode then
+            local trappedFrame = humanoidRoot:FindFirstChild("TrappedTag")
+            local main = trappedFrame and trappedFrame:FindFirstChild("MainFrame")
+            local timeObj = main and main:FindFirstChild("Time")
+
+            if not timeObj and (tick() - lastTriggered) >= cooldown then
+                lastTriggered = tick()
+                ensureWebTool()
+                task.wait(0.3)
+                equipWebSlinger()
+                task.wait(3.5)
+                useWebSlinger()
+            end
+        end
+    end)
+
+    task.defer(function()
+        RunService.RenderStepped:Connect(function()
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.PlatformStand then
+                humanoid.PlatformStand = false
+            end
+        end)
+    end)
+
+    settings.antiHitEnabled = true
+    saveSettings(settings)
+end
+
+
+local function disableAntiHit(antiHitButton)
+    antiHitEnabled = false
+    if antiHitButton then
+        antiHitButton.Text = "Enable Anti Hit"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Anti Hit",
+        Text = "Anti Hit: OFF",
+        Duration = 2
+    })
+
+    local existingGui = player.PlayerGui:FindFirstChild("WebSlingerGUI")
+    if existingGui then
+        existingGui:Destroy()
+    end
+    
+    settings.antiHitEnabled = false
+    saveSettings(settings)
+end
+
+local function extractNumber(str)
+    if not str then return 0 end
+    local numberStr = str:match("%$(.-)/s")
+    if not numberStr then return 0 end
+    numberStr = numberStr:gsub("%s", "")
+    local multiplier = 1
+    if numberStr:lower():find("k") then
+        multiplier = 1_000
+        numberStr = numberStr:gsub("[kK]", "")
+    elseif numberStr:lower():find("m") then
+        multiplier = 1_000_000
+        numberStr = numberStr:gsub("[mM]", "")
+    elseif numberStr:lower():find("b") then
+        multiplier = 1_000_000_000
+        numberStr = numberStr:gsub("[bB]", "")
+    end
+    return (tonumber(numberStr) or 0) * multiplier
+end
+
+local mutationColors = {
+    Gold = Color3.fromRGB(255, 215, 0),
+    Diamond = Color3.fromRGB(0, 255, 255),
+    Lava = Color3.fromRGB(255, 100, 0),
+    Bloodrot = Color3.fromRGB(255, 0, 0),
+}
+
+local function getMutationTextAndColor(mutation)
+    if not mutation then
+        return "Default", Color3.fromRGB(255, 255, 255), false
+    end
+    if mutation.Visible == false then
+        return "Default", Color3.fromRGB(255, 255, 255), false
+    end
+    
+    local name = mutation.Text
+    if name == "" then
+        return "Default", Color3.fromRGB(255, 255, 255), false
+    end
+
+    if name == "Rainbow" then
+        return "Rainbow", Color3.new(1,1,1), true
+    end
+
+    local color = mutationColors[name] or Color3.fromRGB(255, 255, 255)
+    return name, color, false
+end
+
+local function createGui(base, overhead, labels)
+    if base:FindFirstChild("StatGui") then
+        base.StatGui:Destroy()
+    end
+
+    local gui = Instance.new("BillboardGui")
+    gui.Name = "StatGui"
+    gui.Size = UDim2.new(0, 200, 0, 60)
+    gui.StudsOffset = Vector3.new(0, 3, 0)
+    gui.AlwaysOnTop = true
+    gui.Adornee = base
+    gui.Parent = base
+
+    local labelList = {}
+
+    local function createLabel(order, text)
         local label = Instance.new("TextLabel")
-        label.Name = "Label"
-        label.Size = UDim2.new(1, -10, 1, -10)
-        label.Position = UDim2.new(0, 5, 0, 5)
+        label.Size = UDim2.new(1, 0, 0.25, 0)
+        label.Position = UDim2.new(0, 0, 0.25 * (order - 1), 0)
         label.BackgroundTransparency = 1
         label.TextScaled = true
-        label.Font = Enum.Font.GothamBold
+        label.Font = Enum.Font.SourceSansBold
         label.TextStrokeTransparency = 0.5
-        label.TextStrokeColor3 = Color3.new(0, 0, 0)
-        label.Parent = frame
-
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 6)
-        corner.Parent = frame
-
-        frame.Parent = billboard
-        baseEspInstances[plot.Name] = billboard
-
-        return billboard
+        label.Text = text or "N/A"
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.Name = "StatLine"
+        label.Parent = gui
+        table.insert(labelList, label)
     end
 
-    local function updateBaseESP()
-        local plotsFolder = workspace:FindFirstChild("Plots")
-        if not plotsFolder then return end
-        
-        local playerPlot = findPlayerPlot()
+    createLabel(1, labels.DisplayName)
+    createLabel(2, labels.Generation)
+    createLabel(3, labels.Mutation)
+    createLabel(4, labels.Rarity)
 
-        for _, plot in plotsFolder:GetChildren() do
-            local purchases = plot:FindFirstChild("Purchases")
-            local plotBlock = purchases and purchases:FindFirstChild("PlotBlock")
-            local mainPart = plotBlock and plotBlock:FindFirstChild("Main")
-            local billboardGui = mainPart and mainPart:FindFirstChild("BillboardGui")
-            local timeLabel = billboardGui and billboardGui:FindFirstChild("RemainingTime")
+    local mutationText = labels.Mutation
+    local color = Color3.fromRGB(255, 255, 255)
+    local isRainbow = false
 
-            if timeLabel and mainPart then
-                local billboard = baseEspInstances[plot.Name] or createBaseESP(plot, mainPart)
-                local frame = billboard:FindFirstChild("Frame")
-                local label = frame and frame:FindFirstChild("Label")
-                local isUnlocked = (timeLabel.Text == "0s")
-                
-                if label then
-                    label.Text = isUnlocked and "Unlocked" or ("" .. timeLabel.Text)
-                    if plot.Name == playerPlot then
-                        label.TextColor3 = ESP_CONFIG.COLORS.yourPlot
-                    elseif isUnlocked then
-                        label.TextColor3 = ESP_CONFIG.COLORS.unlocked
-                    else
-                        label.TextColor3 = ESP_CONFIG.COLORS.locked
+    if mutationText == "Rainbow" then
+        isRainbow = true
+    elseif mutationColors[mutationText] then
+        color = mutationColors[mutationText]
+    end
+
+    if not isRainbow then
+        for _, lbl in ipairs(labelList) do
+            lbl.TextColor3 = color
+        end
+    else
+        local t = 0
+        RunService.RenderStepped:Connect(function(dt)
+            if gui.Parent == nil then return end
+            t += dt * 0.2
+            local rainbowColor = Color3.fromHSV(t % 1, 1, 1)
+            for _, lbl in ipairs(labelList) do
+                lbl.TextColor3 = rainbowColor
+            end
+        end)
+    end
+end
+-- GROK STOP HERE
+local function getAllPodiums()
+    local podiums = {}
+    for _, plot in pairs(workspace:WaitForChild("Plots"):GetChildren()) do
+        local animalPods = plot:FindFirstChild("AnimalPodiums")
+        if animalPods then
+            for _, pod in pairs(animalPods:GetChildren()) do
+                local base = pod:FindFirstChild("Base")
+                if base and base:FindFirstChild("Spawn") then
+                    local attach = base.Spawn:FindFirstChild("Attachment")
+                    if attach and attach:FindFirstChild("AnimalOverhead") then
+                        table.insert(podiums, attach.AnimalOverhead)
                     end
                 end
+            end
+        end
+    end
+    return podiums
+end
 
-                local camera = workspace.CurrentCamera
-                if camera and billboard.Adornee then
-                    local distance = (camera.CFrame.Position - billboard.Adornee.Position).Magnitude
-                    local scale = math.clamp(1 - (distance / ESP_CONFIG.MAX_DISTANCE), 0.6, 1.2)
-                    billboard.Size = UDim2.new(0, ESP_CONFIG.BASE_SIZE.X.Offset * scale, 0, ESP_CONFIG.BASE_SIZE.Y.Offset * scale)
+local currentBase = nil
+local currentGui = nil
+
+local function enableBrainrotEsp(brainrotButton)
+    brainrotEspEnabled = true
+    if brainrotButton then
+        brainrotButton.Text = "Disable Highest Value ESP"
+    end
+    StarterGui:SetCore("SendNotification", {
+        Title = "Highest Value ESP",
+        Text = "Highest Value ESP: ON",
+        Duration = 2
+    })
+
+    task.spawn(function()
+        while brainrotEspEnabled do
+            local bestPodium = nil
+            local bestValue = -math.huge
+            local bestLabels = nil
+            local bestBase = nil
+
+            for _, overhead in pairs(getAllPodiums()) do
+                local base = overhead.Parent.Parent.Parent
+                if base and (base:IsA("BasePart") or base:IsA("Model")) then
+                    local genLabel = overhead:FindFirstChild("Generation")
+                    if genLabel then
+                        local genValue = extractNumber(genLabel.Text)
+                        local mutation = overhead:FindFirstChild("Mutation")
+                        local mutText, _, _ = getMutationTextAndColor(mutation)
+                        if genValue > bestValue then
+                            bestValue = genValue
+                            bestPodium = overhead
+                            bestBase = base
+                            bestLabels = {
+                                DisplayName = overhead:FindFirstChild("DisplayName") and overhead.DisplayName.Text or "Unknown",
+                                Generation = genLabel.Text,
+                                Mutation = mutText,
+                                Rarity = overhead:FindFirstChild("Rarity") and overhead.Rarity.Text or "None"
+                            }
+                        end
+                    end
                 end
-            elseif baseEspInstances[plot.Name] then
-                baseEspInstances[plot.Name]:Destroy()
-                baseEspInstances[plot.Name] = nil
             end
-        end
-    end
 
-    local function clearBaseESP()
-        for _, instance in pairs(baseEspInstances) do
-            instance:Destroy()
-        end
-        baseEspInstances = {}
-    end
+            if bestPodium and bestBase then
+                if currentBase ~= bestBase then
+                    if currentGui and currentGui.Parent then
+                        currentGui:Destroy()
+                    end
+                    currentBase = bestBase
+                    createGui(bestBase, bestPodium, bestLabels)
+                    currentGui = bestBase:FindFirstChild("StatGui")
+                end
+            else
+                if currentGui and currentGui.Parent then
+                    currentGui:Destroy()
+                end
+                currentBase = nil
+                currentGui = nil
+            end
 
-    -- Modified button 7 functionality (previously "Time", now "Base ESP")
-    buttons[7].MouseButton1Click:Connect(function()
-        baseEspEnabled = not baseEspEnabled
-        
-        if baseEspEnabled then
-            buttons[7].BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-            if espThread then
-                espThread:Disconnect()
-            end
-            espThread = runService.RenderStepped:Connect(function()
-                updateBaseESP()
-            end)
-        else
-            buttons[7].BackgroundColor3 = Color3.new(1, 1, 1)
-            if espThread then
-                espThread:Disconnect()
-                espThread = nil
-            end
-            clearBaseESP()
+            task.wait(1)
         end
     end)
-
--- ðŸŽ¯ ESP Marker Toggle (Multi-Language)
-local rainbowEnabled = false
-local espMarkers = {}
-
-local TargetPets = {
-    "Los Tralaleritos", "La Vacca Saturno Saturnita", "Graipuss Medussi",
-    "La Grande Combinasion", "Garama and Madundung", "Sammyni Spyderini",
-    "Pot Hotspot", "Chimpanzini Spiderini", "Gattatino Neonino",
-    "Las Tralaleritas", "Nuclearo Dinossauro", "Las Vaquitas Saturnitas",
-    "Chicleteira Bicicleteira", "Los Combinasionas", "Dragon Cannelloni",
-    "Agarrini la Palini", "Trenostruzzo Turbo 3000", "Unclito Samito",
-    "Odin Din Din Dun", "Tralalero Tralala", "Matteo"
-}
-
--- Language-specific button texts
-local ButtonTexts = {
-    en = { on = "Esp brainrotðŸ¦…", off = "Esp brainrotðŸ¦…", default = "Esp brainrotðŸ¦…" },
-    ku = { on = "â€ŽØ¨ÛŒÙ†ÛŒÙ†ÛŒ Ø¨Ø±Û•ÛŒÙ†Ø±ÙˆØªðŸ¦…", off = "â€ŽØ¨ÛŒÙ†ÛŒÙ†ÛŒ Ø¨Ø±Û•ÛŒÙ†Ø±ÙˆØªðŸ¦…", default = "Ø¨ÛŒÙ†ÛŒÙ†ÛŒ Ø¨Ø±Û•ÛŒÙ†Ø±ÙˆØªðŸ¦…" },
-    ar = { on = "â€ŽÙƒØ´Ù Ø¨Ø±ÙŠÙ†Ø±ÙˆØªðŸ¦…", off = "â€ŽÙƒØ´Ù Ø¨Ø±ÙŠÙ†Ø±ÙˆØªðŸ¦…", default = "â€ŽÙƒØ´Ù Ø¨Ø±ÙŠÙ†Ø±ÙˆØªðŸ¦…" }
-}
-
--- Add a BillboardGui with ðŸŽ¯ to the pet
-local function addTargetMarker(pet)
-    if pet:FindFirstChild("ðŸŽ¯ESP") then return end
-
-    local root = pet:FindFirstChildWhichIsA("HumanoidRootPart") or pet:FindFirstChildWhichIsA("BasePart")
-    if not root then return end
-
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "ðŸŽ¯ESP"
-    billboard.Adornee = root
-    billboard.Size = UDim2.new(0, 30, 0, 30)
-    billboard.AlwaysOnTop = true
-    billboard.LightInfluence = 0
-    billboard.StudsOffset = Vector3.new(0, 3, 0)
-    billboard.Parent = pet
-
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = "ðŸŽ¯"
-    label.TextColor3 = Color3.new(1, 0, 0)
-    label.TextStrokeTransparency = 0
-    label.TextScaled = true
-    label.Font = Enum.Font.SourceSansBold
-    label.Parent = billboard
-
-    table.insert(espMarkers, billboard)
+    
+    settings.brainrotEspEnabled = true
+    saveSettings(settings)
 end
 
--- Remove all ðŸŽ¯ markers
-local function clearAllMarkers()
-    for _, gui in ipairs(espMarkers) do
-        if gui and gui.Parent then
-            gui:Destroy()
-        end
+local function disableBrainrotEsp(brainrotButton)
+    brainrotEspEnabled = false
+    if brainrotButton then
+        brainrotButton.Text = "Enable Highest Value ESP"
     end
-    espMarkers = {}
+    StarterGui:SetCore("SendNotification", {
+        Title = "Highest Value ESP",
+        Text = "Highest Value ESP: OFF",
+        Duration = 2
+    })
+
+    if currentGui and currentGui.Parent then
+        currentGui:Destroy()
+    end
+    currentBase = nil
+    currentGui = nil
+    
+    settings.brainrotEspEnabled = false
+    saveSettings(settings)
 end
 
--- Scan and apply once
-local function scanOnceForTargets()
-    for _, pet in ipairs(workspace:GetDescendants()) do
-        if pet:IsA("Model") and not pet:FindFirstChild("ðŸŽ¯ESP") then
-            for _, target in ipairs(TargetPets) do
-                if string.find(pet.Name:lower(), target:lower()) then
-                    addTargetMarker(pet)
-                    break
+local function createTabContent(name)
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Size = UDim2.new(1.2, -10, 1, -80)
+    contentFrame.Position = UDim2.new(0.3, 50, 0, 80)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Visible = false
+    contentFrame.Parent = mainFrame
+
+    if name == "Main" then
+        local infiniteJumpButton = Instance.new("TextButton")
+        infiniteJumpButton.Size = UDim2.new(0, 250, 0, 40)
+        infiniteJumpButton.Position = UDim2.new(0, -35, 0, 10)
+        infiniteJumpButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        infiniteJumpButton.Text = infiniteJumpEnabled and "Disable Infinite Jump" or "Enable Infinite Jump"
+        infiniteJumpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        infiniteJumpButton.TextSize = 14
+        infiniteJumpButton.Font = Enum.Font.Gotham
+        infiniteJumpButton.Parent = contentFrame
+        local infiniteJumpCorner = Instance.new("UICorner", infiniteJumpButton)
+        infiniteJumpCorner.CornerRadius = UDim.new(0, 8)
+
+        infiniteJumpButton.MouseButton1Down:Connect(function()
+            TweenService:Create(infiniteJumpButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            }):Play()
+        end)
+        
+        infiniteJumpButton.MouseButton1Up:Connect(function()
+            TweenService:Create(infiniteJumpButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+        
+        infiniteJumpButton.MouseLeave:Connect(function()
+            TweenService:Create(infiniteJumpButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+
+        infiniteJumpButton.MouseButton1Click:Connect(function()
+            if not infiniteJumpEnabled then
+                enableInfiniteJump(infiniteJumpButton)
+            else
+                disableInfiniteJump(infiniteJumpButton)
+            end
+        end)
+
+        local actionButton = Instance.new("TextButton")
+        actionButton.Size = UDim2.new(0, 200, 0, 40)
+        actionButton.Position = UDim2.new(0, -35, 0, 60)
+        actionButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        actionButton.Text = walkspeedEnabled and "Disable Walkspeed" or "Enable Walkspeed"
+        actionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        actionButton.TextSize = 14
+        actionButton.Font = Enum.Font.Gotham
+        actionButton.Parent = contentFrame
+        local buttonCorner = Instance.new("UICorner", actionButton)
+        buttonCorner.CornerRadius = UDim.new(0, 8)
+
+        local speedTextBox = Instance.new("TextBox")
+        speedTextBox.Size = UDim2.new(0, 40, 0, 40)
+        speedTextBox.Position = UDim2.new(0, 170, 0, 0)
+        speedTextBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        speedTextBox.Text = tostring(currentWalkSpeed)
+        speedTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+        speedTextBox.TextSize = 14
+        speedTextBox.Font = Enum.Font.Gotham
+        speedTextBox.TextXAlignment = Enum.TextXAlignment.Center
+        speedTextBox.Parent = actionButton
+        local textBoxCorner = Instance.new("UICorner", speedTextBox)
+        textBoxCorner.CornerRadius = UDim.new(0, 8)
+
+        speedTextBox.FocusLost:Connect(function()
+            local input = tonumber(speedTextBox.Text)
+            if input and input >= 50 and input <= 100 then
+                updateWalkspeed(input)
+                speedTextBox.Text = tostring(currentWalkSpeed)
+                StarterGui:SetCore("SendNotification", {
+                    Title = "Walkspeed Updated",
+                    Text = "Walkspeed set to " .. currentWalkSpeed,
+                    Duration = 3
+                })
+            else
+                speedTextBox.Text = tostring(currentWalkSpeed)
+                StarterGui:SetCore("SendNotification", {
+                    Title = "Invalid Speed",
+                    Text = "Speed must be between 50 and 100",
+                    Duration = 3
+                })
+            end
+        end)
+
+        actionButton.MouseButton1Down:Connect(function()
+            TweenService:Create(actionButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            }):Play()
+        end)
+        
+        actionButton.MouseButton1Up:Connect(function()
+            TweenService:Create(actionButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+        
+        actionButton.MouseLeave:Connect(function()
+            TweenService:Create(actionButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+
+        actionButton.MouseButton1Click:Connect(function()
+            if not walkspeedEnabled then
+                enableWalkspeed(actionButton, speedTextBox)
+            else
+                disableWalkspeed()
+                actionButton.Text = "Enable Walkspeed"
+            end
+        end)
+
+        local tweenStealButton = Instance.new("TextButton")
+        tweenStealButton.Size = UDim2.new(0, 250, 0, 40)
+        tweenStealButton.Position = UDim2.new(0, -35, 0, 110)
+        tweenStealButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        tweenStealButton.Text = "Tween Steal"
+        tweenStealButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        tweenStealButton.TextSize = 14
+        tweenStealButton.Font = Enum.Font.Gotham
+        tweenStealButton.Parent = contentFrame
+        local tweenButtonCorner = Instance.new("UICorner", tweenStealButton)
+        tweenButtonCorner.CornerRadius = UDim.new(0, 8)
+
+        tweenStealButton.MouseButton1Down:Connect(function()
+            TweenService:Create(tweenStealButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            }):Play()
+        end)
+        
+        tweenStealButton.MouseButton1Up:Connect(function()
+            TweenService:Create(tweenStealButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+        
+        tweenStealButton.MouseLeave:Connect(function()
+            TweenService:Create(tweenStealButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+
+        tweenStealButton.MouseButton1Click:Connect(function()
+            local wasWalkspeedEnabled = walkspeedEnabled
+            if wasWalkspeedEnabled then
+                disableWalkspeed()
+            end
+
+            local existingTeleportGui = PlayerGui:FindFirstChild("TeleportGUI")
+            if existingTeleportGui then
+                existingTeleportGui:Destroy()
+            end
+
+            local gui = Instance.new("ScreenGui", PlayerGui)
+            gui.Name = "TeleportGUI"
+            gui.ResetOnSpawn = false
+
+            local buttonHolder = Instance.new("Frame")
+            buttonHolder.Size = UDim2.new(0, 180, 0, 60)
+            buttonHolder.Position = UDim2.new(1, -20, 0, 10)
+            buttonHolder.AnchorPoint = Vector2.new(1, 0)
+            buttonHolder.BackgroundColor3 = Color3.new(0, 0, 0)
+            buttonHolder.BackgroundTransparency = 0.2
+            buttonHolder.BorderSizePixel = 0
+            buttonHolder.Active = true
+            buttonHolder.Draggable = true
+            buttonHolder.ZIndex = 3
+            buttonHolder.Parent = gui
+            Instance.new("UICorner", buttonHolder).CornerRadius = UDim.new(0, 16)
+
+            local tweenButton = Instance.new("TextButton")
+            tweenButton.Size = UDim2.new(1, -40, 0, 35)
+            tweenButton.Position = UDim2.new(0, 20, 0, 10)
+            tweenButton.Text = "â†“ Tween"
+            tweenButton.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+            tweenButton.TextColor3 = Color3.new(1, 1, 1)
+            tweenButton.Font = Enum.Font.SourceSansBold
+            tweenButton.TextSize = 22
+            tweenButton.BorderSizePixel = 0
+            tweenButton.ZIndex = 4
+            tweenButton.Parent = buttonHolder
+            Instance.new("UICorner", tweenButton).CornerRadius = UDim.new(0, 12)
+
+            local function FindDelivery()
+                local plots = workspace:FindFirstChild("Plots")
+                if not plots then
+                    warn("Plots folder not found in workspace")
+                    return
                 end
+                for _, plot in pairs(plots:GetChildren()) do
+                    local sign = plot:FindFirstChild("PlotSign")
+                    if sign then
+                        local yourBase = sign:FindFirstChild("YourBase")
+                        if yourBase and yourBase.Enabled then
+                            local hitbox = plot:FindFirstChild("DeliveryHitbox")
+                            if hitbox then return hitbox end
+                        end
+                    end
+                end
+                warn("No valid DeliveryHitbox found")
             end
-        end
-    end
-end
 
--- Button click logic
-buttons[8].MouseButton1Click:Connect(function()
-    rainbowEnabled = not rainbowEnabled
+            tweenButton.MouseButton1Click:Connect(function()
+                local character = player.Character or player.CharacterAdded:Wait()
+                local root = character:FindFirstChild("HumanoidRootPart")
+                local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+                if not (root and humanoid) then return end
 
-    local currentLang = "en"
-    if YourLanguageSystem and YourLanguageSystem.currentLanguage then
-        currentLang = YourLanguageSystem.currentLanguage
-    end
+                local target = FindDelivery()
+                if not target then return end
 
-    if rainbowEnabled then
-        buttons[8].BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-        buttons[8].Text = ButtonTexts[currentLang].on
-        scanOnceForTargets()
-    else
-        buttons[8].BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        buttons[8].Text = ButtonTexts[currentLang].off
-        clearAllMarkers()
-    end
-end)
+                local finalPos = Vector3.new(target.Position.X, root.Position.Y, target.Position.Z)
+                print("Pushing to DeliveryHitbox...")
 
--- Init button text
-local function initButton()
-    local currentLang = "en"
-    if YourLanguageSystem and YourLanguageSystem.currentLanguage then
-        currentLang = YourLanguageSystem.currentLanguage
-    end
-    buttons[8].BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    buttons[8].Text = ButtonTexts[currentLang].default
-end
+                local bodyVelocity = Instance.new("BodyVelocity")
+                bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                bodyVelocity.Parent = root
 
-initButton()
+                local speed = 100
+                local stopDistance = 55
+                local maxTime = 10
+                local gravity = workspace.Gravity or 196.2
+                local antiGravityVelocity = math.sqrt(2 * gravity * 0.1)
 
-local superJumpEnabled = false
-local jumpPowerConnection = nil
-local characterConnection = nil
+                local startTime = tick()
+                local reached = false
 
-buttons[9].MouseButton1Click:Connect(function()
-    superJumpEnabled = not superJumpEnabled
+                while tick() - startTime < maxTime do
+                    local currentPos = root.Position
+                    local horizontalDistance = Vector3.new(finalPos.X, 0, finalPos.Z) - Vector3.new(currentPos.X, 0, currentPos.Z)
+                    local distance = horizontalDistance.Magnitude
 
-    buttons[9].BackgroundColor3 = superJumpEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 255, 255)
+                    if distance <= stopDistance then
+                        reached = true
+                        break
+                    end
 
-    local function applyJumpPower(character)
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.UseJumpPower = true
-            humanoid.JumpPower = superJumpEnabled and 110 or 50 -- 110 = high but safe
-            humanoid.AutoJumpEnabled = true
-        end
-    end
+                    local direction = horizontalDistance.Unit
+                    bodyVelocity.Velocity = Vector3.new(direction.X * speed, antiGravityVelocity, direction.Z * speed)
+                    task.wait()
+                end
 
-    -- Set immediately on current character
-    if player.Character then
-        applyJumpPower(player.Character)
-    end
+                bodyVelocity:Destroy()
 
-    -- On respawn
-    if characterConnection then characterConnection:Disconnect() end
-    characterConnection = player.CharacterAdded:Connect(applyJumpPower)
+                if humanoid and humanoid:GetState() ~= Enum.HumanoidStateType.Freefall then
+                    humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+                end
 
-    -- Disable listener when OFF
-    if not superJumpEnabled then
-        if player.Character then
-            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                humanoid.JumpPower = 50
-                humanoid.AutoJumpEnabled = true
-            end
-        end
-    end
-end)
-
-local espEnabled = false
-local espBoxes = {}
-
--- Function to create a simple box ESP
-local function createSimpleEsp(character)
-    if not character or espBoxes[character] then return end
-    
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return end
-    
-    -- Create a box for the entire character
-    local box = Instance.new("BoxHandleAdornment")
-    box.Name = "SimpleESPBox"
-    box.Adornee = rootPart
-    box.AlwaysOnTop = true
-    box.ZIndex = 5
-    box.Size = Vector3.new(4, 6, 4) -- Adjust size as needed
-    box.Transparency = 0.4 -- 50% visible
-    box.Color3 = Color3.fromRGB(0, 255, 0) -- Green color
-    box.Parent = rootPart
-    
-    espBoxes[character] = box
-end
-
--- Function to clear all ESP boxes
-local function clearAllEsp()
-    for character, box in pairs(espBoxes) do
-        if box and box.Parent then
-            box:Destroy()
-        end
-    end
-    espBoxes = {}
-end
-
--- Function to update ESP for all players
-local function updateEsp()
-    clearAllEsp()
-    if not espEnabled then return end
-    
-    for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-        if player ~= game.Players.LocalPlayer and player.Character then
-            createSimpleEsp(player.Character)
-        end
-    end
-end
-
--- Button 10 click handler (ONLY place where ESP gets toggled)
-buttons[10].MouseButton1Click:Connect(function()
-    espEnabled = not espEnabled
-    
-    if espEnabled then
-        buttons[10].BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green when on
-        -- Only setup event listeners when first turned on
-        game:GetService("Players").PlayerAdded:Connect(function(player)
-            player.CharacterAdded:Connect(function(character)
-                if espEnabled then -- Check if still enabled
-                    createSimpleEsp(character)
+                if reached then
+                    print("reached DeliveryHitbox, falling.")
+                    StarterGui:SetCore("SendNotification", {
+                        Title = "Warning!",
+                        Text = "You need to leave after steal because anti-cheat will kick you!",
+                        Duration = 8
+                    })
+                    if wasWalkspeedEnabled then
+                        enableWalkspeed(actionButton, speedTextBox)
+                    end
+                else
+                    warn("Failed to reach DeliveryHitbox within time.")
+                    if wasWalkspeedEnabled then
+                        enableWalkspeed(actionButton, speedTextBox)
+                    end
                 end
             end)
         end)
-        
-        game:GetService("Players").PlayerRemoving:Connect(function(player)
-            if player.Character and espBoxes[player.Character] then
-                espBoxes[player.Character]:Destroy()
-                espBoxes[player.Character] = nil
-            end
+
+        local touchFlingButton = Instance.new("TextButton")
+        touchFlingButton.Size = UDim2.new(0, 250, 0, 40)
+        touchFlingButton.Position = UDim2.new(0, -35, 0, 160)
+        touchFlingButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        touchFlingButton.Text = flingEnabled and "Disable Touch Fling" or "Enable Touch Fling"
+        touchFlingButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        touchFlingButton.TextSize = 14
+        touchFlingButton.Font = Enum.Font.Gotham
+        touchFlingButton.Parent = contentFrame
+        local flingButtonCorner = Instance.new("UICorner", touchFlingButton)
+        flingButtonCorner.CornerRadius = UDim.new(0, 8)
+
+        touchFlingButton.MouseButton1Down:Connect(function()
+            TweenService:Create(touchFlingButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            }):Play()
         end)
         
-        updateEsp()
-    else
-        buttons[10].BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- White when off
-        clearAllEsp()
+        touchFlingButton.MouseButton1Up:Connect(function()
+            TweenService:Create(touchFlingButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+        
+        touchFlingButton.MouseLeave:Connect(function()
+            TweenService:Create(touchFlingButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+
+        touchFlingButton.MouseButton1Click:Connect(function()
+            local wasWalkspeedEnabled = walkspeedEnabled
+            flingEnabled = not flingEnabled
+
+            if flingEnabled then
+                if wasWalkspeedEnabled then
+                    disableWalkspeed()
+                end
+                touchFlingButton.Text = "Disable Touch Fling"
+                StarterGui:SetCore("SendNotification", {
+                    Title = "WalkFling",
+                    Text = "WalkFling: ON",
+                    Duration = 2
+                })
+
+                pcall(function()
+                    local humanoid = player.Character and player.Character:FindFirstChildWhichIsA("Humanoid")
+                    if humanoid and humanoid.AutoJumpEnabled ~= nil then
+                        humanoid.AutoJumpEnabled = false
+                    end
+                end)
+
+                if not ReplicatedStorage:FindFirstChild("juisdfj0i32i0eidsuf0iok") then
+                    local marker = Instance.new("Decal")
+                    marker.Name = "juisdfj0i32i0eidsuf0iok"
+                    marker.Parent = ReplicatedStorage
+                end
+
+                flingConnection = RunService.Heartbeat:Connect(function()
+                    local char = player.Character
+                    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local v = hrp.Velocity
+                        hrp.Velocity = v * 10000 + Vector3.new(0, 10000, 0)
+                        RunService.RenderStepped:Wait()
+                        hrp.Velocity = v
+                        RunService.Stepped:Wait()
+                        hrp.Velocity = v + Vector3.new(0, 0.1, 0)
+                    end
+                end)
+            else
+                touchFlingButton.Text = "Enable Touch Fling"
+                StarterGui:SetCore("SendNotification", {
+                    Title = "WalkFling",
+                    Text = "WalkFling: OFF",
+                    Duration = 2
+                })
+                if flingConnection then
+                    capConnection:Disconnect()
+                    flingConnection = nil
+                end
+                if wasWalkspeedEnabled then
+                    enableWalkspeed(actionButton, speedTextBox)
+                end
+            end
+            
+            settings.flingEnabled = flingEnabled
+            saveSettings(settings)
+        end)
+
+        local boostJumpButton = Instance.new("TextButton")
+        boostJumpButton.Size = UDim2.new(0, 200, 0, 40)
+        boostJumpButton.Position = UDim2.new(0, -35, 0, -40)
+        boostJumpButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        boostJumpButton.Text = boostJumpEnabled and "Disable Boost Jump" or "Enable Boost Jump"
+        boostJumpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        boostJumpButton.TextSize = 14
+        boostJumpButton.Font = Enum.Font.Gotham
+        boostJumpButton.Parent = contentFrame
+        local boostJumpCorner = Instance.new("UICorner", boostJumpButton)
+        boostJumpCorner.CornerRadius = UDim.new(0, 8)
+
+        local boostTextBox = Instance.new("TextBox")
+        boostTextBox.Size = UDim2.new(0, 40, 0, 40)
+        boostTextBox.Position = UDim2.new(0, 170, 0, 0)
+        boostTextBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        boostTextBox.Text = tostring(currentBoostStrength)
+        boostTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+        boostTextBox.TextSize = 14
+        boostTextBox.Font = Enum.Font.Gotham
+        boostTextBox.TextXAlignment = Enum.TextXAlignment.Center
+        boostTextBox.Parent = boostJumpButton
+        local boostTextBoxCorner = Instance.new("UICorner", boostTextBox)
+        boostTextBoxCorner.CornerRadius = UDim.new(0, 8)
+
+        boostTextBox.FocusLost:Connect(function()
+            local input = tonumber(boostTextBox.Text)
+            if input and input >= 50 and input <= 300 then
+                updateBoostStrength(input)
+                boostTextBox.Text = tostring(currentBoostStrength)
+                StarterGui:SetCore("SendNotification", {
+                    Title = "Boost Strength Updated",
+                    Text = "Boost strength set to " .. currentBoostStrength,
+                    Duration = 3
+                })
+            else
+                boostTextBox.Text = tostring(currentBoostStrength)
+                StarterGui:SetCore("SendNotification", {
+                    Title = "Invalid Strength",
+                    Text = "Boost strength must be between 50 and 300",
+                    Duration = 3
+                })
+            end
+        end)
+
+        boostJumpButton.MouseButton1Down:Connect(function()
+            TweenService:Create(boostJumpButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            }):Play()
+        end)
+        
+        boostJumpButton.MouseButton1Up:Connect(function()
+            TweenService:Create(boostJumpButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+        
+        boostJumpButton.MouseLeave:Connect(function()
+            TweenService:Create(boostJumpButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+
+        boostJumpButton.MouseButton1Click:Connect(function()
+            if not boostJumpEnabled then
+                enableBoostJump(boostJumpButton)
+            else
+                disableBoostJump(boostJumpButton)
+            end
+        end)
+    elseif name == "Settings" then
+        local antiHitButton = Instance.new("TextButton")
+        antiHitButton.Size = UDim2.new(0, 250, 0, 40)
+        antiHitButton.Position = UDim2.new(0, -35, 0, -40)
+        antiHitButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        antiHitButton.Text = antiHitEnabled and "Disable Anti Hit" or "Enable Anti Hit"
+        antiHitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        antiHitButton.TextSize = 14
+        antiHitButton.Font = Enum.Font.Gotham
+        antiHitButton.Parent = contentFrame
+        local antiHitButtonCorner = Instance.new("UICorner", antiHitButton)
+        antiHitButtonCorner.CornerRadius = UDim.new(0, 8)
+
+        antiHitButton.MouseButton1Down:Connect(function()
+            TweenService:Create(antiHitButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            }):Play()
+        end)
+        
+        antiHitButton.MouseButton1Up:Connect(function()
+            TweenService:Create(antiHitButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+        
+        antiHitButton.MouseLeave:Connect(function()
+            TweenService:Create(antiHitButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+
+        antiHitButton.MouseButton1Click:Connect(function()
+            if not antiHitEnabled then
+                enableAntiHit(antiHitButton)
+            else
+                disableAntiHit(antiHitButton)
+            end
+        end)
+
+        local antiTrapButton = Instance.new("TextButton")
+        antiTrapButton.Size = UDim2.new(0, 250, 0, 40)
+        antiTrapButton.Position = UDim2.new(0, -35, 0, 10)
+        antiTrapButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        antiTrapButton.Text = antiTrapEnabled and "Disable Anti Trap" or "Enable Anti Trap"
+        antiTrapButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        antiTrapButton.TextSize = 14
+        antiTrapButton.Font = Enum.Font.Gotham
+        antiTrapButton.Parent = contentFrame
+        local antiTrapButtonCorner = Instance.new("UICorner", antiTrapButton)
+        antiTrapButtonCorner.CornerRadius = UDim.new(0, 8)
+
+        antiTrapButton.MouseButton1Down:Connect(function()
+            TweenService:Create(antiTrapButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            }):Play()
+        end)
+        
+        antiTrapButton.MouseButton1Up:Connect(function()
+            TweenService:Create(antiTrapButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+        
+        antiTrapButton.MouseLeave:Connect(function()
+            TweenService:Create(antiTrapButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+
+        antiTrapButton.MouseButton1Click:Connect(function()
+            if not antiTrapEnabled then
+                enableAntiTrap(antiTrapButton)
+            else
+                disableAntiTrap(antiTrapButton)
+            end
+        end)
+    elseif name == "ESP" then
+        local espButton = Instance.new("TextButton")
+        espButton.Size = UDim2.new(0, 250, 0, 40)
+        espButton.Position = UDim2.new(0, -35, 0, 10)
+        espButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        espButton.Text = espEnabled and "Disable ESP" or "Enable ESP"
+        espButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        espButton.TextSize = 14
+        espButton.Font = Enum.Font.Gotham
+        espButton.Parent = contentFrame
+        local buttonCorner = Instance.new("UICorner", espButton)
+        buttonCorner.CornerRadius = UDim.new(0, 8)
+
+        espButton.MouseButton1Down:Connect(function()
+            TweenService:Create(espButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            }):Play()
+        end)
+        
+        espButton.MouseButton1Up:Connect(function()
+            TweenService:Create(espButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+        
+        espButton.MouseLeave:Connect(function()
+            TweenService:Create(espButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+
+        espButton.MouseButton1Click:Connect(function()
+            if not espEnabled then
+                enableESP(espButton)
+            else
+                disableESP(espButton)
+            end
+        end)
+
+        local timerEspButton = Instance.new("TextButton")
+        timerEspButton.Size = UDim2.new(0, 250, 0, 40)
+        timerEspButton.Position = UDim2.new(0, -35, 0, 60)
+        timerEspButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        timerEspButton.Text = timerEspEnabled and "Disable Timer ESP" or "Enable Timer ESP"
+        timerEspButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        timerEspButton.TextSize = 14
+        timerEspButton.Font = Enum.Font.Gotham
+        timerEspButton.Parent = contentFrame
+        local timerButtonCorner = Instance.new("UICorner", timerEspButton)
+        timerButtonCorner.CornerRadius = UDim.new(0, 8)
+
+        timerEspButton.MouseButton1Down:Connect(function()
+            TweenService:Create(timerEspButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            }):Play()
+        end)
+        
+        timerEspButton.MouseButton1Up:Connect(function()
+            TweenService:Create(timerEspButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+        
+        timerEspButton.MouseLeave:Connect(function()
+            TweenService:Create(timerEspButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+
+        timerEspButton.MouseButton1Click:Connect(function()
+            if not timerEspEnabled then
+                enableTimerESP(timerEspButton)
+            else
+                disableTimerESP(timerEspButton)
+            end
+        end)
+
+        local webSlingerButton = Instance.new("TextButton")
+        webSlingerButton.Size = UDim2.new(0, 250, 0, 40)
+        webSlingerButton.Position = UDim2.new(0, -35, 0, 110)
+        webSlingerButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        webSlingerButton.Text = webSlingerAutoAimEnabled and "Disable Web Slinger Auto Aim" or "Enable Web Slinger Auto Aim"
+        webSlingerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        webSlingerButton.TextSize = 14
+        webSlingerButton.Font = Enum.Font.Gotham
+        webSlingerButton.Parent = contentFrame
+        local webSlingerButtonCorner = Instance.new("UICorner", webSlingerButton)
+        webSlingerButtonCorner.CornerRadius = UDim.new(0, 8)
+
+        webSlingerButton.MouseButton1Down:Connect(function()
+            TweenService:Create(webSlingerButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            }):Play()
+        end)
+        
+        webSlingerButton.MouseButton1Up:Connect(function()
+            TweenService:Create(webSlingerButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+        
+        webSlingerButton.MouseLeave:Connect(function()
+            TweenService:Create(webSlingerButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+
+        webSlingerButton.MouseButton1Click:Connect(function()
+            if not webSlingerAutoAimEnabled then
+                enableWebSlingerAutoAim(webSlingerButton)
+            else
+                disableWebSlingerAutoAim(webSlingerButton)
+            end
+        end)
+
+        local brainrotButton = Instance.new("TextButton")
+        brainrotButton.Size = UDim2.new(0, 250, 0, 40)
+        brainrotButton.Position = UDim2.new(0, -35, 0, 160)
+        brainrotButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        brainrotButton.Text = brainrotEspEnabled and "Disable Highest Value ESP" or "Enable Highest Value ESP"
+        brainrotButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        brainrotButton.TextSize = 14
+        brainrotButton.Font = Enum.Font.Gotham
+        brainrotButton.Parent = contentFrame
+        local brainrotButtonCorner = Instance.new("UICorner", brainrotButton)
+        brainrotButtonCorner.CornerRadius = UDim.new(0, 8)
+
+        brainrotButton.MouseButton1Down:Connect(function()
+            TweenService:Create(brainrotButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            }):Play()
+        end)
+        
+        brainrotButton.MouseButton1Up:Connect(function()
+            TweenService:Create(brainrotButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+        
+        brainrotButton.MouseLeave:Connect(function()
+            TweenService:Create(brainrotButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+
+        brainrotButton.MouseButton1Click:Connect(function()
+            if not brainrotEspEnabled then
+                enableBrainrotEsp(brainrotButton)
+            else
+                disableBrainrotEsp(brainrotButton)
+            end
+        end)
+    elseif name == "Info" then
+        local discordButton = Instance.new("TextButton")
+        discordButton.Size = UDim2.new(0, 250, 0, 40)
+        discordButton.Position = UDim2.new(0, -35, 0, 10)
+        discordButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        discordButton.Text = "Copy Discord"
+        discordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        discordButton.TextSize = 14
+        discordButton.Font = Enum.Font.Gotham
+        discordButton.Parent = contentFrame
+        local buttonCorner = Instance.new("UICorner", discordButton)
+        buttonCorner.CornerRadius = UDim.new(0, 8)
+
+        discordButton.MouseButton1Down:Connect(function()
+            TweenService:Create(discordButton, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+            }):Play()
+        end)
+        
+        discordButton.MouseButton1Up:Connect(function()
+            TweenService:Create(discordButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+        
+        discordButton.MouseLeave:Connect(function()
+            TweenService:Create(discordButton, TweenInfo.new(0.3), {
+                BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+            }):Play()
+        end)
+
+        discordButton.MouseButton1Click:Connect(function()
+            pcall(function()
+                setclipboard("https://discord.gg/aXYUkzDR")
+                StarterGui:SetCore("SendNotification", {
+                    Title = "Discord",
+                    Text = "Link copied to clipboard!",
+                    Duration = 3
+                })
+            end)
+        end)
+    end
+
+    return contentFrame
+end
+
+tabContents["Main"] = createTabContent("Main")
+tabContents["Settings"] = createTabContent("Settings")
+tabContents["ESP"] = createTabContent("ESP")
+tabContents["Info"] = createTabContent("Info")
+
+local currentTab = "Main"
+local function switchTab(tabName)
+    for name, frame in pairs(tabContents) do
+        frame.Visible = (name == tabName)
+    end
+end
+
+local opened = false
+
+local function openGUI()
+    opened = true
+
+    tabMain.Visible = true
+    tabSettings.Visible = true
+    tabESP.Visible = true
+    tabInfo.Visible = true
+    closeButton.Visible = true
+    divider.Visible = true
+    hubLabel.Visible = true
+    tabContents[currentTab].Visible = true
+
+    -- Update open position to current position when GUI is opened via dragging
+    openedPosition = UDim2.new(0.5, 0, 0.45, 0)
+
+    local tweenInfo = TweenInfo.new(0.55, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+
+    nhLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nhLabel.TextYAlignment = Enum.TextYAlignment.Top
+
+    local sizeTween = TweenService:Create(mainFrame, tweenInfo, {
+        Size = UDim2.new(0, 400, 0, 300),
+        Position = openedPosition,
+        AnchorPoint = Vector2.new(0.5, 0.5)
+    })
+    local cornerTween = TweenService:Create(mainCorner, tweenInfo, {
+        CornerRadius = UDim.new(0, 18)
+    })
+    local nhMoveTween = TweenService:Create(nhLabel, tweenInfo, {
+        Position = UDim2.new(0, 15, 0, 15),
+        Size = UDim2.new(0, 90, 0, 30)
+    })
+    local hubMoveTween = TweenService:Create(hubLabel, tweenInfo, {
+        Position = UDim2.new(0, 25, 0, 35),
+        Size = UDim2.new(0, 120, 0, 20)
+    })
+    local textTween = TweenService:Create(nhLabel, tweenInfo, {
+        TextTransparency = 1
+    })
+    local hubTextTween = TweenService:Create(hubLabel, TweenInfo.new(0.3), {
+        TextTransparency = 0
+    })
+
+    sizeTween:Play()
+    cornerTween:Play()
+    nhMoveTween:Play()
+    hubMoveTween:Play()
+    textTween:Play()
+    hubTextTween:Play()
+
+    textTween.Completed:Connect(function()
+        nhLabel.Text = "Nameless"
+        local nameTween = TweenService:Create(nhLabel, TweenInfo.new(0.3), {
+            TextTransparency = 0
+        })
+        local hubTween = TweenService:Create(hubLabel, TweenInfo.new(0.3), {
+            TextTransparency = 0
+        })
+        nameTween:Play()
+        hubTween:Play()
+    end)
+
+    local tabFadeIns = {
+        TweenService:Create(tabMain, tweenInfo, { BackgroundTransparency = 0, TextTransparency = 0 }),
+        TweenService:Create(tabSettings, tweenInfo, { BackgroundTransparency = 0, TextTransparency = 0 }),
+        TweenService:Create(tabESP, tweenInfo, { BackgroundTransparency = 0, TextTransparency = 0 }),
+        TweenService:Create(tabInfo, tweenInfo, { BackgroundTransparency = 0, TextTransparency = 0 }),
+        TweenService:Create(closeButton, tweenInfo, { BackgroundTransparency = 0, TextTransparency = 0 }),
+        TweenService:Create(divider, tweenInfo, { BackgroundTransparency = 0 }),
+    }
+
+    for _, frame in pairs(tabContents) do
+        for _, child in pairs(frame:GetChildren()) do
+            if child:IsA("TextButton") then
+                table.insert(tabFadeIns, TweenService:Create(child, tweenInfo, {
+                    BackgroundTransparency = 0,
+                    TextTransparency = 0
+                }))
+            end
+        end
+    end
+
+    for _, tween in ipairs(tabFadeIns) do
+        tween:Play()
+    end
+end
+
+local function closeGUI()
+    opened = false
+
+    local tweenInfo = TweenInfo.new(0.55, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+
+    nhLabel.TextXAlignment = Enum.TextXAlignment.Center
+    nhLabel.TextYAlignment = Enum.TextYAlignment.Center
+
+    local sizeTween = TweenService:Create(mainFrame, tweenInfo, {
+        Size = UDim2.new(0, 50, 0, 50),
+        Position = savedPosition,
+        AnchorPoint = Vector2.new(0, 0)
+    })
+    local cornerTween = TweenService:Create(mainCorner, tweenInfo, {
+        CornerRadius = UDim.new(0, 12)
+    })
+    local nhResetTween = TweenService:Create(nhLabel, tweenInfo, {
+        Position = UDim2.new(0, 0, 0, 0),
+        Size = UDim2.new(0, 50, 0, 50)
+    })
+    local hubResetTween = TweenService:Create(hubLabel, tweenInfo, {
+        Position = UDim2.new(0, 0, 0, 30),
+        Size = UDim2.new(0, 50, 0, 20)
+    })
+    local textTween = TweenService:Create(nhLabel, tweenInfo, {
+        TextTransparency = 1
+    })
+    local hubTextTween = TweenService:Create(hubLabel, TweenInfo.new(0.3), {
+        TextTransparency = 1
+    })
+
+    textTween:Play()
+    hubTextTween:Play()
+    textTween.Completed:Connect(function()
+        nhLabel.Text = "NH"
+        local nameTween = TweenService:Create(nhLabel, TweenInfo.new(0.3), {
+            TextTransparency = 0
+        })
+        nameTween:Play()
+    end)
+
+    local tabFadeOuts = {
+        TweenService:Create(tabMain, tweenInfo, { BackgroundTransparency = 1, TextTransparency = 1 }),
+        TweenService:Create(tabSettings, tweenInfo, { BackgroundTransparency = 1, TextTransparency = 1 }),
+        TweenService:Create(tabESP, tweenInfo, { BackgroundTransparency = 1, TextTransparency = 1 }),
+        TweenService:Create(tabInfo, tweenInfo, { BackgroundTransparency = 1, TextTransparency = 1 }),
+        TweenService:Create(closeButton, tweenInfo, { BackgroundTransparency = 1, TextTransparency = 1 }),
+        TweenService:Create(divider, tweenInfo, { BackgroundTransparency = 1 }),
+    }
+
+    for _, frame in pairs(tabContents) do
+        for _, child in pairs(frame:GetChildren()) do
+            if child:IsA("TextButton") then
+                table.insert(tabFadeOuts, TweenService:Create(child, tweenInfo, {
+                    BackgroundTransparency = 1,
+                    TextTransparency = 1
+                }))
+            end
+        end
+    end
+
+    for _, tween in ipairs(tabFadeOuts) do
+        tween:Play()
+    end
+
+    sizeTween:Play()
+    cornerTween:Play()
+    nhResetTween:Play()
+    hubResetTween:Play()
+
+    task.wait(0.55)
+
+    tabMain.Visible = false
+    tabSettings.Visible = false
+    tabESP.Visible = false
+    tabInfo.Visible = false
+    closeButton.Visible = false
+    divider.Visible = false
+    hubLabel.Visible = false
+    for _, frame in pairs(tabContents) do
+        frame.Visible = false
+    end
+end
+
+openButton.MouseButton1Click:Connect(function()
+    if not opened then
+        openGUI()
     end
 end)
 
+closeButton.MouseButton1Click:Connect(function()
+    if opened then
+        closeGUI()
+    end
+end)
 
+tabMain.MouseButton1Click:Connect(function()
+    currentTab = "Main"
+    switchTab(currentTab)
+end)
 
-    buttons[11].MouseButton1Click:Connect(function()
-        loadstring(game:HttpGet("https://ninja68.serv00.net/krdNINJA123oki/Aura.txt", true))()
+tabSettings.MouseButton1Click:Connect(function()
+    currentTab = "Settings"
+    switchTab(currentTab)
+end)
+
+tabESP.MouseButton1Click:Connect(function()
+    currentTab = "ESP"
+    switchTab(currentTab)
+end)
+
+tabInfo.MouseButton1Click:Connect(function()
+    currentTab = "Info"
+    switchTab(currentTab)
+end)
+-- Auto-enable features based on saved settings on startup
+task.wait(1) -- Wait for GUI to be created
+
+if settings.walkspeedEnabled then
+    enableWalkspeed()
+end
+
+if settings.infiniteJumpEnabled then
+    enableInfiniteJump()
+end
+
+if settings.boostJumpEnabled then
+    enableBoostJump()
+end
+
+if settings.espEnabled then
+    enableESP()
+end
+
+if settings.timerEspEnabled then
+    enableTimerESP()
+end
+
+if settings.webSlingerAutoAimEnabled then
+    enableWebSlingerAutoAim()
+end
+
+if settings.antiTrapEnabled then
+    enableAntiTrap()
+end
+
+if settings.antiHitEnabled then
+    enableAntiHit()
+end
+
+if settings.brainrotEspEnabled then
+    enableBrainrotEsp()
+end
+
+if settings.flingEnabled then
+    flingEnabled = true
+    
+    pcall(function()
+        local humanoid = player.Character and player.Character:FindFirstChildWhichIsA("Humanoid")
+        if humanoid and humanoid.AutoJumpEnabled ~= nil then
+            humanoid.AutoJumpEnabled = false
+        end
     end)
 
-    buttons[12].MouseButton1Click:Connect(function()
-        loadstring(game:HttpGet("https://ninja68.serv00.net/krdNINJA123oki/AutoSteal.txt", true))()
+    if not ReplicatedStorage:FindFirstChild("juisdfj0i32i0eidsuf0iok") then
+        local marker = Instance.new("Decal")
+        marker.Name = "juisdfj0i32i0eidsuf0iok"
+        marker.Parent = ReplicatedStorage
+    end
+
+    flingConnection = RunService.Heartbeat:Connect(function()
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local v = hrp.Velocity
+            hrp.Velocity = v * 10000 + Vector3.new(0, 10000, 0)
+            RunService.RenderStepped:Wait()
+            hrp.Velocity = v
+            RunService.Stepped:Wait()
+            hrp.Velocity = v + Vector3.new(0, 0.1, 0)
+        end
     end)
 end
 
--- Sound effect
-local clickSound = Instance.new("Sound")
-clickSound.SoundId = "rbxassetid://170765130"
-clickSound.Volume = 0.5
-clickSound.Parent = container
-
-for i, lang in ipairs(languages) do
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0.8, 0, 0, buttonHeight)
-    button.Position = UDim2.new(0.1, 0, 0, startY + (i-1)*(buttonHeight + buttonSpacing))
-    button.BackgroundColor3 = lang.color
-    button.Text = lang.name
-    button.Font = Enum.Font.GothamBold
-    button.TextSize = 16
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.AutoButtonColor = false
-    button.ZIndex = 3
-    button.Parent = container
-    
-    local buttonCorner = Instance.new("UICorner")
-    buttonCorner.CornerRadius = UDim.new(0, 8)
-    buttonCorner.Parent = button
-    
-    -- Hover effects
-    button.MouseEnter:Connect(function()
-        button.BackgroundTransparency = 0.2
-    end)
-    
-    button.MouseLeave:Connect(function()
-        button.BackgroundTransparency = 0
-    end)
-    
-    button.MouseButton1Click:Connect(function()
-        -- Play click sound
-        clickSound:Play()
-        
-        -- Small animation
-        local originalSize = button.Size
-        button.Size = UDim2.new(0.75, 0, 0, 45)
-        wait(0.1)
-        button.Size = originalSize
-        
-        -- Close menu and create main GUI
-        wait(0.2)
-        languageGui:Destroy()
-        createMainGui(lang.code)
-    end)
-end
+openGUI()
+switchTab("Main")
