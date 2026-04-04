@@ -1910,3 +1910,5 @@ RS.Heartbeat:Connect(function()
         end
     end
 end)
+
+print("leaked by 12 hub owner https://discord.gg/YzghcjWehU")
