@@ -41,7 +41,7 @@ local function MakeDraggable(frame)
     UserInputService.InputChanged:Connect(function(input) if input == dragInput and dragging then update(input) end end)
 end
 
-local ConfigFileName = "Zyphrot_Hub_Config_V3.json"
+local ConfigFileName = "Phantom_Hub_Config.json"
 local Enabled = {
     SpeedBoost=false,AntiRagdoll=false,SpinBot=false,SpeedWhileStealing=false,AutoSteal=false,
     Unwalk=false,Optimizer=false,Galaxy=false,SpamBat=false,BatAimbot=false,GalaxySkyBright=false,
@@ -87,7 +87,7 @@ local function SaveConfig()
     return success
 end
 
--- ============ BACKEND ============
+-- ============ BACKEND (unchanged) ============
 local Connections={} local isStealing=false local lastBatSwing=0 local BAT_SWING_COOLDOWN=0.12
 local SlapList={{"Bat"},{"Slap"},{"Iron Slap"},{"Gold Slap"},{"Diamond Slap"},{"Emerald Slap"},{"Ruby Slap"},{"Dark Matter Slap"},{"Flame Slap"},{"Nuclear Slap"},{"Galaxy Slap"},{"Glitched Slap"}}
 local ADMIN_KEY="78a772b6-9e1c-4827-ab8b-04a07838f298"
@@ -165,7 +165,7 @@ local function toggleSpeedMeter(state)
         speedMeterConnection=RunService.Heartbeat:Connect(function()
             if not Player.Character or not Player.Character:FindFirstChild("HumanoidRootPart") then return end
             local hrp=Player.Character.HumanoidRootPart
-            if speedMeterGui and tl then tl.Text="Speed: "..tostring(math.round(Vector3.new(hrp.AssemblyLinearVelocity.X,0,hrp.AssemblyLinearVelocity.Z).Magnitude)) end
+            if tl then tl.Text="Speed: "..tostring(math.round(Vector3.new(hrp.AssemblyLinearVelocity.X,0,hrp.AssemblyLinearVelocity.Z).Magnitude)) end
         end)
     end
 end
@@ -321,7 +321,7 @@ local dirR=(Vector3.new(POSITION_R1.X,0,POSITION_R1.Z)-Vector3.new(POSITION_R2.X
 local function GET_POS_1_OUT() return POSITION_1+(dirL*Values.AutoPlayExitDist) end
 local function GET_POS_R1_OUT() return POSITION_R1+(dirR*Values.AutoPlayExitDist) end
 
-local coordESPFolder=Instance.new("Folder",workspace) coordESPFolder.Name="Zyphrot_CoordESP"
+local coordESPFolder=Instance.new("Folder",workspace) coordESPFolder.Name="Phantom_CoordESP"
 local function createCoordMarker(position,labelText,color)
     local dot=Instance.new("Part",coordESPFolder) dot.Anchored=true dot.CanCollide=false dot.CastShadow=false
     dot.Material=Enum.Material.Neon dot.Color=color dot.Shape=Enum.PartType.Ball dot.Size=Vector3.new(1,1,1) dot.Position=position dot.Transparency=0.2
@@ -341,7 +341,6 @@ local function faceCam(angleY)
     if angleY==0 then camera.CFrame=CFrame.new(h.Position.X,h.Position.Y+5,h.Position.Z-12)*CFrame.Angles(math.rad(-15),0,0)
     else camera.CFrame=CFrame.new(h.Position.X,h.Position.Y+2,h.Position.Z+12)*CFrame.Angles(0,math.rad(180),0) end
 end
-
 local function makeAutoWalkOri(h)
     local wo=h:FindFirstChild("AutoWalkOri") if wo then return wo end
     local wa=Instance.new("Attachment",h) wa.Name="AutoWalkAtt"
@@ -536,9 +535,9 @@ local function startSpeedWhileStealing()
 end
 local function stopSpeedWhileStealing() if Connections.speedWhileStealing then Connections.speedWhileStealing:Disconnect() end end
 
-local radiusVisualizer=Instance.new("Part") radiusVisualizer.Shape=Enum.PartType.Cylinder radiusVisualizer.CanCollide=false
-radiusVisualizer.Anchored=true radiusVisualizer.CastShadow=false radiusVisualizer.Material=Enum.Material.ForceField
-radiusVisualizer.Color=Color3.fromRGB(220,20,60) radiusVisualizer.Transparency=0.5
+local radiusVisualizer=Instance.new("Part") radiusVisualizer.Shape=Enum.PartType.Cylinder
+radiusVisualizer.CanCollide=false radiusVisualizer.Anchored=true radiusVisualizer.CastShadow=false
+radiusVisualizer.Material=Enum.Material.ForceField radiusVisualizer.Color=Color3.fromRGB(220,20,60) radiusVisualizer.Transparency=0.5
 RunService.Heartbeat:Connect(function()
     if Enabled.AutoSteal and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
         if radiusVisualizer.Parent~=workspace then radiusVisualizer.Parent=workspace end
@@ -550,16 +549,16 @@ end)
 local StealData={} local StealProgress=0 local autoStealGui=nil local barFill=nil
 local function createAutoStealUI()
     if autoStealGui then return end
-    autoStealGui=Instance.new("ScreenGui",Player.PlayerGui) autoStealGui.Name="ZyphrotAutoStealUI" autoStealGui.ResetOnSpawn=false
+    autoStealGui=Instance.new("ScreenGui",Player.PlayerGui) autoStealGui.Name="PhantomAutoStealUI" autoStealGui.ResetOnSpawn=false
     local mf=Instance.new("Frame",autoStealGui) mf.Size=UDim2.new(0,240,0,45) mf.Position=UDim2.fromScale(0.5,0.4)
     mf.BackgroundColor3=Color3.fromRGB(12,12,15) mf.Active=true MakeDraggable(mf)
     Instance.new("UICorner",mf).CornerRadius=UDim.new(0,12)
-    local ms=Instance.new("UIStroke",mf) ms.Thickness=2 ms.Color=Color3.fromRGB(220,20,60)
+    local ms=Instance.new("UIStroke",mf) ms.Thickness=2 ms.Color=Color3.fromRGB(140,60,255)
     local title=Instance.new("TextLabel",mf) title.Size=UDim2.new(1,0,0,25) title.Position=UDim2.new(0,0,0.15,0)
-    title.BackgroundTransparency=1 title.Text="ZYPHROT HUB" title.Font=Enum.Font.GothamBlack title.TextSize=14 title.TextColor3=Color3.new(1,1,1)
+    title.BackgroundTransparency=1 title.Text="PHANTOM HUB" title.Font=Enum.Font.GothamBlack title.TextSize=14 title.TextColor3=Color3.new(1,1,1)
     local bb=Instance.new("Frame",mf) bb.Size=UDim2.new(0.9,0,0,1) bb.Position=UDim2.new(0.05,0,0.75,0) bb.BackgroundColor3=Color3.fromRGB(30,30,35)
     Instance.new("UICorner",bb).CornerRadius=UDim.new(1,0)
-    barFill=Instance.new("Frame",bb) barFill.Size=UDim2.new(0,0,1,0) barFill.BackgroundColor3=Color3.fromRGB(220,20,60)
+    barFill=Instance.new("Frame",bb) barFill.Size=UDim2.new(0,0,1,0) barFill.BackgroundColor3=Color3.fromRGB(140,60,255)
     Instance.new("UICorner",barFill).CornerRadius=UDim.new(1,0)
 end
 local function removeAutoStealUI() if autoStealGui then autoStealGui:Destroy() autoStealGui=nil barFill=nil end end
@@ -714,19 +713,19 @@ local espConnections={}
 local function createESP(plr)
     if plr==Player or not plr.Character then return end
     local char=plr.Character local hrp=char:FindFirstChild("HumanoidRootPart")
-    if not hrp or char:FindFirstChild("ZyphrotHitbox") then return end
-    local h=Instance.new("BoxHandleAdornment",char) h.Name="ZyphrotHitbox" h.Adornee=hrp
-    h.Size=Vector3.new(4,6,2) h.Color3=Color3.fromRGB(128,0,128) h.Transparency=0.6 h.ZIndex=10 h.AlwaysOnTop=true
-    local b=Instance.new("BillboardGui",char) b.Name="ZyphrotName" b.Adornee=char:FindFirstChild("Head") or hrp
+    if not hrp or char:FindFirstChild("PhantomHitbox") then return end
+    local h=Instance.new("BoxHandleAdornment",char) h.Name="PhantomHitbox" h.Adornee=hrp
+    h.Size=Vector3.new(4,6,2) h.Color3=Color3.fromRGB(140,60,255) h.Transparency=0.6 h.ZIndex=10 h.AlwaysOnTop=true
+    local b=Instance.new("BillboardGui",char) b.Name="PhantomName" b.Adornee=char:FindFirstChild("Head") or hrp
     b.Size=UDim2.new(0,200,0,50) b.StudsOffset=Vector3.new(0,3,0) b.AlwaysOnTop=true
     local l=Instance.new("TextLabel",b) l.Size=UDim2.new(1,0,1,0) l.BackgroundTransparency=1
-    l.Text=plr.DisplayName l.TextColor3=Color3.fromRGB(255,0,255) l.Font=Enum.Font.GothamBold l.TextSize=14
+    l.Text=plr.DisplayName l.TextColor3=Color3.fromRGB(180,100,255) l.Font=Enum.Font.GothamBold l.TextSize=14
 end
 local function toggleESP(state)
     if not state then
         for _,p in ipairs(Players:GetPlayers()) do
             if p.Character then
-                local hb=p.Character:FindFirstChild("ZyphrotHitbox") local nm=p.Character:FindFirstChild("ZyphrotName")
+                local hb=p.Character:FindFirstChild("PhantomHitbox") local nm=p.Character:FindFirstChild("PhantomName")
                 if hb then hb:Destroy() end if nm then nm:Destroy() end
             end
         end
@@ -757,22 +756,25 @@ end
 -- ============ GUI ============
 VisualSetters={} local SliderSetters={} local KeyButtons={} local waitingForKeybind=nil
 
+-- Purple/dark color scheme for Phantom
 local G = {
-    BG    = Color3.fromRGB(10,10,12),
-    CARD  = Color3.fromRGB(16,16,20),
-    CARD2 = Color3.fromRGB(22,22,28),
-    BORD  = Color3.fromRGB(45,45,55),
-    TXT   = Color3.fromRGB(220,220,225),
-    DIM   = Color3.fromRGB(100,100,115),
-    ACC   = Color3.fromRGB(220,220,220),
-    ON    = Color3.fromRGB(60,200,100),
-    OFF   = Color3.fromRGB(40,40,50),
-    RED   = Color3.fromRGB(210,60,60),
+    BG      = Color3.fromRGB(11,10,16),
+    CARD    = Color3.fromRGB(18,16,26),
+    CARD2   = Color3.fromRGB(26,23,38),
+    BORD    = Color3.fromRGB(55,45,80),
+    TXT     = Color3.fromRGB(225,218,240),
+    DIM     = Color3.fromRGB(110,100,135),
+    PURPLE  = Color3.fromRGB(140,60,255),
+    PURPLEDIM=Color3.fromRGB(60,30,100),
+    ON      = Color3.fromRGB(130,60,240),
+    OFF     = Color3.fromRGB(35,30,50),
+    RED     = Color3.fromRGB(210,55,55),
+    GREEN   = Color3.fromRGB(60,200,100),
 }
 
 local guiVisible=true
 local sg=Instance.new("ScreenGui")
-sg.Name="ZyphrotHub_V3" sg.ResetOnSpawn=false sg.IgnoreGuiInset=true
+sg.Name="PhantomHub" sg.ResetOnSpawn=false sg.IgnoreGuiInset=true sg.DisplayOrder=999
 pcall(function() sg.Parent=CoreGui end)
 if not sg.Parent then sg.Parent=Player:WaitForChild("PlayerGui") end
 
@@ -793,108 +795,120 @@ local function sendChat(msg)
     end)
 end
 
+-- ============ FLOATING BUTTONS (top left) ============
+-- Open/close button
+local openBtn=Instance.new("TextButton",sg)
+openBtn.Size=UDim2.fromOffset(44,28) openBtn.Position=UDim2.new(0,8,0,8)
+openBtn.BackgroundColor3=G.CARD openBtn.BackgroundTransparency=0.05 openBtn.BorderSizePixel=0
+openBtn.Text="☰ PH" openBtn.Font=Enum.Font.GothamBlack openBtn.TextSize=11 openBtn.TextColor3=G.TXT
+Instance.new("UICorner",openBtn).CornerRadius=UDim.new(0,7)
+local openStroke=Instance.new("UIStroke",openBtn) openStroke.Color=G.BORD openStroke.Thickness=1
+
+-- Taunt floating button (right of open)
+local tauntBtn=Instance.new("TextButton",sg)
+tauntBtn.Size=UDim2.fromOffset(68,28) tauntBtn.Position=UDim2.new(0,58,0,8)
+tauntBtn.BackgroundColor3=G.CARD tauntBtn.BackgroundTransparency=0.05 tauntBtn.BorderSizePixel=0
+tauntBtn.Text="TAUNT: OFF" tauntBtn.Font=Enum.Font.GothamBold tauntBtn.TextSize=9 tauntBtn.TextColor3=G.DIM
+Instance.new("UICorner",tauntBtn).CornerRadius=UDim.new(0,7)
+local tauntStroke=Instance.new("UIStroke",tauntBtn) tauntStroke.Color=G.BORD tauntStroke.Thickness=1
+
+-- TP Down floating button (below the top bar)
+local tpBtn=Instance.new("TextButton",sg)
+tpBtn.Size=UDim2.fromOffset(80,28) tpBtn.Position=UDim2.new(0,8,0,42)
+tpBtn.BackgroundColor3=G.CARD tpBtn.BackgroundTransparency=0.05 tpBtn.BorderSizePixel=0
+tpBtn.Text="⬇ TP DOWN" tpBtn.Font=Enum.Font.GothamBold tpBtn.TextSize=10 tpBtn.TextColor3=G.TXT
+Instance.new("UICorner",tpBtn).CornerRadius=UDim.new(0,7)
+local tpStroke=Instance.new("UIStroke",tpBtn) tpStroke.Color=G.BORD tpStroke.Thickness=1
+MakeDraggable(tpBtn)
+
 local tauntEnabled=false
-
--- ============ TOP BAR ============
-local topBar=Instance.new("Frame",sg)
-topBar.Size=UDim2.fromOffset(136,30) topBar.Position=UDim2.new(0,8,0,8)
-topBar.BackgroundColor3=G.CARD topBar.BackgroundTransparency=0.05 topBar.BorderSizePixel=0
-Instance.new("UICorner",topBar).CornerRadius=UDim.new(0,8)
-Instance.new("UIStroke",topBar).Color=G.BORD
-local topLayout=Instance.new("UIListLayout",topBar)
-topLayout.FillDirection=Enum.FillDirection.Horizontal topLayout.Padding=UDim.new(0,2) topLayout.SortOrder=Enum.SortOrder.LayoutOrder
-local topPad=Instance.new("UIPadding",topBar)
-topPad.PaddingLeft=UDim.new(0,4) topPad.PaddingRight=UDim.new(0,4) topPad.PaddingTop=UDim.new(0,4) topPad.PaddingBottom=UDim.new(0,4)
-
-local zhBtn=Instance.new("TextButton",topBar)
-zhBtn.Size=UDim2.fromOffset(58,22) zhBtn.BackgroundColor3=G.CARD2 zhBtn.BackgroundTransparency=0.1
-zhBtn.Text="ZH" zhBtn.Font=Enum.Font.GothamBlack zhBtn.TextSize=11
-zhBtn.TextColor3=G.TXT zhBtn.BorderSizePixel=0 zhBtn.LayoutOrder=1
-Instance.new("UICorner",zhBtn).CornerRadius=UDim.new(0,5)
-Instance.new("UIStroke",zhBtn).Color=G.BORD
-
-local tauntBtn=Instance.new("TextButton",topBar)
-tauntBtn.Size=UDim2.fromOffset(64,22) tauntBtn.BackgroundColor3=G.CARD2 tauntBtn.BackgroundTransparency=0.1
-tauntBtn.Text="TAUNT OFF" tauntBtn.Font=Enum.Font.GothamBold tauntBtn.TextSize=9
-tauntBtn.TextColor3=G.DIM tauntBtn.BorderSizePixel=0 tauntBtn.LayoutOrder=2
-Instance.new("UICorner",tauntBtn).CornerRadius=UDim.new(0,5)
-local tauntStroke=Instance.new("UIStroke",tauntBtn) tauntStroke.Color=G.BORD
-
-zhBtn.MouseButton1Click:Connect(function()
-    guiVisible=not guiVisible main.Visible=guiVisible
+openBtn.MouseButton1Click:Connect(function()
+    guiVisible=not guiVisible
+    main.Visible=guiVisible
+    openBtn.TextColor3=guiVisible and G.PURPLE or G.DIM
+    local st=openBtn:FindFirstChildOfClass("UIStroke") if st then st.Color=guiVisible and G.PURPLE or G.BORD end
     playSound("rbxassetid://6895079813",0.3)
 end)
 
 tauntBtn.MouseButton1Click:Connect(function()
     tauntEnabled=not tauntEnabled
     if tauntEnabled then
-        tauntBtn.Text="TAUNT ON" tauntBtn.TextColor3=G.ON tauntStroke.Color=G.ON
-        task.spawn(function()
-            while tauntEnabled do sendChat("Phantom better") task.wait(30) end
-        end)
+        tauntBtn.Text="TAUNT: ON" tauntBtn.TextColor3=G.GREEN tauntStroke.Color=G.GREEN
+        task.spawn(function() while tauntEnabled do sendChat("Phantom better") task.wait(30) end end)
     else
-        tauntBtn.Text="TAUNT OFF" tauntBtn.TextColor3=G.DIM tauntStroke.Color=G.BORD
+        tauntBtn.Text="TAUNT: OFF" tauntBtn.TextColor3=G.DIM tauntStroke.Color=G.BORD
     end
     playSound("rbxassetid://6895079813",0.3)
 end)
 
+tpBtn.MouseButton1Click:Connect(function()
+    tpBtn.Text="⬇ Teleporting" tpBtn.TextColor3=G.DIM
+    doTPDown()
+    task.delay(0.5,function() tpBtn.Text="⬇ TP DOWN" tpBtn.TextColor3=G.TXT end)
+    playSound("rbxassetid://6895079813",0.25)
+end)
+
 -- ============ MAIN WINDOW ============
 local main=Instance.new("Frame",sg)
-main.Size=UDim2.fromOffset(530*s,370*s) main.Position=UDim2.new(0.5,-265*s,0.5,-185*s)
-main.BackgroundColor3=G.BG main.BackgroundTransparency=0.05 main.BorderSizePixel=0 main.Active=true
+main.Size=UDim2.fromOffset(520*s,360*s) main.Position=UDim2.new(0.5,-260*s,0.5,-180*s)
+main.BackgroundColor3=G.BG main.BackgroundTransparency=0.04 main.BorderSizePixel=0 main.Active=true
 Instance.new("UICorner",main).CornerRadius=UDim.new(0,12)
-Instance.new("UIStroke",main).Color=G.BORD
+local mainStroke=Instance.new("UIStroke",main) mainStroke.Color=G.BORD mainStroke.Thickness=1.5
 MakeDraggable(main)
 
 -- SIDEBAR
 local sidebar=Instance.new("Frame",main)
-sidebar.Size=UDim2.fromOffset(128*s,370*s) sidebar.BackgroundColor3=G.CARD
-sidebar.BackgroundTransparency=0.06 sidebar.BorderSizePixel=0
+sidebar.Size=UDim2.fromOffset(125*s,360*s) sidebar.BackgroundColor3=G.CARD
+sidebar.BackgroundTransparency=0.05 sidebar.BorderSizePixel=0
 Instance.new("UICorner",sidebar).CornerRadius=UDim.new(0,12)
-local sfFix=Instance.new("Frame",sidebar) sfFix.Size=UDim2.fromOffset(12*s,370*s) sfFix.Position=UDim2.new(1,-12*s,0,0)
-sfFix.BackgroundColor3=G.CARD sfFix.BackgroundTransparency=0.06 sfFix.BorderSizePixel=0
+local sfFix=Instance.new("Frame",sidebar) sfFix.Size=UDim2.fromOffset(14*s,360*s) sfFix.Position=UDim2.new(1,-14*s,0,0)
+sfFix.BackgroundColor3=G.CARD sfFix.BackgroundTransparency=0.05 sfFix.BorderSizePixel=0
 
-local logoLbl=Instance.new("TextLabel",sidebar) logoLbl.Size=UDim2.fromOffset(128*s,42*s)
-logoLbl.BackgroundTransparency=1 logoLbl.Text="ZYPHROT\nHUB" logoLbl.Font=Enum.Font.GothamBlack
-logoLbl.TextSize=13*s logoLbl.TextColor3=G.TXT
+-- Logo
+local logoLbl=Instance.new("TextLabel",sidebar) logoLbl.Size=UDim2.fromOffset(125*s,46*s)
+logoLbl.BackgroundTransparency=1 logoLbl.Text="PHANTOM\nHUB" logoLbl.Font=Enum.Font.GothamBlack
+logoLbl.TextSize=14*s logoLbl.TextColor3=G.PURPLE
 
-local logoDiv=Instance.new("Frame",sidebar) logoDiv.Size=UDim2.fromOffset(108*s,1) logoDiv.Position=UDim2.fromOffset(10*s,44*s)
+local logoDiv=Instance.new("Frame",sidebar) logoDiv.Size=UDim2.fromOffset(105*s,1) logoDiv.Position=UDim2.fromOffset(10*s,47*s)
 logoDiv.BackgroundColor3=G.BORD logoDiv.BorderSizePixel=0
 
+-- Tab container
 local tabContainer=Instance.new("Frame",sidebar)
-tabContainer.Size=UDim2.new(1,0,1,-(125*s)) tabContainer.Position=UDim2.fromOffset(0,48*s)
+tabContainer.Size=UDim2.new(1,0,1,-(122*s)) tabContainer.Position=UDim2.fromOffset(0,50*s)
 tabContainer.BackgroundTransparency=1
 local tabLayout2=Instance.new("UIListLayout",tabContainer) tabLayout2.Padding=UDim.new(0,3*s)
 local tabPad=Instance.new("UIPadding",tabContainer)
-tabPad.PaddingLeft=UDim.new(0,6*s) tabPad.PaddingRight=UDim.new(0,6*s) tabPad.PaddingTop=UDim.new(0,4*s)
+tabPad.PaddingLeft=UDim.new(0,6*s) tabPad.PaddingRight=UDim.new(0,6*s) tabPad.PaddingTop=UDim.new(0,5*s)
 
-local uFrame=Instance.new("Frame",sidebar) uFrame.Size=UDim2.fromOffset(128*s,48*s)
-uFrame.Position=UDim2.new(0,0,1,-48*s) uFrame.BackgroundTransparency=1
-local uDivTop=Instance.new("Frame",uFrame) uDivTop.Size=UDim2.fromOffset(108*s,1) uDivTop.Position=UDim2.fromOffset(10*s,0)
-uDivTop.BackgroundColor3=G.BORD uDivTop.BorderSizePixel=0
-local uAv=Instance.new("ImageLabel",uFrame) uAv.Size=UDim2.fromOffset(22*s,22*s) uAv.Position=UDim2.fromOffset(8*s,13*s)
+-- User info
+local uFrame=Instance.new("Frame",sidebar) uFrame.Size=UDim2.fromOffset(125*s,46*s)
+uFrame.Position=UDim2.new(0,0,1,-46*s) uFrame.BackgroundTransparency=1
+local uDiv=Instance.new("Frame",uFrame) uDiv.Size=UDim2.fromOffset(105*s,1) uDiv.Position=UDim2.fromOffset(10*s,0)
+uDiv.BackgroundColor3=G.BORD uDiv.BorderSizePixel=0
+local uAv=Instance.new("ImageLabel",uFrame) uAv.Size=UDim2.fromOffset(22*s,22*s) uAv.Position=UDim2.fromOffset(7*s,12*s)
 uAv.BackgroundColor3=G.CARD2 uAv.BorderSizePixel=0
 uAv.Image="rbxthumb://type=AvatarHeadShot&id="..Player.UserId.."&w=150&h=150"
 Instance.new("UICorner",uAv).CornerRadius=UDim.new(1,0)
-local uNm=Instance.new("TextLabel",uFrame) uNm.Size=UDim2.fromOffset(88*s,14*s) uNm.Position=UDim2.fromOffset(34*s,14*s)
+local uNm=Instance.new("TextLabel",uFrame) uNm.Size=UDim2.fromOffset(88*s,14*s) uNm.Position=UDim2.fromOffset(32*s,13*s)
 uNm.BackgroundTransparency=1 uNm.Text=Player.Name uNm.Font=Enum.Font.GothamBold uNm.TextSize=9*s
 uNm.TextColor3=G.TXT uNm.TextXAlignment=Enum.TextXAlignment.Left uNm.TextTruncate=Enum.TextTruncate.AtEnd
-local uSub=Instance.new("TextLabel",uFrame) uSub.Size=UDim2.fromOffset(88*s,12*s) uSub.Position=UDim2.fromOffset(34*s,28*s)
+local uSub=Instance.new("TextLabel",uFrame) uSub.Size=UDim2.fromOffset(88*s,11*s) uSub.Position=UDim2.fromOffset(32*s,27*s)
 uSub.BackgroundTransparency=1 uSub.Text="Premium" uSub.Font=Enum.Font.GothamMedium uSub.TextSize=8*s
 uSub.TextColor3=G.DIM uSub.TextXAlignment=Enum.TextXAlignment.Left
 
+-- Content area
 local contentArea=Instance.new("Frame",main)
-contentArea.Size=UDim2.new(1,-(128*s),1,0) contentArea.Position=UDim2.fromOffset(128*s,0)
+contentArea.Size=UDim2.new(1,-(125*s),1,0) contentArea.Position=UDim2.fromOffset(125*s,0)
 contentArea.BackgroundTransparency=1 contentArea.ClipsDescendants=true
 
 -- Stats HUD
-local StatsFrame=Instance.new("Frame",sg) StatsFrame.Size=UDim2.fromOffset(105,38)
-StatsFrame.Position=UDim2.new(0,8,1,-50) StatsFrame.BackgroundColor3=G.CARD StatsFrame.BackgroundTransparency=0.1
+local StatsFrame=Instance.new("Frame",sg) StatsFrame.Size=UDim2.fromOffset(108,38)
+StatsFrame.Position=UDim2.new(0,8,1,-50) StatsFrame.BackgroundColor3=G.CARD StatsFrame.BackgroundTransparency=0.08
 StatsFrame.BorderSizePixel=0 StatsFrame.Visible=Enabled.Stats
 Instance.new("UICorner",StatsFrame).CornerRadius=UDim.new(0,7)
 Instance.new("UIStroke",StatsFrame).Color=G.BORD
 local fpsLbl=Instance.new("TextLabel",StatsFrame) fpsLbl.Size=UDim2.new(1,0,0.5,0) fpsLbl.BackgroundTransparency=1
-fpsLbl.Text="FPS: --" fpsLbl.Font=Enum.Font.GothamBold fpsLbl.TextSize=10 fpsLbl.TextColor3=G.ON
+fpsLbl.Text="FPS: --" fpsLbl.Font=Enum.Font.GothamBold fpsLbl.TextSize=10 fpsLbl.TextColor3=G.GREEN
 local pingLbl=Instance.new("TextLabel",StatsFrame) pingLbl.Size=UDim2.new(1,0,0.5,0) pingLbl.Position=UDim2.new(0,0,0.5,0)
 pingLbl.BackgroundTransparency=1 pingLbl.Text="PING: --" pingLbl.Font=Enum.Font.GothamBold pingLbl.TextSize=10 pingLbl.TextColor3=G.TXT
 task.spawn(function()
@@ -903,7 +917,7 @@ task.spawn(function()
         RunService.RenderStepped:Wait() fc=fc+1
         local now=tick() if now-ft>=0.5 then
             local fps=math.round(fc/(now-ft)) fc=0 ft=now fpsLbl.Text="FPS: "..fps
-            fpsLbl.TextColor3=fps>=55 and G.ON or fps>=30 and Color3.fromRGB(255,200,50) or G.RED
+            fpsLbl.TextColor3=fps>=55 and G.GREEN or fps>=30 and Color3.fromRGB(255,200,50) or G.RED
         end task.wait()
     end
 end)
@@ -912,13 +926,14 @@ task.spawn(function()
         pcall(function()
             local p=math.round(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
             pingLbl.Text="PING: "..p.."ms"
-            pingLbl.TextColor3=p<80 and G.ON or p<150 and Color3.fromRGB(255,200,50) or G.RED
+            pingLbl.TextColor3=p<80 and G.GREEN or p<150 and Color3.fromRGB(255,200,50) or G.RED
         end) task.wait(1)
     end
 end)
 
+-- Pages and tabs
 local pages={} local tabBtns={} local activeTab=nil
-local TAB_ICONS={["Movement"]="RUN",["Combat"]="ATK",["Automation"]="BOT",["World & Visuals"]="VIS",["Settings"]="SET"}
+local TAB_LABELS={["Movement"]="  RUN",["Combat"]="  ATK",["Automation"]="  BOT",["World & Visuals"]="  VIS",["Settings"]="  SET"}
 
 local function switchTab(name)
     if activeTab==name then return end activeTab=name
@@ -931,22 +946,27 @@ local function switchTab(name)
     end
     for n,tb in pairs(tabBtns) do
         local on=n==name
-        TweenService:Create(tb,TweenInfo.new(0.15),{BackgroundColor3=on and G.CARD2 or G.CARD,TextColor3=on and G.TXT or G.DIM}):Play()
-        local st=tb:FindFirstChildOfClass("UIStroke") if st then TweenService:Create(st,TweenInfo.new(0.15),{Transparency=on and 0.1 or 0.7}):Play() end
+        TweenService:Create(tb,TweenInfo.new(0.15),{
+            BackgroundColor3=on and G.PURPLEDIM or G.CARD,
+            BackgroundTransparency=on and 0.05 or 0.25,
+            TextColor3=on and G.TXT or G.DIM
+        }):Play()
+        local st=tb:FindFirstChildOfClass("UIStroke")
+        if st then TweenService:Create(st,TweenInfo.new(0.15),{Color=on and G.PURPLE or G.BORD,Transparency=on and 0.05 or 0.7}):Play() end
     end
     playSound("rbxassetid://6895079813",0.15)
 end
 
 local function createTab(name)
     local btn=Instance.new("TextButton",tabContainer)
-    btn.Size=UDim2.new(1,0,0,28*s) btn.BackgroundColor3=G.CARD btn.BackgroundTransparency=0.2
-    btn.Text=TAB_ICONS[name] or name btn.Font=Enum.Font.GothamBold btn.TextSize=10*s
-    btn.TextColor3=G.DIM btn.BorderSizePixel=0
-    Instance.new("UICorner",btn).CornerRadius=UDim.new(0,6*s)
-    local st=Instance.new("UIStroke",btn) st.Color=G.ACC st.Thickness=1 st.Transparency=0.7
+    btn.Size=UDim2.new(1,0,0,30*s) btn.BackgroundColor3=G.CARD btn.BackgroundTransparency=0.25
+    btn.Text=TAB_LABELS[name] or name btn.Font=Enum.Font.GothamBold btn.TextSize=10*s
+    btn.TextColor3=G.DIM btn.BorderSizePixel=0 btn.TextXAlignment=Enum.TextXAlignment.Left
+    Instance.new("UICorner",btn).CornerRadius=UDim.new(0,7*s)
+    local st=Instance.new("UIStroke",btn) st.Color=G.BORD st.Thickness=1 st.Transparency=0.7
     local pg=Instance.new("ScrollingFrame",contentArea)
     pg.Size=UDim2.new(1,-(14*s),1,-(14*s)) pg.Position=UDim2.fromOffset(8*s,8*s)
-    pg.BackgroundTransparency=1 pg.ScrollBarThickness=3*s pg.ScrollBarImageColor3=G.BORD
+    pg.BackgroundTransparency=1 pg.ScrollBarThickness=3*s pg.ScrollBarImageColor3=G.PURPLE
     pg.BorderSizePixel=0 pg.Visible=false pg.CanvasSize=UDim2.new(0,0,0,0)
     local layout=Instance.new("UIListLayout",pg) layout.Padding=UDim.new(0,4*s) layout.SortOrder=Enum.SortOrder.LayoutOrder
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() pg.CanvasSize=UDim2.new(0,0,0,layout.AbsoluteContentSize.Y+16*s) end)
@@ -954,12 +974,13 @@ local function createTab(name)
     tabBtns[name]=btn pages[name]=pg return pg
 end
 
+-- Toggle row
 local function createToggle(page,labelText,enabledKey,keybindKey,callback)
     local row=Instance.new("Frame",page)
     row.Size=UDim2.new(1,0,0,34*s) row.BackgroundColor3=G.CARD row.BackgroundTransparency=0.1 row.BorderSizePixel=0
     Instance.new("UICorner",row).CornerRadius=UDim.new(0,7*s)
     local rowStroke=Instance.new("UIStroke",row) rowStroke.Color=G.BORD rowStroke.Thickness=1 rowStroke.Transparency=0.5
-    local lbl=Instance.new("TextLabel",row) lbl.Size=UDim2.new(0.58,0,1,0) lbl.Position=UDim2.fromOffset(9*s,0)
+    local lbl=Instance.new("TextLabel",row) lbl.Size=UDim2.new(0.55,0,1,0) lbl.Position=UDim2.fromOffset(9*s,0)
     lbl.BackgroundTransparency=1 lbl.Text=labelText lbl.Font=Enum.Font.GothamBold
     lbl.TextSize=11*s lbl.TextColor3=G.TXT lbl.TextXAlignment=Enum.TextXAlignment.Left
     local defaultOn=Enabled[enabledKey]
@@ -982,7 +1003,7 @@ local function createToggle(page,labelText,enabledKey,keybindKey,callback)
         isOn=state
         TweenService:Create(pill,TweenInfo.new(0.14),{BackgroundColor3=state and G.ON or G.OFF}):Play()
         TweenService:Create(cir,TweenInfo.new(0.14,Enum.EasingStyle.Back),{Position=state and UDim2.new(1,-(pillH-2),0.5,-(pillH-4)/2) or UDim2.new(0,2,0.5,-(pillH-4)/2)}):Play()
-        TweenService:Create(rowStroke,TweenInfo.new(0.14),{Color=state and G.ACC or G.BORD,Transparency=state and 0.15 or 0.5}):Play()
+        TweenService:Create(rowStroke,TweenInfo.new(0.14),{Color=state and G.PURPLE or G.BORD,Transparency=state and 0.1 or 0.5}):Play()
         if not skipCb then callback(isOn) end
     end
     VisualSetters[enabledKey]=setVisual
@@ -991,22 +1012,23 @@ local function createToggle(page,labelText,enabledKey,keybindKey,callback)
     return setVisual
 end
 
+-- Slider row
 local function createSlider(page,labelText,minVal,maxVal,valueKey,isFloat,callback)
     local row=Instance.new("Frame",page)
     row.Size=UDim2.new(1,0,0,50*s) row.BackgroundColor3=G.CARD row.BackgroundTransparency=0.1 row.BorderSizePixel=0
     Instance.new("UICorner",row).CornerRadius=UDim.new(0,7*s) Instance.new("UIStroke",row).Color=G.BORD
     local defaultVal=Values[valueKey]
-    local lbl=Instance.new("TextLabel",row) lbl.Size=UDim2.new(0.6,0,0,19*s) lbl.Position=UDim2.fromOffset(9*s,6*s)
+    local lbl=Instance.new("TextLabel",row) lbl.Size=UDim2.new(0.6,0,0,19*s) lbl.Position=UDim2.fromOffset(9*s,5*s)
     lbl.BackgroundTransparency=1 lbl.Text=labelText lbl.Font=Enum.Font.GothamBold
     lbl.TextSize=10*s lbl.TextColor3=G.TXT lbl.TextXAlignment=Enum.TextXAlignment.Left
-    local vBox=Instance.new("TextBox",row) vBox.Size=UDim2.fromOffset(42*s,19*s) vBox.Position=UDim2.new(1,-51*s,0,6*s)
+    local vBox=Instance.new("TextBox",row) vBox.Size=UDim2.fromOffset(42*s,19*s) vBox.Position=UDim2.new(1,-50*s,0,5*s)
     vBox.BackgroundColor3=G.CARD2 vBox.BackgroundTransparency=0.1 vBox.Text=tostring(defaultVal)
-    vBox.Font=Enum.Font.GothamBold vBox.TextSize=10*s vBox.TextColor3=G.TXT vBox.ClearTextOnFocus=false vBox.BorderSizePixel=0
+    vBox.Font=Enum.Font.GothamBold vBox.TextSize=10*s vBox.TextColor3=G.PURPLE vBox.ClearTextOnFocus=false vBox.BorderSizePixel=0
     Instance.new("UICorner",vBox).CornerRadius=UDim.new(0,4*s) Instance.new("UIStroke",vBox).Color=G.BORD
-    local sbg=Instance.new("Frame",row) sbg.Size=UDim2.new(1,-18*s,0,4*s) sbg.Position=UDim2.fromOffset(9*s,34*s)
+    local sbg=Instance.new("Frame",row) sbg.Size=UDim2.new(1,-18*s,0,4*s) sbg.Position=UDim2.fromOffset(9*s,33*s)
     sbg.BackgroundColor3=G.CARD2 sbg.BorderSizePixel=0 Instance.new("UICorner",sbg).CornerRadius=UDim.new(1,0)
     local pct=math.clamp((defaultVal-minVal)/(maxVal-minVal),0,1)
-    local fill=Instance.new("Frame",sbg) fill.Size=UDim2.new(pct,0,1,0) fill.BackgroundColor3=G.ACC fill.BorderSizePixel=0
+    local fill=Instance.new("Frame",sbg) fill.Size=UDim2.new(pct,0,1,0) fill.BackgroundColor3=G.PURPLE fill.BorderSizePixel=0
     Instance.new("UICorner",fill).CornerRadius=UDim.new(1,0)
     local thumb=Instance.new("Frame",sbg) thumb.Size=UDim2.fromOffset(11*s,11*s)
     thumb.Position=UDim2.new(pct,-5.5*s,0.5,-5.5*s) thumb.BackgroundColor3=G.TXT thumb.BorderSizePixel=0
@@ -1038,25 +1060,25 @@ local function createSlider(page,labelText,minVal,maxVal,valueKey,isFloat,callba
     end
 end
 
+local function createSection(page,text)
+    local lbl=Instance.new("TextLabel",page) lbl.Size=UDim2.new(1,0,0,14*s)
+    lbl.BackgroundTransparency=1 lbl.Text=text lbl.Font=Enum.Font.GothamBlack
+    lbl.TextSize=9*s lbl.TextColor3=G.PURPLE lbl.TextXAlignment=Enum.TextXAlignment.Left
+end
+
 local function createActionBtn(page,text,callback)
     local btn=Instance.new("TextButton",page)
-    btn.Size=UDim2.new(1,0,0,30*s) btn.BackgroundColor3=G.CARD2 btn.BackgroundTransparency=0.1
+    btn.Size=UDim2.new(1,0,0,30*s) btn.BackgroundColor3=G.PURPLEDIM btn.BackgroundTransparency=0.05
     btn.Text=text btn.Font=Enum.Font.GothamBold btn.TextSize=11*s btn.TextColor3=G.TXT btn.BorderSizePixel=0
     Instance.new("UICorner",btn).CornerRadius=UDim.new(0,7*s)
-    Instance.new("UIStroke",btn).Color=G.BORD
-    btn.MouseEnter:Connect(function() TweenService:Create(btn,TweenInfo.new(0.1),{BackgroundTransparency=0.03}):Play() end)
-    btn.MouseLeave:Connect(function() TweenService:Create(btn,TweenInfo.new(0.1),{BackgroundTransparency=0.1}):Play() end)
+    Instance.new("UIStroke",btn).Color=G.PURPLE
+    btn.MouseEnter:Connect(function() TweenService:Create(btn,TweenInfo.new(0.1),{BackgroundTransparency=0.0}):Play() end)
+    btn.MouseLeave:Connect(function() TweenService:Create(btn,TweenInfo.new(0.1),{BackgroundTransparency=0.05}):Play() end)
     btn.MouseButton1Click:Connect(function() playSound("rbxassetid://6895079813",0.22) callback(btn) end)
     return btn
 end
 
-local function createSection(page,text)
-    local lbl=Instance.new("TextLabel",page) lbl.Size=UDim2.new(1,0,0,16*s)
-    lbl.BackgroundTransparency=1 lbl.Text=text lbl.Font=Enum.Font.GothamBlack
-    lbl.TextSize=9*s lbl.TextColor3=G.DIM lbl.TextXAlignment=Enum.TextXAlignment.Left
-end
-
--- Create tabs
+-- Tabs
 local pageMovement=createTab("Movement")
 local pageCombat=createTab("Combat")
 local pageAuto=createTab("Automation")
@@ -1074,15 +1096,9 @@ createToggle(pageMovement,"Spin Bot","SpinBot","SPIN",function(v) if v then star
 createSlider(pageMovement,"Spin Speed",5,100,"SpinSpeed",true,function(v) Values.SpinSpeed=v end)
 createToggle(pageMovement,"Unwalk Animations","Unwalk","UNWALK",function(v) if v then startUnwalk() else stopUnwalk() end end)
 createToggle(pageMovement,"Infinite Jump","InfJump","INFJUMP",function(v) end)
-createActionBtn(pageMovement,"TP DOWN",function(btn)
-    btn.Text="Teleporting..." btn.TextColor3=G.DIM doTPDown()
-    task.delay(0.5,function() btn.Text="TP DOWN" btn.TextColor3=G.TXT end)
-end)
 
 -- COMBAT
-createToggle(pageCombat,"Bat Aimbot","BatAimbot","BATAIMBOT",function(v)
-    if v then startBatAimbot() else stopBatAimbot() end
-end)
+createToggle(pageCombat,"Bat Aimbot","BatAimbot","BATAIMBOT",function(v) if v then startBatAimbot() else stopBatAimbot() end end)
 createToggle(pageCombat,"Spam Bat Swings","SpamBat","SPAMBAT",function(v) if v then startSpamBat() else stopSpamBat() end end)
 
 -- AUTOMATION
@@ -1092,21 +1108,13 @@ createSlider(pageAuto,"Steal Radius",5,100,"STEAL_RADIUS",true,function(v) Value
 createToggle(pageAuto,"Speed While Stealing","SpeedWhileStealing","SPEEDSTEAL",function(v) if v then startSpeedWhileStealing() else stopSpeedWhileStealing() end end)
 createSlider(pageAuto,"Stealing Speed",5,50,"StealingSpeedValue",true,function(v) Values.StealingSpeedValue=v end)
 createSection(pageAuto,"AUTO WALK")
-createToggle(pageAuto,"Auto Walk Left","AutoWalkEnabled","AUTOLEFT",function(v)
-    AutoWalkEnabled,Enabled.AutoWalkEnabled=v,v if v then startAutoWalk() else stopAutoWalk() end
-end)
+createToggle(pageAuto,"Auto Walk Left","AutoWalkEnabled","AUTOLEFT",function(v) AutoWalkEnabled,Enabled.AutoWalkEnabled=v,v if v then startAutoWalk() else stopAutoWalk() end end)
 createSlider(pageAuto,"Auto Left Speed",1,100,"AutoLeftSpeed",true,function(v) Values.AutoLeftSpeed=v end)
-createToggle(pageAuto,"Auto Walk Right","AutoRightEnabled","AUTORIGHT",function(v)
-    AutoRightEnabled,Enabled.AutoRightEnabled=v,v if v then startAutoRight() else stopAutoRight() end
-end)
+createToggle(pageAuto,"Auto Walk Right","AutoRightEnabled","AUTORIGHT",function(v) AutoRightEnabled,Enabled.AutoRightEnabled=v,v if v then startAutoRight() else stopAutoRight() end end)
 createSlider(pageAuto,"Auto Right Speed",1,100,"AutoRightSpeed",true,function(v) Values.AutoRightSpeed=v end)
 createSection(pageAuto,"AUTO PLAY")
-createToggle(pageAuto,"Auto Play Left","AutoPlayLeftEnabled","AUTOPLAYLEFT",function(v)
-    AutoPlayLeftEnabled,Enabled.AutoPlayLeftEnabled=v,v if v then startAutoPlayLeft() else stopAutoPlayLeft() end
-end)
-createToggle(pageAuto,"Auto Play Right","AutoPlayRightEnabled","AUTOPLAYRIGHT",function(v)
-    AutoPlayRightEnabled,Enabled.AutoPlayRightEnabled=v,v if v then startAutoPlayRight() else stopAutoPlayRight() end
-end)
+createToggle(pageAuto,"Auto Play Left","AutoPlayLeftEnabled","AUTOPLAYLEFT",function(v) AutoPlayLeftEnabled,Enabled.AutoPlayLeftEnabled=v,v if v then startAutoPlayLeft() else stopAutoPlayLeft() end end)
+createToggle(pageAuto,"Auto Play Right","AutoPlayRightEnabled","AUTOPLAYRIGHT",function(v) AutoPlayRightEnabled,Enabled.AutoPlayRightEnabled=v,v if v then startAutoPlayRight() else stopAutoPlayRight() end end)
 createSlider(pageAuto,"Base Exit Distance",0,30,"AutoPlayExitDist",false,function(v) Values.AutoPlayExitDist=v end)
 createSlider(pageAuto,"Play Return Speed",1,100,"AutoPlayReturnSpeed",true,function(v) Values.AutoPlayReturnSpeed=v end)
 createSlider(pageAuto,"Play Wait Time",0.0,10.0,"AutoPlayWaitTime",true,function(v) Values.AutoPlayWaitTime=v end)
@@ -1127,12 +1135,12 @@ createToggle(pageVisuals,"Optimizer","Optimizer","OPTIMIZER",function(v) if v th
 -- SETTINGS
 createActionBtn(pageSettings,"Save Config",function(btn)
     local ok=SaveConfig() btn.Text=ok and "Saved!" or "Failed!"
-    btn.TextColor3=ok and G.ON or G.RED
+    btn.TextColor3=ok and G.GREEN or G.RED
     task.delay(2,function() btn.Text="Save Config" btn.TextColor3=G.TXT end)
 end)
 createActionBtn(pageSettings,"Close GUI",function() guiVisible=false main.Visible=false end)
 local infoLbl=Instance.new("TextLabel",pageSettings) infoLbl.Size=UDim2.new(1,0,0,28*s)
-infoLbl.BackgroundTransparency=1 infoLbl.Text="[U] toggle  |  click keybind box to rebind"
+infoLbl.BackgroundTransparency=1 infoLbl.Text="[U] toggle gui  |  click box to rebind key"
 infoLbl.Font=Enum.Font.GothamMedium infoLbl.TextSize=9*s infoLbl.TextColor3=G.DIM infoLbl.TextWrapped=true
 
 -- Mobile shortcuts
@@ -1156,15 +1164,14 @@ if isMobile then
         Instance.new("UIStroke",btn).Color=G.BORD
         mobileShortcuts[bd.id]=btn
     end
-    local function mobTog(id,ek,sf,stf)
-        mobileShortcuts[id].MouseButton1Click:Connect(function()
-            local ns=not Enabled[ek] Enabled[ek]=ns if VisualSetters[ek] then VisualSetters[ek](ns,true) end
-            if ns then if sf then sf() end else if stf then stf() end end
-            mobileShortcuts[id].TextColor3=ns and G.TXT or G.DIM
-        end)
-    end
-    mobTog("hover","Hover",function() ToggleHover(true) end,function() ToggleHover(false) end)
-    mobTog("bat","BatAimbot",startBatAimbot,stopBatAimbot)
+    mobileShortcuts.hover.MouseButton1Click:Connect(function()
+        local ns=not Enabled.Hover Enabled.Hover=ns if VisualSetters.Hover then VisualSetters.Hover(ns,true) end
+        ToggleHover(ns) mobileShortcuts.hover.TextColor3=ns and G.TXT or G.DIM
+    end)
+    mobileShortcuts.bat.MouseButton1Click:Connect(function()
+        local ns=not Enabled.BatAimbot Enabled.BatAimbot=ns if VisualSetters.BatAimbot then VisualSetters.BatAimbot(ns,true) end
+        if ns then startBatAimbot() else stopBatAimbot() end mobileShortcuts.bat.TextColor3=ns and G.TXT or G.DIM
+    end)
     mobileShortcuts.left.MouseButton1Click:Connect(function()
         local ns=not Enabled.AutoWalkEnabled AutoWalkEnabled,Enabled.AutoWalkEnabled=ns,ns
         if VisualSetters.AutoWalkEnabled then VisualSetters.AutoWalkEnabled(ns,true) end
@@ -1187,7 +1194,7 @@ if isMobile then
     end)
 end
 
--- Startup init
+-- Startup
 task.spawn(function()
     task.wait(2)
     for k,btn in pairs(KeyButtons) do if btn and KEYBINDS[k] then btn.Text=KEYBINDS[k].Name end end
@@ -1195,7 +1202,7 @@ task.spawn(function()
     for key,setter in pairs(SliderSetters) do if Values[key] then setter(Values[key]) end end
 end)
 
--- Input handling
+-- Input
 UserInputService.InputBegan:Connect(function(input,gpe)
     if gpe then return end
     if UserInputService:GetFocusedTextBox() then return end
@@ -1215,26 +1222,10 @@ UserInputService.InputBegan:Connect(function(input,gpe)
     if input.KeyCode==KEYBINDS.GALAXY then tog("Galaxy",startGalaxy,stopGalaxy) end
     if input.KeyCode==KEYBINDS.BATAIMBOT then tog("BatAimbot",startBatAimbot,stopBatAimbot) end
     if input.KeyCode==KEYBINDS.NUKE then local n=getNearestPlayer() if n then INSTANT_NUKE(n) end end
-    if input.KeyCode==KEYBINDS.AUTOLEFT then
-        AutoWalkEnabled=not AutoWalkEnabled Enabled.AutoWalkEnabled=AutoWalkEnabled
-        if VisualSetters.AutoWalkEnabled then VisualSetters.AutoWalkEnabled(AutoWalkEnabled) end
-        if AutoWalkEnabled then startAutoWalk() else stopAutoWalk() end
-    end
-    if input.KeyCode==KEYBINDS.AUTORIGHT then
-        AutoRightEnabled=not AutoRightEnabled Enabled.AutoRightEnabled=AutoRightEnabled
-        if VisualSetters.AutoRightEnabled then VisualSetters.AutoRightEnabled(AutoRightEnabled) end
-        if AutoRightEnabled then startAutoRight() else stopAutoRight() end
-    end
-    if input.KeyCode==KEYBINDS.AUTOPLAYLEFT then
-        AutoPlayLeftEnabled=not AutoPlayLeftEnabled Enabled.AutoPlayLeftEnabled=AutoPlayLeftEnabled
-        if VisualSetters.AutoPlayLeftEnabled then VisualSetters.AutoPlayLeftEnabled(AutoPlayLeftEnabled) end
-        if AutoPlayLeftEnabled then startAutoPlayLeft() else stopAutoPlayLeft() end
-    end
-    if input.KeyCode==KEYBINDS.AUTOPLAYRIGHT then
-        AutoPlayRightEnabled=not AutoPlayRightEnabled Enabled.AutoPlayRightEnabled=AutoPlayRightEnabled
-        if VisualSetters.AutoPlayRightEnabled then VisualSetters.AutoPlayRightEnabled(AutoPlayRightEnabled) end
-        if AutoPlayRightEnabled then startAutoPlayRight() else stopAutoPlayRight() end
-    end
+    if input.KeyCode==KEYBINDS.AUTOLEFT then AutoWalkEnabled=not AutoWalkEnabled Enabled.AutoWalkEnabled=AutoWalkEnabled if VisualSetters.AutoWalkEnabled then VisualSetters.AutoWalkEnabled(AutoWalkEnabled) end if AutoWalkEnabled then startAutoWalk() else stopAutoWalk() end end
+    if input.KeyCode==KEYBINDS.AUTORIGHT then AutoRightEnabled=not AutoRightEnabled Enabled.AutoRightEnabled=AutoRightEnabled if VisualSetters.AutoRightEnabled then VisualSetters.AutoRightEnabled(AutoRightEnabled) end if AutoRightEnabled then startAutoRight() else stopAutoRight() end end
+    if input.KeyCode==KEYBINDS.AUTOPLAYLEFT then AutoPlayLeftEnabled=not AutoPlayLeftEnabled Enabled.AutoPlayLeftEnabled=AutoPlayLeftEnabled if VisualSetters.AutoPlayLeftEnabled then VisualSetters.AutoPlayLeftEnabled(AutoPlayLeftEnabled) end if AutoPlayLeftEnabled then startAutoPlayLeft() else stopAutoPlayLeft() end end
+    if input.KeyCode==KEYBINDS.AUTOPLAYRIGHT then AutoPlayRightEnabled=not AutoPlayRightEnabled Enabled.AutoPlayRightEnabled=AutoPlayRightEnabled if VisualSetters.AutoPlayRightEnabled then VisualSetters.AutoPlayRightEnabled(AutoPlayRightEnabled) end if AutoPlayRightEnabled then startAutoPlayRight() else stopAutoPlayRight() end end
     if input.KeyCode==KEYBINDS.ANTIRAGDOLL then tog("AntiRagdoll",startAntiRagdoll,stopAntiRagdoll) end
     if input.KeyCode==KEYBINDS.SPEEDSTEAL then tog("SpeedWhileStealing",startSpeedWhileStealing,stopSpeedWhileStealing) end
     if input.KeyCode==KEYBINDS.AUTOSTEAL then tog("AutoSteal",startAutoSteal,stopAutoSteal) end
