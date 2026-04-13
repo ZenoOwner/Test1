@@ -1,3 +1,4 @@
+Here's the full updated script with all fixes:
 -- ================================================================
 -- LOADING SCREEN
 -- ================================================================
@@ -12,13 +13,16 @@ do
 
     local bg=Instance.new("Frame",sg2) bg.Size=UDim2.new(1,0,1,0) bg.BackgroundColor3=Color3.fromRGB(0,0,0) bg.BackgroundTransparency=0 bg.BorderSizePixel=0
 
-    -- SCARY ALARM SOUND
-    local alarmSound=Instance.new("Sound",sg2)
-    alarmSound.SoundId="rbxassetid://9120641996" alarmSound.Volume=0.85 alarmSound.Looped=true
-    alarmSound:Play()
-    local alarmSound2=Instance.new("Sound",sg2)
-    alarmSound2.SoundId="rbxassetid://1234872020" alarmSound2.Volume=0.5 alarmSound2.Looped=true
-    alarmSound2:Play()
+    -- SOUNDS: parent to workspace for guaranteed playback
+    local function playLoadSound(id,vol,loop)
+        local s=Instance.new("Sound",workspace)
+        s.SoundId="rbxassetid://"..id s.Volume=vol or 0.8 s.Looped=loop or false
+        s:Play()
+        return s
+    end
+    local siren=playLoadSound("2865227914",0.9,true)    -- alarm siren
+    local horror=playLoadSound("1372077950",0.65,true)  -- horror ambience
+    local bass=playLoadSound("4877219993",0.5,true)     -- deep bass drone
 
     local emojis={"💀","⚡","🔥","👾","☠️","💥","🚨","⚠️","🛑","👁️","💣","🔴","😱","🤖"}
     local emojiLabels={}
@@ -26,7 +30,7 @@ do
         local e=Instance.new("TextLabel",bg) e.BackgroundTransparency=1 e.Size=UDim2.fromOffset(64,64)
         e.Position=UDim2.new(math.random(0,90)/100,0,math.random(0,88)/100,0)
         e.Text=emojis[math.random(1,#emojis)] e.TextSize=52 e.Font=Enum.Font.GothamBlack
-        e.TextColor3=Color3.new(1,0,0) e.BackgroundTransparency=1 e.ZIndex=2
+        e.TextColor3=Color3.new(1,0,0) e.ZIndex=2
         table.insert(emojiLabels,e)
     end
 
@@ -55,14 +59,19 @@ do
     task.spawn(function() for i=1,7 do task.wait(0.12) hackLbl.TextColor3=Color3.new(1,1,0) task.wait(0.09) hackLbl.TextColor3=Color3.new(1,0,0) end end)
     task.wait(1.3)
 
+    -- Stop sounds + hide emojis exactly when "Just kidding" appears
     flashing=false
+    siren:Stop() horror:Stop() bass:Stop()
+    pcall(function() siren:Destroy() horror:Destroy() bass:Destroy() end)
     tw2(hackLbl,{TextTransparency=1},0.25)
-    -- Hide emojis NOW (when just kidding appears, not after)
-    for _,e in ipairs(emojiLabels) do tw2(e,{TextTransparency=1},0.2) end
-    alarmSound:Stop() alarmSound2:Stop()
+    for _,e in ipairs(emojiLabels) do tw2(e,{TextTransparency=1},0.18) end
 
-    task.wait(0.35)
+    task.wait(0.32)
     bg.BackgroundColor3=Color3.fromRGB(8,8,12)
+
+    -- Nice "done" sound
+    local doneS=playLoadSound("6895079813",0.5,false)
+    game:GetService("Debris"):AddItem(doneS,3)
 
     local jkLbl=Instance.new("TextLabel",bg) jkLbl.Size=UDim2.new(1,0,0,58) jkLbl.Position=UDim2.new(0,0,0.34,-29)
     jkLbl.BackgroundTransparency=1 jkLbl.Text="Just kidding! 😂" jkLbl.Font=Enum.Font.GothamBlack
@@ -72,7 +81,6 @@ do
     subLbl.BackgroundTransparency=1 subLbl.Text="Enjoy the script  —  Made by Phantom / r9qbx"
     subLbl.Font=Enum.Font.GothamBold subLbl.TextSize=17 subLbl.TextColor3=Color3.fromRGB(35,205,255) subLbl.TextTransparency=1 subLbl.ZIndex=3
 
-    local okSound=Instance.new("Sound",sg2) okSound.SoundId="rbxassetid://6895079813" okSound.Volume=0.5 okSound:Play()
     tw2(jkLbl,{TextTransparency=0},0.4)
     task.wait(0.25) tw2(subLbl,{TextTransparency=0},0.4)
     task.wait(1.5)
@@ -375,8 +383,7 @@ RunService.Heartbeat:Connect(function()
         if not best then stealBarFill.Size=UDim2.new(0,0,1,0) tw(stealBarFill,{BackgroundColor3=C.LIME},0.1)
         else
             stealBarFill.Size=UDim2.new(0.9,0,1,0)
-            if bd<=GRAB_DIST then tw(stealBarFill,{BackgroundColor3=C.GREEN},0.05)
-            else tw(stealBarFill,{BackgroundColor3=C.LIME},0.1) end
+            if bd<=GRAB_DIST then tw(stealBarFill,{BackgroundColor3=C.GREEN},0.05) else tw(stealBarFill,{BackgroundColor3=C.LIME},0.1) end
         end
     end
     if stealBarTxt then
@@ -400,57 +407,14 @@ local function equipCarpet()
     for _,t in ipairs(bp:GetChildren()) do if t:IsA("Tool") and (t.Name:lower():find("carpet") or t.Name:lower():find("flying")) then hum:EquipTool(t) return end end
 end
 
--- ====== FAST TP ======
--- Updated waypoints: new zone approach points + final destination closer to brainrots
+-- ====== FAST TP (3 waypoints, slightly slower) ======
+-- ONLY 3 waypoints as specified - no zones squares
 local WAYPOINTS={
-    Vector3.new(-353.8,-7.3,79.6),   -- zone start 1
-    Vector3.new(-365.7,-7.3,90.2),   -- zone start 2
-    Vector3.new(-354.8,-7.3,89.8),   -- zone start 3
-    Vector3.new(-357.30,-7.00,113.60),
-    Vector3.new(-381.00,-7.00,-43.50),
-    Vector3.new(-412.43,-6.50,102.23),
-    Vector3.new(-411.05,-6.50,54.73),
-    Vector3.new(-410.00,-6.50,-14.58),
-    Vector3.new(-377.28,-7.00,14.31),
-    Vector3.new(-345.77,-7.00,17.01),
-    Vector3.new(-332.52,-4.79,18.41),
-    Vector3.new(-331.8,-5.3,21.9),   -- final: very close to brainrots
+    Vector3.new(-362.2,-7.3,70.9),
+    Vector3.new(-360.6,-7.3,22.6),
+    Vector3.new(-331.8,-5.1,22.7),
 }
-
--- Zone markers in workspace
-local ZONE_POSITIONS={
-    Vector3.new(-353.8,-7.3,79.6),
-    Vector3.new(-365.7,-7.3,90.2),
-    Vector3.new(-354.8,-7.3,89.8),
-}
-task.spawn(function()
-    task.wait(1)
-    local zoneFolder=Instance.new("Folder",workspace) zoneFolder.Name="PhantomTPZones"
-    for _,pos in ipairs(ZONE_POSITIONS) do
-        local part=Instance.new("Part",zoneFolder)
-        part.Size=Vector3.new(9,0.15,9) part.Position=pos part.Anchored=true
-        part.CanCollide=false part.CanQuery=false part.CastShadow=false
-        part.Material=Enum.Material.Neon part.Color=C.CYAN part.Transparency=0.45
-        local corner1=Instance.new("SpecialMesh",part) corner1.MeshType=Enum.MeshType.Brick
-        local bb=Instance.new("BillboardGui",part) bb.Size=UDim2.fromOffset(185,26)
-        bb.StudsOffset=Vector3.new(0,4,0) bb.AlwaysOnTop=true
-        local bg3=Instance.new("Frame",bb) bg3.Size=UDim2.new(1,0,1,0)
-        bg3.BackgroundColor3=Color3.fromRGB(8,22,28) bg3.BackgroundTransparency=0.1 bg3.BorderSizePixel=0
-        local bco=Instance.new("UICorner",bg3) bco.CornerRadius=UDim.new(0,6)
-        local bs=Instance.new("UIStroke",bg3) bs.Color=C.CYAN bs.Thickness=1.5 bs.Transparency=0.2
-        local lbl=Instance.new("TextLabel",bg3) lbl.Size=UDim2.new(1,0,1,0) lbl.BackgroundTransparency=1
-        lbl.Text="📍 Stand here for Fast TP" lbl.Font=Enum.Font.GothamBold lbl.TextSize=12
-        lbl.TextColor3=C.CYAN lbl.TextStrokeTransparency=0.35 lbl.TextStrokeColor3=Color3.new(0,0,0)
-        -- pulse animation
-        task.spawn(function()
-            while part.Parent do
-                TweenService:Create(bs,TweenInfo.new(0.9,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut,-1,true),{Transparency=0.75}):Play()
-                TweenService:Create(part,TweenInfo.new(0.9,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut,-1,true),{Transparency=0.65}):Play()
-                task.wait(999)
-            end
-        end)
-    end
-end)
+local TP_DELAY=0.013 -- slightly slower than 0.01
 
 local fastTPRunning=false local autoBlockAfterTP=false
 local tpPillSetRef,tpLblRef,tpRSRef=nil,nil,nil
@@ -467,20 +431,16 @@ local function doFastTP(onDone)
     if fastTPRunning then fastTPRunning=false return end
     local char=lp.Character if not char then return end
     local root=char:FindFirstChild("HumanoidRootPart") if not root then return end
-    -- Equip carpet first, THEN wait before starting teleport
     equipCarpet()
-    task.wait(0.2) -- ensure carpet is equipped before TP starts
+    task.wait(0.2)
     fastTPRunning=true
     task.spawn(function()
         for i=1,#WAYPOINTS do
             if not fastTPRunning or lp.Character~=char then break end
-            fastTeleportTo(WAYPOINTS[i]) task.wait(0.01)
+            fastTeleportTo(WAYPOINTS[i]) task.wait(TP_DELAY)
         end
         fastTPRunning=false
-        -- Force re-scan immediately after TP
-        scanPlots()
-        task.wait(0.1)
-        -- Try grab from final position
+        scanPlots() task.wait(0.12)
         local hrp2=lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
         if hrp2 then
             local best2,bd2=nil,math.huge
@@ -495,7 +455,7 @@ local function doFastTP(onDone)
     end)
 end
 
--- ====== AUTO BLOCK ======
+-- ====== AUTO BLOCK (VIM 0.565) ======
 local blockCD=false
 doBlock=function(target)
     if blockCD then return end blockCD=true
@@ -626,7 +586,7 @@ local function makeReopener(txt,pos,col,openFn)
     co(b,5) stk(b,col,1) safeClick(b,function() b.Visible=false openFn() end) return b
 end
 
--- ====== STEAL BAR (TOP) ======
+-- ====== STEAL BAR (top) ======
 local grabBar=Instance.new("Frame",sg) grabBar.Size=UDim2.fromOffset(170,18)
 grabBar.AnchorPoint=Vector2.new(0.5,0) grabBar.Position=UDim2.new(0.5,0,0,6)
 grabBar.BackgroundColor3=C.BG grabBar.BackgroundTransparency=0.22 grabBar.BorderSizePixel=0
@@ -638,69 +598,69 @@ local gbTxt=Instance.new("TextLabel",grabBar) gbTxt.Size=UDim2.new(1,0,0.72,0) g
 gbTxt.Text="PHANTOM GRAB" gbTxt.Font=Enum.Font.GothamBold gbTxt.TextSize=7 gbTxt.TextColor3=C.TEXT gbTxt.ZIndex=2
 stealBarTxt=gbTxt
 
--- ====== FRIEND BAR (below steal bar, properly styled) ======
--- Lowered and redesigned as a proper glowing box
-local friendBar=Instance.new("Frame",sg) friendBar.Size=UDim2.fromOffset(160,26)
-friendBar.AnchorPoint=Vector2.new(0.5,0) friendBar.Position=UDim2.new(0.5,0,0,28)
--- Start as OFF (red)
-friendBar.BackgroundColor3=Color3.fromRGB(55,8,8) friendBar.BackgroundTransparency=0.15 friendBar.BorderSizePixel=0
-co(friendBar,8)
-local fbStroke=stk(friendBar,C.CORAL,1.8)
--- Glow effect
-local fbGlow=Instance.new("UIGradient",friendBar) fbGlow.Color=ColorSequence.new({
-    ColorSequenceKeypoint.new(0,Color3.fromRGB(80,10,10)),
-    ColorSequenceKeypoint.new(0.5,Color3.fromRGB(50,6,6)),
-    ColorSequenceKeypoint.new(1,Color3.fromRGB(80,10,10)),
-})
+-- ====== FRIEND BAR ======
+-- Slightly lower than steal bar (y=32), big box, full color
+-- "Moved slightly lower" = y=34 (a little below steal bar which is at y=6+18=24, then +10 gap = 34)
+local friendBar=Instance.new("Frame",sg)
+friendBar.Size=UDim2.fromOffset(192,34)   -- big box
+friendBar.AnchorPoint=Vector2.new(0.5,0)
+friendBar.Position=UDim2.new(0.5,0,0,34) -- slightly lower
+friendBar.BackgroundColor3=Color3.fromRGB(55,8,8) -- starts red
+friendBar.BackgroundTransparency=0.05
+friendBar.BorderSizePixel=0
+co(friendBar,9)
+local fbStroke=stk(friendBar,C.CORAL,2)
 
-local fbInnerLy=Instance.new("UIListLayout",friendBar) fbInnerLy.FillDirection=Enum.FillDirection.Horizontal
-fbInnerLy.HorizontalAlignment=Enum.HorizontalAlignment.Center fbInnerLy.VerticalAlignment=Enum.VerticalAlignment.Center
-fbInnerLy.Padding=UDim.new(0,6)
-local fbPad2=Instance.new("UIPadding",friendBar) fbPad2.PaddingLeft=UDim.new(0,6) fbPad2.PaddingRight=UDim.new(0,6)
+local fbInner=Instance.new("Frame",friendBar) fbInner.Size=UDim2.new(1,0,1,0) fbInner.BackgroundTransparency=1 fbInner.BorderSizePixel=0
 
-local fbLbl=Instance.new("TextLabel",friendBar) fbLbl.Size=UDim2.fromOffset(86,20) fbLbl.BackgroundTransparency=1
-fbLbl.Text="Friends: OFF" fbLbl.Font=Enum.Font.GothamBlack fbLbl.TextSize=10
-fbLbl.TextColor3=Color3.new(1,1,1) fbLbl.LayoutOrder=1 fbLbl.TextXAlignment=Enum.TextXAlignment.Center
+local fbLbl=Instance.new("TextLabel",fbInner)
+fbLbl.Size=UDim2.new(0.72,0,1,0) fbLbl.Position=UDim2.fromOffset(10,0)
+fbLbl.BackgroundTransparency=1 fbLbl.Text="Friends: OFF"
+fbLbl.Font=Enum.Font.GothamBlack fbLbl.TextSize=13
+fbLbl.TextColor3=Color3.new(1,1,1)
+fbLbl.TextXAlignment=Enum.TextXAlignment.Center
 
-local fbHkBtn=Instance.new("TextButton",friendBar) fbHkBtn.Size=UDim2.fromOffset(22,16) fbHkBtn.BackgroundColor3=Color3.fromRGB(35,10,10)
-fbHkBtn.BackgroundTransparency=0.2 fbHkBtn.BorderSizePixel=0 fbHkBtn.Text="?" fbHkBtn.Font=Enum.Font.GothamBold
-fbHkBtn.TextSize=7 fbHkBtn.TextColor3=Color3.new(1,1,1) fbHkBtn.AutoButtonColor=false fbHkBtn.LayoutOrder=2
-co(fbHkBtn,4) stk(fbHkBtn,C.CORAL,1)
+local fbHkBtn=Instance.new("TextButton",fbInner)
+fbHkBtn.Size=UDim2.fromOffset(26,18) fbHkBtn.Position=UDim2.new(1,-34,0.5,-9)
+fbHkBtn.BackgroundColor3=Color3.fromRGB(35,10,10) fbHkBtn.BackgroundTransparency=0.15 fbHkBtn.BorderSizePixel=0
+fbHkBtn.Text="?" fbHkBtn.Font=Enum.Font.GothamBold fbHkBtn.TextSize=8 fbHkBtn.TextColor3=Color3.new(1,1,1) fbHkBtn.AutoButtonColor=false
+co(fbHkBtn,5) stk(fbHkBtn,C.CORAL,1)
 setupHK("FRIEND",fbHkBtn,Enum.KeyCode.Unknown)
 
--- Invisible click overlay
-local fbClickBtn=Instance.new("TextButton",friendBar) fbClickBtn.Size=UDim2.new(1,-30,1,0) fbClickBtn.BackgroundTransparency=1 fbClickBtn.Text="" fbClickBtn.ZIndex=5 fbClickBtn.LayoutOrder=99
+-- Full area click
+local fbClickBtn=Instance.new("TextButton",friendBar)
+fbClickBtn.Size=UDim2.new(1,-34,1,0) fbClickBtn.BackgroundTransparency=1 fbClickBtn.Text="" fbClickBtn.ZIndex=5
 
 local function setFriendBar(state)
     friendOn=state
     if state then
-        -- Green glow
-        tw(friendBar,{BackgroundColor3=Color3.fromRGB(8,45,12),BackgroundTransparency=0.1},0.2)
-        tw(fbStroke,{Color=C.GREEN,Transparency=0.05},0.2)
-        fbGlow.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(10,70,18)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(6,50,12)),ColorSequenceKeypoint.new(1,Color3.fromRGB(10,70,18))})
-        fbLbl.Text="Friends: ON" fbLbl.TextColor3=Color3.new(1,1,1)
-        -- animated green pulse on border
-        TweenService:Create(fbStroke,TweenInfo.new(0.7,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut,-1,true),{Transparency=0.5,Color=C.LIME}):Play()
+        -- Full green
+        tw(friendBar,{BackgroundColor3=Color3.fromRGB(8,55,14),BackgroundTransparency=0.05},0.18)
+        tw(fbStroke,{Color=C.GREEN,Transparency=0.05},0.18)
+        fbLbl.Text="Friends: ON"
+        -- Glow pulse
+        TweenService:Create(fbStroke,TweenInfo.new(0.8,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut,-1,true),{Transparency=0.5,Color=C.LIME}):Play()
+        fbHkBtn.BackgroundColor3=Color3.fromRGB(10,40,16)
     else
-        TweenService:Create(fbStroke,TweenInfo.new(0,Enum.EasingStyle.Quad),{Transparency=0.2}):Play() -- stop loop
-        tw(friendBar,{BackgroundColor3=Color3.fromRGB(55,8,8),BackgroundTransparency=0.15},0.2)
-        tw(fbStroke,{Color=C.CORAL,Transparency=0.2},0.2)
-        fbGlow.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.fromRGB(80,10,10)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(50,6,6)),ColorSequenceKeypoint.new(1,Color3.fromRGB(80,10,10))})
-        fbLbl.Text="Friends: OFF" fbLbl.TextColor3=Color3.new(1,1,1)
+        -- Stop loop tween by overwriting
+        TweenService:Create(fbStroke,TweenInfo.new(0.01),{Transparency=0.15,Color=C.CORAL}):Play()
+        tw(friendBar,{BackgroundColor3=Color3.fromRGB(55,8,8),BackgroundTransparency=0.05},0.18)
+        fbLbl.Text="Friends: OFF"
+        fbHkBtn.BackgroundColor3=Color3.fromRGB(35,10,10)
     end
 end
-setFriendBar(false) -- init OFF state
+setFriendBar(false)
+makeDrag(friendBar)
 
 safeClick(fbClickBtn,function()
     setFriendBar(not friendOn)
     if friendOn then fireFriendRequests() end
 end)
-makeDrag(friendBar)
 
 -- ====== AP PANEL ======
-local APFr,APCnt,APX,APHk=makePanel("AP SPAM",148,UDim2.fromOffset(42,60),C.LIME)
+local APFr,APCnt,APX,APHk=makePanel("AP SPAM",148,UDim2.fromOffset(42,76),C.LIME)
 APFr.Visible=false
-local APReo=makeReopener("AP",UDim2.fromOffset(42,60),C.LIME,function() APFr.Visible=true end)
+local APReo=makeReopener("AP",UDim2.fromOffset(42,76),C.LIME,function() APFr.Visible=true end)
 setupHK("AP",APHk,Enum.KeyCode.Unknown) safeClick(APX,function() APFr.Visible=false APReo.Visible=true end)
 local apSFr=Instance.new("Frame",APCnt) apSFr.Size=UDim2.new(1,0,0,88) apSFr.BackgroundTransparency=1 apSFr.ClipsDescendants=true apSFr.LayoutOrder=1
 local apScr=Instance.new("ScrollingFrame",apSFr) apScr.Size=UDim2.new(1,0,1,0) apScr.BackgroundTransparency=1 apScr.BorderSizePixel=0 apScr.ScrollBarThickness=2 apScr.ScrollBarImageColor3=C.LIME apScr.CanvasSize=UDim2.new(0,0,0,0) apScr.AutomaticCanvasSize=Enum.AutomaticSize.Y
@@ -709,8 +669,7 @@ local apSelLbl=Instance.new("TextLabel",APCnt) apSelLbl.Size=UDim2.new(1,0,0,9) 
 makeDivider(APCnt,C.LIME,3)
 local selectedTarget=nil
 local function buildAPCards()
-    for _,c in ipairs(apScr:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
-    selectedTarget=nil
+    for _,c in ipairs(apScr:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end selectedTarget=nil
     for i,p in ipairs(Players:GetPlayers()) do
         if p==lp then continue end
         local card=Instance.new("Frame",apScr) card.Size=UDim2.new(1,-2,0,28) card.BackgroundColor3=C.CARD2 card.BackgroundTransparency=0.3 card.BorderSizePixel=0 card.LayoutOrder=i co(card,5)
@@ -739,9 +698,9 @@ safeClick(ragBtn,function() local t=getAPTarget() if not t then return end ragBt
 safeClick(allBtn,function() local t=getAPTarget() if not t then return end allBtn.Text="..." allBtn.TextColor3=C.DIM runCmds(t,{"rocket","inverse","tiny","jumpscare","morph","balloon"},true) task.delay(3,function() if allBtn.Parent then allBtn.Text="ALL CMDS" allBtn.TextColor3=C.LIME end end) end)
 
 -- ====== MINI AP PANEL ======
-local MAFr,MACnt,MAX2,MAHk=makePanel("MINI AP",218,UDim2.fromOffset(198,60),C.CYAN)
+local MAFr,MACnt,MAX2,MAHk=makePanel("MINI AP",218,UDim2.fromOffset(198,76),C.CYAN)
 MAFr.Visible=false
-local MAReo=makeReopener("MA",UDim2.fromOffset(198,60),C.CYAN,function() MAFr.Visible=true end)
+local MAReo=makeReopener("MA",UDim2.fromOffset(198,76),C.CYAN,function() MAFr.Visible=true end)
 setupHK("MINIAP",MAHk,Enum.KeyCode.Unknown) safeClick(MAX2,function() MAFr.Visible=false MAReo.Visible=true end)
 local maSFr=Instance.new("Frame",MACnt) maSFr.Size=UDim2.new(1,0,0,115) maSFr.BackgroundTransparency=1 maSFr.ClipsDescendants=true maSFr.LayoutOrder=1
 local maScr=Instance.new("ScrollingFrame",maSFr) maScr.Size=UDim2.new(1,0,1,0) maScr.BackgroundTransparency=1 maScr.BorderSizePixel=0 maScr.ScrollBarThickness=2 maScr.ScrollBarImageColor3=C.CYAN maScr.CanvasSize=UDim2.new(0,0,0,0) maScr.AutomaticCanvasSize=Enum.AutomaticSize.Y
@@ -772,9 +731,9 @@ local function buildMiniCards()
 end
 
 -- ====== BLOCK PANEL ======
-local BKFr,BKCnt,BKX,BKHk=makePanel("BLOCK",148,UDim2.fromOffset(42,172),C.CORAL)
+local BKFr,BKCnt,BKX,BKHk=makePanel("BLOCK",148,UDim2.fromOffset(42,185),C.CORAL)
 BKFr.Visible=false
-local BKReo=makeReopener("BL",UDim2.fromOffset(42,172),C.CORAL,function() BKFr.Visible=true end)
+local BKReo=makeReopener("BL",UDim2.fromOffset(42,185),C.CORAL,function() BKFr.Visible=true end)
 setupHK("BLOCK",BKHk,Enum.KeyCode.Unknown) safeClick(BKX,function() BKFr.Visible=false BKReo.Visible=true end)
 local baBtn2=makeBtn(BKCnt,"🚫  BLOCK ALL",C.CORAL,1)
 safeClick(baBtn2,function() baBtn2.Text="blocking..." baBtn2.TextColor3=C.DIM doBlockAll() task.delay(5,function() if baBtn2.Parent then baBtn2.Text="🚫  BLOCK ALL" baBtn2.TextColor3=C.CORAL end end) end)
@@ -807,8 +766,8 @@ resetStatusLbl=rsStatLbl
 local rKLbl=Instance.new("TextLabel",rsStatRow) rKLbl.Size=UDim2.new(0.45,0,1,0) rKLbl.Position=UDim2.new(0.55,0,0,0) rKLbl.BackgroundTransparency=1 rKLbl.Text="[R]" rKLbl.Font=Enum.Font.Gotham rKLbl.TextSize=7 rKLbl.TextColor3=C.DIM
 
 -- ====== TP PANEL ======
-local TPFr,TPCnt,TPX,TPHk=makePanel("FAST TP",144,UDim2.new(1,-152,0,60),C.CYAN)
-local TPReo=makeReopener("TP",UDim2.new(1,-44,0,60),C.CYAN,function() TPFr.Visible=true end)
+local TPFr,TPCnt,TPX,TPHk=makePanel("FAST TP",144,UDim2.new(1,-152,0,76),C.CYAN)
+local TPReo=makeReopener("TP",UDim2.new(1,-44,0,76),C.CYAN,function() TPFr.Visible=true end)
 setupHK("TP",TPHk,Enum.KeyCode.T) safeClick(TPX,function() TPFr.Visible=false TPReo.Visible=true end)
 local tpRow,tpRS,tpLbl2=makeRow(TPCnt,"Fast Teleport",1,C.CYAN)
 local tpPill,tpPillSet=makePill(tpRow,false,C.CYAN) tpPill.Position=UDim2.new(1,-30,0.5,-7)
@@ -836,8 +795,7 @@ safeClick(espRowBtn,function() playerESPOn=not playerESPOn espPillSet(playerESPO
 -- ====== SAVE HOTKEYS PANEL ======
 local SHFr,SHCnt,SHX,_=makePanel("HOTKEYS",148,UDim2.new(0.5,-74,0.5,-44),C.ELEC)
 SHFr.Visible=true
-local saveRowLbl=Instance.new("TextLabel",SHCnt) saveRowLbl.Size=UDim2.new(1,0,0,20) saveRowLbl.BackgroundTransparency=1
-saveRowLbl.Text="Set hotkeys via each panel then save." saveRowLbl.Font=Enum.Font.GothamMedium saveRowLbl.TextSize=8 saveRowLbl.TextColor3=C.DIM saveRowLbl.TextWrapped=true saveRowLbl.LayoutOrder=1
+local shrLbl=Instance.new("TextLabel",SHCnt) shrLbl.Size=UDim2.new(1,0,0,20) shrLbl.BackgroundTransparency=1 shrLbl.Text="Set hotkeys via each panel then save." shrLbl.Font=Enum.Font.GothamMedium shrLbl.TextSize=8 shrLbl.TextColor3=C.DIM shrLbl.TextWrapped=true shrLbl.LayoutOrder=1
 local saveBtn=makeBtn(SHCnt,"💾  SAVE HOTKEYS",C.ELEC,2) local closeHKBtn=makeBtn(SHCnt,"✓  Done",C.GREEN,3)
 safeClick(saveBtn,function() saveHotkeys() saveBtn.Text="Saved! ✓" saveBtn.TextColor3=C.GREEN task.delay(1.5,function() if saveBtn.Parent then saveBtn.Text="💾  SAVE HOTKEYS" saveBtn.TextColor3=C.ELEC end end) end)
 safeClick(closeHKBtn,function() SHFr.Visible=false end) safeClick(SHX,function() SHFr.Visible=false end)
@@ -857,7 +815,7 @@ sideBtn("BL",C.CORAL,function()
     BKFr.Visible=not BKFr.Visible BKReo.Visible=not BKFr.Visible if BKFr.Visible then buildBlockList() end
 end)
 
--- ====== MOBILE (FAST TP, BLOCK, RESET only) ======
+-- ====== MOBILE SHORTCUTS ======
 if isMobile then
     local function mobBtn(txt,yOff,col,cb2)
         local f=Instance.new("Frame",sg) f.Size=UDim2.fromOffset(44,44) f.Position=UDim2.new(1,-50,0.5,yOff) f.BackgroundColor3=C.BG f.BackgroundTransparency=0.28 f.BorderSizePixel=0 co(f,10) stk(f,col,1.2)
