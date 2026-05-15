@@ -129,7 +129,7 @@ local wmL=Instance.new("TextLabel",SG); wmL.Size=UDim2.fromOffset(200,22); wmL.P
 wmL.BackgroundTransparency=1; wmL.Text="Made by r9qbx"; wmL.Font=Enum.Font.GothamBlack; wmL.TextSize=13; wmL.TextColor3=T.a1; wmL.TextTransparency=0.96
 TweenService:Create(wmL,TweenInfo.new(2.8,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut,-1,true),{TextTransparency=0.52}):Play()
 
--- FPS + Ping (restored)
+-- FPS + Ping
 local fpsF=Instance.new("Frame",SG); fpsF.Size=UDim2.fromOffset(136,17); fpsF.Position=UDim2.new(0.5,-68,0,4)
 fpsF.BackgroundColor3=T.panel; fpsF.BackgroundTransparency=0.32; fpsF.BorderSizePixel=0; co(fpsF,6); ms(fpsF,1,T.str,0.42)
 local fpsLb=lb(fpsF,{Size=UDim2.new(1,0,1,0),Text="FPS --  ·  PING -- ms",TextSize=8,Font=Enum.Font.GothamBold,TextColor3=T.a1})
@@ -142,24 +142,24 @@ task.spawn(function() while task.wait(0.7) do
     fpsLb.TextColor3=fps<40 and T.red or fps<55 and Color3.fromRGB(255,190,40) or T.grn
 end end)
 
--- Reset Panels btn
+-- Reset Panels btn (y=48)
 local rsPnlBtn=Instance.new("TextButton",SG); rsPnlBtn.Size=UDim2.fromOffset(88,13)
 rsPnlBtn.Position=UDim2.new(0.5,-44,0,48); rsPnlBtn.BackgroundColor3=T.panel; rsPnlBtn.BackgroundTransparency=0.42
 rsPnlBtn.Text="Reset Panels"; rsPnlBtn.Font=Enum.Font.GothamBold; rsPnlBtn.TextSize=7; rsPnlBtn.TextColor3=T.dim
 rsPnlBtn.BorderSizePixel=0; rsPnlBtn.AutoButtonColor=false; co(rsPnlBtn,4); ms(rsPnlBtn,1,T.str,0.55)
 
--- Floating buttons (bottom, not in panels)
--- Ragdoll Self (bottom left of center)
-local ragF=Instance.new("Frame",SG); ragF.Size=UDim2.fromOffset(90,20); ragF.Position=UDim2.new(0.5,-95,1,-28)
-ragF.BackgroundColor3=Color3.fromRGB(12,5,20); ragF.BackgroundTransparency=0.1; ragF.BorderSizePixel=0; co(ragF,5); ms(ragF,1,Color3.fromRGB(130,60,220),0.25)
+-- Ragdoll Self + Pot+Rag buttons just below Reset Panels (y=64)
+local ragF=Instance.new("Frame",SG); ragF.Size=UDim2.fromOffset(85,13); ragF.Position=UDim2.new(0.5,-89,0,64)
+ragF.BackgroundColor3=Color3.fromRGB(10,6,22); ragF.BackgroundTransparency=0.1; ragF.BorderSizePixel=0; co(ragF,4)
+ms(ragF,1,T.acc,0.28)
 local ragBtn=Instance.new("TextButton",ragF); ragBtn.Size=UDim2.new(1,0,1,0); ragBtn.BackgroundTransparency=1
-ragBtn.Text="🤸 Ragdoll Self"; ragBtn.Font=Enum.Font.GothamBold; ragBtn.TextSize=7; ragBtn.TextColor3=Color3.fromRGB(190,130,255); ragBtn.BorderSizePixel=0; ragBtn.AutoButtonColor=false
+ragBtn.Text="🤸 Ragdoll Self"; ragBtn.Font=Enum.Font.GothamBold; ragBtn.TextSize=7; ragBtn.TextColor3=Color3.fromRGB(180,150,255); ragBtn.BorderSizePixel=0; ragBtn.AutoButtonColor=false
 
--- Potion + Ragdoll (bottom right of center)
-local prF=Instance.new("Frame",SG); prF.Size=UDim2.fromOffset(90,20); prF.Position=UDim2.new(0.5,5,1,-28)
-prF.BackgroundColor3=Color3.fromRGB(12,5,20); prF.BackgroundTransparency=0.1; prF.BorderSizePixel=0; co(prF,5); ms(prF,1,Color3.fromRGB(80,40,160),0.25)
+local prF=Instance.new("Frame",SG); prF.Size=UDim2.fromOffset(85,13); prF.Position=UDim2.new(0.5,4,0,64)
+prF.BackgroundColor3=Color3.fromRGB(10,6,22); prF.BackgroundTransparency=0.1; prF.BorderSizePixel=0; co(prF,4)
+ms(prF,1,Color3.fromRGB(90,60,200),0.28)
 local prBtn=Instance.new("TextButton",prF); prBtn.Size=UDim2.new(1,0,1,0); prBtn.BackgroundTransparency=1
-prBtn.Text="💊 Pot + Rag"; prBtn.Font=Enum.Font.GothamBold; prBtn.TextSize=7; prBtn.TextColor3=Color3.fromRGB(160,110,230); prBtn.BorderSizePixel=0; prBtn.AutoButtonColor=false
+prBtn.Text="Pot + Ragdoll"; prBtn.Font=Enum.Font.GothamBold; prBtn.TextSize=7; prBtn.TextColor3=Color3.fromRGB(155,120,230); prBtn.BorderSizePixel=0; prBtn.AutoButtonColor=false
 
 -- Timer ESP
 local timerESPs={}; local myPlotRef=nil; local baseAlerted=false; local stealHitbox=nil
@@ -306,8 +306,8 @@ task.spawn(function()
     plots.ChildAdded:Connect(function(plot) task.defer(function() scanPlotBrainrots(plot) end) end)
 end)
 
--- Admin remote + Grab remote (from DEX: RE/StealService/Grab)
-local ADM_REMOTE=nil; local GRAB_REMOTE=nil
+-- Admin remote
+local ADM_REMOTE=nil
 task.spawn(function()
     pcall(function() if not lp.Character then lp.CharacterAdded:Wait() end end); task.wait(1.5)
     pcall(function()
@@ -315,13 +315,10 @@ task.spawn(function()
         for i,o in ipairs(ch) do n2i[o.Name]=i end
         local a=n2i["RF/a0e78691-cb9b-4efc-ac08-9c06fea70059"]
         if a and ch[a+1] then ADM_REMOTE=ch[a+1] end
-        -- RE/StealService/Grab discovered via DEX explorer
-        GRAB_REMOTE=net:FindFirstChild("RE/StealService/Grab")
     end)
 end)
 local ADM_UUID="f888ee6e-c86d-46e1-93d7-0639d6635d42"
 local function aFire(tgt,cmd) task.spawn(function() pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,tgt,cmd) end) end) end
-
 local ROW_CD={ragdoll=30,balloon=30,tiny=60,jail=60,rocket=120}
 local CMD_ICONS={ragdoll="🤸",balloon="🎈",tiny="🐜",jail="🔒",rocket="🚀"}
 local rowCdEnd={}
@@ -332,8 +329,7 @@ local function fireClick(tgt)
     for _,cmd in ipairs(CLICK_CMDS) do aFire(tgt,cmd); if ROW_CD[cmd] then rowCdEnd[cmd]=tick()+ROW_CD[cmd] end end
 end
 
--- Wire floating buttons (after ADM_REMOTE setup)
-local potionOnRef={v=false}  -- forward ref
+-- Wire floating buttons
 ragBtn.MouseButton1Click:Connect(function()
     if ADM_REMOTE then pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,lp,"ragdoll") end); rowCdEnd["ragdoll"]=tick()+(ROW_CD["ragdoll"] or 30) end
 end)
@@ -351,7 +347,10 @@ prBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Base Protector
+-- =====================================================================
+-- BASE PROTECTOR
+-- Fast detection via RE/StealService remotes from DEX + proximity prompts
+-- =====================================================================
 local CARPET={["Flying Carpet"]=true,["Witch's Broom"]=true,["Santa's Sleigh"]=true,["Cupid's Wings"]=true}
 local antiSteal=false; local autoKick=false; local antiIntruder=false; local antiTp=false
 local lastPunish={}; local carpetSpam={}; local plrPos={}; local tpCD={}
@@ -426,77 +425,42 @@ pcall(function()
         return old(prompt,...)
     end))
 end)
-pcall(function()
-    for _,obj in ipairs(RS:GetDescendants()) do
-        if obj:IsA("RemoteEvent") then
-            obj.OnClientEvent:Connect(function(...)
-                if not antiSteal or not ADM_REMOTE or not myPlotRef then return end
-                for _,a in ipairs({...}) do
-                    if type(a)=="string" and a:lower():find("stealing") then
-                        local thief=findThief(); if thief then punish(thief) end; return
+-- Fast detection via RS events (found in DEX)
+task.spawn(function()
+    pcall(function()
+        local net=RS:WaitForChild("Packages"):WaitForChild("Net",8)
+        if not net then return end
+        -- Listen to Grab and StealingSuccess remotes for instant detection
+        local grabRE=net:FindFirstChild("RE/StealService/Grab")
+        local successRE=net:FindFirstChild("RE/StealService/StealingSuccess")
+        if grabRE then grabRE.OnClientEvent:Connect(function()
+            if not antiSteal or not ADM_REMOTE or not myPlotRef then return end
+            local thief=findThief(); if thief then punish(thief) end
+        end) end
+        if successRE then successRE.OnClientEvent:Connect(function()
+            if not antiSteal or not ADM_REMOTE or not myPlotRef then return end
+            local thief=findThief(); if thief then punish(thief) end
+        end) end
+    end)
+    -- Also listen to all existing RemoteEvents (original approach kept as fallback)
+    pcall(function()
+        for _,obj in ipairs(RS:GetDescendants()) do
+            if obj:IsA("RemoteEvent") then
+                obj.OnClientEvent:Connect(function(...)
+                    if not antiSteal or not ADM_REMOTE or not myPlotRef then return end
+                    for _,a in ipairs({...}) do
+                        if type(a)=="string" and a:lower():find("stealing") then
+                            local thief=findThief(); if thief then punish(thief) end; return
+                        end
                     end
-                end
-            end)
+                end)
+            end
         end
-    end
+    end)
 end)
 
--- EXT steal callbacks
-local StealCBCache={}
-local function buildStealCBs(prompt)
-    if StealCBCache[prompt] then return end
-    local data={hold={},trig={}}
-    local ok1,c1=pcall(getconnections,prompt.PromptButtonHoldBegan)
-    if ok1 and type(c1)=="table" then for _,c in ipairs(c1) do if type(c.Function)=="function" then table.insert(data.hold,c.Function) end end end
-    local ok2,c2=pcall(getconnections,prompt.Triggered)
-    if ok2 and type(c2)=="table" then for _,c in ipairs(c2) do if type(c.Function)=="function" then table.insert(data.trig,c.Function) end end end
-    if #data.hold>0 or #data.trig>0 then StealCBCache[prompt]=data end
-end
-local function fireStealCBs(prompt)
-    local data=StealCBCache[prompt]; if not data then return end
-    for _,fn in ipairs(data.hold) do task.spawn(fn) end
-    task.wait(0.05)
-    for _,fn in ipairs(data.trig) do task.spawn(fn) end
-end
-
--- =====================================================================
--- GRAB REMOTE FIRE: uses RE/StealService/Grab from DEX as primary
--- =====================================================================
-local function fireGrabRemote(prompt)
-    if not GRAB_REMOTE then return false end
-    local ok=false
-    -- Try various argument combinations for the Grab remote
-    pcall(function() GRAB_REMOTE:FireServer(); ok=true end)
-    if not ok then pcall(function() GRAB_REMOTE:FireServer(prompt); ok=true end) end
-    if not ok then pcall(function() GRAB_REMOTE:FireServer(prompt.Parent); ok=true end) end
-    return ok
-end
-
--- =====================================================================
--- MULTI-METHOD STEAL: EXT → GRAB_REMOTE → Vander
--- Whichever works on the current game version
--- =====================================================================
-local function doSteal(prompt)
-    -- Method 1: EXT internal callbacks (original, still try)
-    local data=StealCBCache[prompt]
-    if data and (#data.hold>0 or #data.trig>0) then
-        for _,fn in ipairs(data.hold) do task.spawn(fn) end
-        task.wait(0.05)
-        for _,fn in ipairs(data.trig) do task.spawn(fn) end
-        return
-    end
-    -- Method 2: RE/StealService/Grab remote (found via DEX, might be the real steal path)
-    if fireGrabRemote(prompt) then return end
-    -- Method 3: Vander + fireproximityprompt combo
-    pcall(function()
-        fireproximityprompt(prompt,10000)
-        prompt:InputHoldBegin(); task.wait(0.04); prompt:InputHoldEnd()
-    end)
-end
-
--- Giant Potion (simple, original behavior)
+-- Giant Potion
 local potionOn=Cfg.potionOn
-potionOnRef.v=potionOn
 local function isPotionReady()
     local char=lp.Character; if not char then return false end
     local bp=lp:FindFirstChild("Backpack")
@@ -513,29 +477,40 @@ local function activatePotion()
     end) end)
 end
 
--- Irish Hub instant reset
-local tpPos=CFrame.new(1000003.56,999999.69,8.17)
+-- =====================================================================
+-- TOKINU INSTANT RESET (equips flying carpet first, then teleports up)
+-- =====================================================================
+local CARPET_KEYWORDS={"carpet","tapis","flying","witch","broom","sleigh","cupid","wing"}
+local function equipCarpetForReset()
+    local char=lp.Character; if not char then return false end
+    local hum=char:FindFirstChildOfClass("Humanoid"); if not hum then return false end
+    local bp=lp:FindFirstChild("Backpack")
+    local found=nil
+    local function check(tool)
+        if not tool:IsA("Tool") then return end
+        local nl=tool.Name:lower()
+        for _,kw in ipairs(CARPET_KEYWORDS) do if nl:find(kw) then found=tool; return end end
+    end
+    if bp then for _,t in ipairs(bp:GetChildren()) do if not found then check(t) end end end
+    if not found then for _,t in ipairs(char:GetChildren()) do if not found then check(t) end end end
+    if found then
+        if found.Parent~=char then found.Parent=char end
+        hum:EquipTool(found); return true
+    end
+    return false
+end
 local function doReset()
     local c=lp.Character; if not c then return end
-    local h=c:FindFirstChild("HumanoidRootPart"); local hum=c:FindFirstChildOfClass("Humanoid"); if not h or not hum then return end
-    cam.CameraType=Enum.CameraType.Scriptable
-    task.delay(0.6,function()
-        local ch=lp.Character; local hm=ch and ch:FindFirstChildOfClass("Humanoid")
-        if hm then cam.CameraType=Enum.CameraType.Custom; cam.CameraSubject=hm end
-    end)
-    h.CFrame=tpPos
-    local con; con=RunService.Heartbeat:Connect(function()
-        if not c or not c.Parent then con:Disconnect(); return end
-        if hum.Health<=0 then con:Disconnect(); return end
-        h.CFrame=tpPos
-    end)
+    local h=c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("UpperTorso"); if not h then return end
+    local equipped=equipCarpetForReset()
+    if equipped then task.wait(0.1) end
+    h.CFrame=CFrame.new(0,15000,0)
 end
 
 -- =====================================================================
 -- FLASH TP — maximum accuracy
--- Pre-builds EXT callbacks on hold start
--- Flash fires → steal fires IMMEDIATELY (same task, no Heartbeat:Wait)
--- Potion in parallel thread (doesn't touch steal timing)
+-- Pre-builds on hold start, fires Vander method immediately at threshold
+-- Both fireproximityprompt AND InputHoldBegin/End fired in parallel
 -- =====================================================================
 local flashEnabled=Cfg.flashOn; local sliderValue=Cfg.triggerChance/100; local activePrompts={}
 local FLASH_NAMES={"Flash Teleport","Flash","FlashTP","Flash TP"}
@@ -543,8 +518,6 @@ local FLASH_NAMES={"Flash Teleport","Flash","FlashTP","Flash TP"}
 PPS.PromptButtonHoldBegan:Connect(function(prompt)
     if not flashEnabled or prompt.ActionText~="Steal" or activePrompts[prompt] then return end
     activePrompts[prompt]=true
-    -- Pre-build EXT callbacks immediately (zero overhead when flash fires)
-    task.spawn(function() buildStealCBs(prompt) end)
     local fired=false
     local fireAt=os.clock()+math.max(prompt.HoldDuration,0.001)*sliderValue
     local conn
@@ -555,9 +528,11 @@ PPS.PromptButtonHoldBegan:Connect(function(prompt)
             fired=true; conn:Disconnect(); activePrompts[prompt]=nil
             local char=lp.Character; local tool=char and char:FindFirstChildOfClass("Tool")
             if tool then pcall(function() tool:Activate() end) end
-            -- Steal fires IMMEDIATELY in same task.spawn (no Heartbeat:Wait = maximum accuracy)
-            task.spawn(function() doSteal(prompt) end)
-            -- Potion in parallel, doesn't touch steal timing
+            -- Vander steal fires IMMEDIATELY in same spawn (max accuracy)
+            task.spawn(function()
+                pcall(function() fireproximityprompt(prompt,10000) end)
+                pcall(function() prompt:InputHoldBegin(); task.wait(0.04); prompt:InputHoldEnd() end)
+            end)
             task.spawn(function() activatePotion() end)
         end
     end)
@@ -590,27 +565,24 @@ local function alignCam()
 end
 
 -- Anti-ragdoll always running
-local function startAntiRagdoll()
-    RunService.Heartbeat:Connect(function()
-        local char=lp.Character; if not char then return end
-        local hum=char:FindFirstChildOfClass("Humanoid"); local root=char:FindFirstChild("HumanoidRootPart"); if not (hum and root) then return end
-        local s=hum:GetState()
-        local ragdolled=(s==Enum.HumanoidStateType.Physics or s==Enum.HumanoidStateType.Ragdoll or s==Enum.HumanoidStateType.FallingDown)
-        local endTime=lp:GetAttribute("RagdollEndTime")
-        if endTime and (endTime-workspace:GetServerTimeNow())>0 then ragdolled=true end
-        if ragdolled then
-            pcall(function() lp:SetAttribute("RagdollEndTime",workspace:GetServerTimeNow()) end)
-            for _,d in ipairs(char:GetDescendants()) do
-                if d:IsA("BallSocketConstraint") or (d:IsA("Attachment") and d.Name:find("RagdollAttachment")) then d:Destroy() end
-            end
-            for _,obj in ipairs(char:GetDescendants()) do if obj:IsA("Motor6D") and not obj.Enabled then obj.Enabled=true end end
-            if hum.Health>0 then hum:ChangeState(Enum.HumanoidStateType.Running) end
-            cam.CameraSubject=hum; root.Anchored=false
-            root.AssemblyLinearVelocity=Vector3.zero; root.AssemblyAngularVelocity=Vector3.zero
+RunService.Heartbeat:Connect(function()
+    local char=lp.Character; if not char then return end
+    local hum=char:FindFirstChildOfClass("Humanoid"); local root=char:FindFirstChild("HumanoidRootPart"); if not (hum and root) then return end
+    local s=hum:GetState()
+    local ragdolled=(s==Enum.HumanoidStateType.Physics or s==Enum.HumanoidStateType.Ragdoll or s==Enum.HumanoidStateType.FallingDown)
+    local endTime=lp:GetAttribute("RagdollEndTime")
+    if endTime and (endTime-workspace:GetServerTimeNow())>0 then ragdolled=true end
+    if ragdolled then
+        pcall(function() lp:SetAttribute("RagdollEndTime",workspace:GetServerTimeNow()) end)
+        for _,d in ipairs(char:GetDescendants()) do
+            if d:IsA("BallSocketConstraint") or (d:IsA("Attachment") and d.Name:find("RagdollAttachment")) then d:Destroy() end
         end
-    end)
-end
-startAntiRagdoll()
+        for _,obj in ipairs(char:GetDescendants()) do if obj:IsA("Motor6D") and not obj.Enabled then obj.Enabled=true end end
+        if hum.Health>0 then hum:ChangeState(Enum.HumanoidStateType.Running) end
+        cam.CameraSubject=hum; root.Anchored=false
+        root.AssemblyLinearVelocity=Vector3.zero; root.AssemblyAngularVelocity=Vector3.zero
+    end
+end)
 
 -- Anti-sentry
 local DETECTION_DISTANCE=200; local PULL_DISTANCE=-5; local sentryFirstSeen={}; local sentryTarget=nil
@@ -700,8 +672,8 @@ local function applySpeed()
 end
 
 -- =====================================================================
--- INSTANT GRAB: multi-method approach
--- Finds nearest steal prompt → pre-builds → doSteal (EXT → GRAB_REMOTE → Vander)
+-- VANDER INSTANT GRAB (improved: both methods, no WalkSpeed check, jitter)
+-- fireproximityprompt + InputHoldBegin/End fired together every cycle
 -- =====================================================================
 local grabEnabled=Cfg.grabOn
 local function getPos2(pr)
@@ -728,6 +700,14 @@ local function findNearestSteal()
     end
     return nearest
 end
+-- Improved Vander: fires both methods simultaneously for reliability
+local function vanderFire(prompt)
+    if not prompt then return end
+    task.spawn(function()
+        pcall(function() fireproximityprompt(prompt,10000) end)
+        pcall(function() prompt:InputHoldBegin(); task.wait(0.04); prompt:InputHoldEnd() end)
+    end)
+end
 task.spawn(function()
     while true do
         if grabEnabled then
@@ -735,13 +715,12 @@ task.spawn(function()
             if hum and hum.Health>0 then
                 local nearest=findNearestSteal()
                 if nearest then
-                    buildStealCBs(nearest)  -- pre-build, no wait
-                    task.spawn(function() doSteal(nearest) end)
+                    vanderFire(nearest)
                     activatePotion()
                 end
             end
         end
-        task.wait(0.3)
+        task.wait(0.2+math.random()*0.12)  -- 0.2-0.32s with jitter
     end
 end)
 
