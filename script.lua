@@ -1,8 +1,9 @@
--- -- ============================================
+-- ============================================
 --  AETHEN HUB  |  Flash TP v0.2
 local DISCORD_LINK    = "discord.gg/3vQbThdQ"
 local DISCORD_WEBHOOK = ""
--- -- ============================================
+-- ============================================
+
 local Players=game:GetService("Players"); local RunService=game:GetService("RunService")
 local UIS=game:GetService("UserInputService"); local TweenService=game:GetService("TweenService")
 local PPS=game:GetService("ProximityPromptService"); local RS=game:GetService("ReplicatedStorage")
@@ -662,13 +663,13 @@ RunService.RenderStepped:Connect(function()
     end)
 end)
 
--- -- ============================================
+-- ============================================
 -- FLASH TP v2 (ACCURATE)
 -- Uses RF/Tools/Flash/Activate directly → bypasses dammy's timing check
 -- Also fires tool.Activated connections as fallback
 -- RenderStepped for precise frame-perfect timing (Phantom Hub method)
 -- Default trigger 80% for best accuracy window
--- -- ============================================
+-- ============================================
 local flashEnabled=Cfg.flashOn; local sliderValue=Cfg.triggerChance/100; local lagOnSteal=Cfg.lagOn
 
 local function fireFlashActivate()
@@ -811,7 +812,108 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
--- ======== PANELS ========
+-- ======== PANELS ========-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LP = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "angel_gui"
+gui.ResetOnSpawn = false
+gui.Parent = game.CoreGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 140, 0, 50)
+frame.Position = UDim2.new(1, -200, 0, 5) -- higher now
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BorderSizePixel = 0
+frame.Parent = gui
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(255, 255, 255)
+stroke.Thickness = 2
+stroke.Parent = frame
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = frame
+
+local lockButton = Instance.new("TextButton")
+lockButton.Size = UDim2.new(1, -20, 1, -20)
+lockButton.Position = UDim2.new(0, 10, 0, 10)
+lockButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+lockButton.BorderSizePixel = 0
+lockButton.Text = "LOCK: OFF"
+lockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+lockButton.Font = Enum.Font.GothamBold
+lockButton.TextSize = 14
+lockButton.Parent = frame
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 10)
+btnCorner.Parent = lockButton
+
+local btnStroke = Instance.new("UIStroke")
+btnStroke.Color = Color3.fromRGB(255, 255, 255)
+btnStroke.Thickness = 1.5
+btnStroke.Parent = lockButton
+
+-- Lock Logic
+local locked = false
+local target = nil
+
+local function alive(p)
+	if not p.Character then return false end
+	local hum = p.Character:FindFirstChildOfClass("Humanoid")
+	return hum and hum.Health > 0
+end
+
+local function getClosest()
+	local closest
+	local shortest = math.huge
+	local mid = Camera.ViewportSize / 2
+
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= LP and alive(p) then
+			local hrp = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				local pos, visible = Camera:WorldToViewportPoint(hrp.Position)
+				if visible then
+					local dist = (Vector2.new(pos.X, pos.Y) - mid).Magnitude
+					if dist < shortest then
+						shortest = dist
+						closest = p
+					end
+				end
+			end
+		end
+	end
+	return closest
+end
+
+lockButton.MouseButton1Click:Connect(function()
+	locked = not locked
+	
+	if locked then
+		target = getClosest()
+		lockButton.Text = "LOCK: ON"
+	else
+		target = nil
+		lockButton.Text = "LOCK: OFF"
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	if locked and target and alive(target) then
+		local part = target.Character:FindFirstChild("HumanoidRootPart")
+		if part then
+			Camera.CFrame = CFrame.new(Camera.CFrame.Position, part.Position)
+		end
+	end
+end)
 task.wait(0.15); vp=cam.ViewportSize; if vp.X==0 then vp=Vector2.new(390,844) end
 
 -- Header (not draggable, pure black)
@@ -829,7 +931,7 @@ task.spawn(function() while task.wait(0.7) do
 end end)
 local rsPnlBtn=mkBtn(hdrF,"Reset Panels",UDim2.fromOffset(88,13),UDim2.fromOffset(4,49),C.surf,C.dim,4); rsPnlBtn.TextSize=7; rsPnlBtn.ZIndex=5
 
---  FLASH TP PANEL ═══
+-- ═══ FLASH TP PANEL ═══
 local FP_W=148; local CONT_H=200; local FP_H=22+22+CONT_H+4
 local FP_defX=math.floor(vp.X-FP_W-4); local FP_defY=5
 local FP,_,fpMin=mkP(FP_defX,FP_defY,FP_W,FP_H,"FLASH TP","pos_FP")
@@ -947,7 +1049,7 @@ local btBtn2=Instance.new("TextButton",btRow2); btBtn2.Size=UDim2.new(1,0,1,0); 
 local btOn2_=false; local function updBT(v) btOn2_=v; TweenService:Create(btTrack2,TweenInfo.new(0.12),{BackgroundColor3=v and C.white or C.surf2}):Play(); TweenService:Create(btKnob2,TweenInfo.new(0.12),{Position=v and UDim2.new(1,-9.5,0.5,-4) or UDim2.new(0,1.5,0.5,-4),BackgroundColor3=v and C.bg or C.dim}):Play() end
 btBtn2.MouseButton1Click:Connect(function() if btOn2_ then disableBrainTrans(); updBT(false) else enableBrainTrans(); updBT(true) end end)
 
--- === AETHENS PANEL ===
+-- ═══ AETHENS PANEL ═══
 local AP_W=128; local AP_CH=72; local AP_H=22+AP_CH+6
 local AP_defX=4; local AP_defY=hdrH+4+8
 local AP,_,apMin=mkP(AP_defX,AP_defY,AP_W,AP_H,"AETHENS","pos_AP")
@@ -962,7 +1064,7 @@ local rejB=apB("Rejoin",C.white); rejB.MouseButton1Click:Connect(function() rejB
 local kickB=apB("Kick Self",C.red,Color3.fromRGB(22,4,6)); kickB.MouseButton1Click:Connect(function() kickB.Text="..."; lp:Kick(DISCORD_LINK) end)
 local rstAB=apB("Instant Reset",C.red,Color3.fromRGB(22,4,6)); rstAB.MouseButton1Click:Connect(function() task.spawn(doReset) end)
 
--- === ADMIN PANEL (emojis restored) ===
+-- ═══ ADMIN PANEL (emojis restored) ═══
 local RCMDS={{cmd="ragdoll",icon="🤸"},{cmd="balloon",icon="🎈"},{cmd="tiny",icon="🐜"},{cmd="jail",icon="🔒"},{cmd="rocket",icon="🚀"}}
 local IW2=15; local IH2=15; local IG2=2; local ADM_W=170; local ITOT=#RCMDS*(IW2+IG2)-IG2; local CSTART=(ADM_W-10)-ITOT-2
 local ADM_defX=math.floor(vp.X-ADM_W-4); local ADM_defY=FP_H+FP_defY+4
@@ -1019,7 +1121,7 @@ Players.PlayerAdded:Connect(function() task.wait(0.5); refreshPlayers() end)
 Players.PlayerRemoving:Connect(function() task.wait(0.2); refreshPlayers() end)
 task.delay(2,refreshPlayers)
 
--- === BASE PROTECTOR ===
+-- ═══ BASE PROTECTOR ═══
 local BP_W=112; local BP_H=22+42+6
 local BP_defX=4; local BP_defY=math.floor(vp.Y*0.72)
 local BP,_,bpMin=mkP(BP_defX,BP_defY,BP_W,BP_H,"BASE","pos_BP")
