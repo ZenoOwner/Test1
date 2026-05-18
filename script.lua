@@ -1,9 +1,8 @@
--- ══════════════════════════════════════════════
+-- -- ============================================
 --  AETHEN HUB  |  Flash TP v0.2
 local DISCORD_LINK    = "discord.gg/3vQbThdQ"
 local DISCORD_WEBHOOK = ""
--- ══════════════════════════════════════════════
-
+-- -- ============================================
 local Players=game:GetService("Players"); local RunService=game:GetService("RunService")
 local UIS=game:GetService("UserInputService"); local TweenService=game:GetService("TweenService")
 local PPS=game:GetService("ProximityPromptService"); local RS=game:GetService("ReplicatedStorage")
@@ -143,7 +142,7 @@ end
 
 task.wait(0.1); local vp=cam.ViewportSize; if vp.X==0 then vp=Vector2.new(390,844) end
 
--- ════════════ BACKGROUND SYSTEMS ════════════
+-- ======== BACKGROUND SYSTEMS ========
 if not _G._AethBG then _G._AethBG=true
 
     pcall(function() Lighting.GlobalShadows=false; Lighting.FogEnd=1e9
@@ -577,9 +576,9 @@ task.spawn(function()
     end
 end)
 
--- ══════════════════════════════════════════════
+-- ============================================
 -- STRONGER SELF-LAG (busy-wait 50ms, actually works)
--- ══════════════════════════════════════════════
+-- ============================================
 local function lagSelf()
     local deadline=tick()+0.05  -- 50ms busy wait
     local x=0
@@ -663,13 +662,13 @@ RunService.RenderStepped:Connect(function()
     end)
 end)
 
--- ══════════════════════════════════════════════
+-- -- ============================================
 -- FLASH TP v2 (ACCURATE)
 -- Uses RF/Tools/Flash/Activate directly → bypasses dammy's timing check
 -- Also fires tool.Activated connections as fallback
 -- RenderStepped for precise frame-perfect timing (Phantom Hub method)
 -- Default trigger 80% for best accuracy window
--- ══════════════════════════════════════════════
+-- -- ============================================
 local flashEnabled=Cfg.flashOn; local sliderValue=Cfg.triggerChance/100; local lagOnSteal=Cfg.lagOn
 
 local function fireFlashActivate()
@@ -812,7 +811,7 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
--- ════════════ PANELS ════════════
+-- ======== PANELS ========
 task.wait(0.15); vp=cam.ViewportSize; if vp.X==0 then vp=Vector2.new(390,844) end
 
 -- Header (not draggable, pure black)
@@ -830,7 +829,7 @@ task.spawn(function() while task.wait(0.7) do
 end end)
 local rsPnlBtn=mkBtn(hdrF,"Reset Panels",UDim2.fromOffset(88,13),UDim2.fromOffset(4,49),C.surf,C.dim,4); rsPnlBtn.TextSize=7; rsPnlBtn.ZIndex=5
 
--- ═══ FLASH TP PANEL ═══
+--  FLASH TP PANEL ═══
 local FP_W=148; local CONT_H=200; local FP_H=22+22+CONT_H+4
 local FP_defX=math.floor(vp.X-FP_W-4); local FP_defY=5
 local FP,_,fpMin=mkP(FP_defX,FP_defY,FP_W,FP_H,"FLASH TP","pos_FP")
@@ -948,7 +947,7 @@ local btBtn2=Instance.new("TextButton",btRow2); btBtn2.Size=UDim2.new(1,0,1,0); 
 local btOn2_=false; local function updBT(v) btOn2_=v; TweenService:Create(btTrack2,TweenInfo.new(0.12),{BackgroundColor3=v and C.white or C.surf2}):Play(); TweenService:Create(btKnob2,TweenInfo.new(0.12),{Position=v and UDim2.new(1,-9.5,0.5,-4) or UDim2.new(0,1.5,0.5,-4),BackgroundColor3=v and C.bg or C.dim}):Play() end
 btBtn2.MouseButton1Click:Connect(function() if btOn2_ then disableBrainTrans(); updBT(false) else enableBrainTrans(); updBT(true) end end)
 
--- ═══ AETHENS PANEL ═══
+-- === AETHENS PANEL ===
 local AP_W=128; local AP_CH=72; local AP_H=22+AP_CH+6
 local AP_defX=4; local AP_defY=hdrH+4+8
 local AP,_,apMin=mkP(AP_defX,AP_defY,AP_W,AP_H,"AETHENS","pos_AP")
@@ -963,7 +962,7 @@ local rejB=apB("Rejoin",C.white); rejB.MouseButton1Click:Connect(function() rejB
 local kickB=apB("Kick Self",C.red,Color3.fromRGB(22,4,6)); kickB.MouseButton1Click:Connect(function() kickB.Text="..."; lp:Kick(DISCORD_LINK) end)
 local rstAB=apB("Instant Reset",C.red,Color3.fromRGB(22,4,6)); rstAB.MouseButton1Click:Connect(function() task.spawn(doReset) end)
 
--- ═══ ADMIN PANEL (emojis restored) ═══
+-- === ADMIN PANEL (emojis restored) ===
 local RCMDS={{cmd="ragdoll",icon="🤸"},{cmd="balloon",icon="🎈"},{cmd="tiny",icon="🐜"},{cmd="jail",icon="🔒"},{cmd="rocket",icon="🚀"}}
 local IW2=15; local IH2=15; local IG2=2; local ADM_W=170; local ITOT=#RCMDS*(IW2+IG2)-IG2; local CSTART=(ADM_W-10)-ITOT-2
 local ADM_defX=math.floor(vp.X-ADM_W-4); local ADM_defY=FP_H+FP_defY+4
@@ -1020,7 +1019,7 @@ Players.PlayerAdded:Connect(function() task.wait(0.5); refreshPlayers() end)
 Players.PlayerRemoving:Connect(function() task.wait(0.2); refreshPlayers() end)
 task.delay(2,refreshPlayers)
 
--- ═══ BASE PROTECTOR ═══
+-- === BASE PROTECTOR ===
 local BP_W=112; local BP_H=22+42+6
 local BP_defX=4; local BP_defY=math.floor(vp.Y*0.72)
 local BP,_,bpMin=mkP(BP_defX,BP_defY,BP_W,BP_H,"BASE","pos_BP")
