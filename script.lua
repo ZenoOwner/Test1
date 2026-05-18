@@ -812,7 +812,7 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
--- ======== PANELS ========-- Services
+-- ======== PANELS ======== Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
