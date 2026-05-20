@@ -87,14 +87,14 @@ local function mkP(defX,defY,w,h,title,ac,posKey)
     local flat=Instance.new("Frame",hdr); flat.Size=UDim2.new(1,0,0,7); flat.Position=UDim2.new(0,0,1,-7); flat.BackgroundColor3=T.surf; flat.BackgroundTransparency=0.18; flat.BorderSizePixel=0
     local sep=Instance.new("Frame",f); sep.Size=UDim2.new(1,-8,0,1); sep.Position=UDim2.fromOffset(4,21); sep.BackgroundColor3=T.str; sep.BackgroundTransparency=0.68; sep.BorderSizePixel=0
     if title then lb(hdr,{Position=UDim2.new(0,7,0,0),Size=UDim2.new(1,-26,1,0),Text=title,TextSize=8,Font=Enum.Font.GothamBlack,TextXAlignment=Enum.TextXAlignment.Left,TextColor3=T.a1}) end
-    local mb=btn(hdr,"─",UDim2.fromOffset(15,13),UDim2.new(1,-18,0.5,-6.5),T.surf2); mb.TextSize=8; mb.TextColor3=T.dim; mb.BackgroundTransparency=0.6
+    local mb=btn(hdr,"â”€",UDim2.fromOffset(15,13),UDim2.new(1,-18,0.5,-6.5),T.surf2); mb.TextSize=8; mb.TextColor3=T.dim; mb.BackgroundTransparency=0.6
     dragSave(hdr,f,posKey); return f,hdr,mb
 end
 local function mkF(parent,hH,cH,mb)
     local content=Instance.new("Frame"); content.Size=UDim2.new(1,0,0,cH); content.Position=UDim2.fromOffset(0,hH); content.BackgroundTransparency=1; content.BorderSizePixel=0; content.Parent=parent
     local folded=false; local fullH=parent.Size.Y.Offset
     mb.MouseButton1Click:Connect(function()
-        folded=not folded; mb.Text=folded and "+" or "─"
+        folded=not folded; mb.Text=folded and "+" or "â”€"
         TweenService:Create(parent,TweenInfo.new(0.22,Enum.EasingStyle.Quad),{Size=UDim2.new(0,parent.Size.X.Offset,0,folded and hH+2 or fullH)}):Play()
     end); return content
 end
@@ -413,7 +413,7 @@ end)
 local ADM_UUID="f888ee6e-c86d-46e1-93d7-0639d6635d42"
 local function aFire(tgt,cmd) task.spawn(function() pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,tgt,cmd) end) end) end
 local ROW_CD={ragdoll=30,balloon=30,tiny=60,jail=60,rocket=120}
-local CMD_ICONS={ragdoll="🤸",balloon="🎈",tiny="🐜",jail="🔒",rocket="🚀"}
+local CMD_ICONS={ragdoll="ðŸ¤¸",balloon="ðŸŽˆ",tiny="ðŸœ",jail="ðŸ”’",rocket="ðŸš€"}
 local rowCdEnd={}
 local function fireCmd(tgt,cmd) if not ADM_REMOTE then return end; aFire(tgt,cmd); rowCdEnd[cmd]=tick()+(ROW_CD[cmd] or 30) end
 local CLICK_CMDS={"tiny","inverse","rocket","jumpscare"}
@@ -736,7 +736,7 @@ local FP_W=148; local CONT_H=192; local FP_H=21+20+CONT_H+4
 local FP_defX=math.floor(vp.X-FP_W-5); local FP_defY=5
 local FP,_,fpMin=mkP(FP_defX,FP_defY,FP_W,FP_H,"Flash TP",T.a2,"pos_FP")
 local fpFolded=false; local FP_fullH=FP_H
-fpMin.MouseButton1Click:Connect(function() fpFolded=not fpFolded; fpMin.Text=fpFolded and "+" or "─"
+fpMin.MouseButton1Click:Connect(function() fpFolded=not fpFolded; fpMin.Text=fpFolded and "+" or "â”€"
     TweenService:Create(FP,TweenInfo.new(0.22,Enum.EasingStyle.Quad),{Size=UDim2.fromOffset(FP_W,fpFolded and 23 or FP_fullH)}):Play() end)
 
 local tabRow=Instance.new("Frame",FP); tabRow.Size=UDim2.fromOffset(FP_W,20); tabRow.Position=UDim2.fromOffset(0,22)
@@ -840,7 +840,7 @@ local AP_defX=4; local AP_defY=hdrH+4+8
 local APan,_,apMin=mkP(AP_defX,AP_defY,AP_W2,AP_H2,"Aethens",T.a1,"pos_AP")
 local apC=Instance.new("Frame",APan); apC.Size=UDim2.new(1,0,0,AP_CH); apC.Position=UDim2.fromOffset(0,23); apC.BackgroundTransparency=1; apC.BorderSizePixel=0
 local apFolded=false
-apMin.MouseButton1Click:Connect(function() apFolded=not apFolded; apMin.Text=apFolded and "+" or "─"; TweenService:Create(APan,TweenInfo.new(0.22,Enum.EasingStyle.Quad),{Size=UDim2.fromOffset(AP_W2,apFolded and 23 or AP_H2)}):Play() end)
+apMin.MouseButton1Click:Connect(function() apFolded=not apFolded; apMin.Text=apFolded and "+" or "â”€"; TweenService:Create(APan,TweenInfo.new(0.22,Enum.EasingStyle.Quad),{Size=UDim2.fromOffset(AP_W2,apFolded and 23 or AP_H2)}):Play() end)
 local aY=4
 local function apB(text,tc,bg2) local b=btn(apC,text,UDim2.fromOffset(AP_W2-10,21),UDim2.fromOffset(5,aY),bg2); b.TextColor3=tc or T.a1; if tc then local s2=b:FindFirstChildOfClass("UIStroke"); if s2 then s2.Color=tc;s2.Transparency=0.3 end end; aY=aY+25; return b end
 local rejB=apB("Rejoin",T.a1); rejB.MouseButton1Click:Connect(function() rejB.Text="..."; pcall(function() if reconnect then reconnect() elseif syn and syn.reconnect then syn.reconnect() else TeleportService:Teleport(game.PlaceId,lp) end end) end)
@@ -848,7 +848,7 @@ local kickB=apB("Kick Self",T.red,Color3.fromRGB(30,6,6)); kickB.MouseButton1Cli
 local rstAB=apB("Instant Reset",T.red,Color3.fromRGB(30,6,6)); rstAB.MouseButton1Click:Connect(function() task.spawn(doReset) end)
 
 -- Admin panel
-local RCMDS={{cmd="ragdoll",icon="🤸"},{cmd="balloon",icon="🎈"},{cmd="tiny",icon="🐜"},{cmd="jail",icon="🔒"},{cmd="rocket",icon="🚀"}}
+local RCMDS={{cmd="ragdoll",icon="ðŸ¤¸"},{cmd="balloon",icon="ðŸŽˆ"},{cmd="tiny",icon="ðŸœ"},{cmd="jail",icon="ðŸ”’"},{cmd="rocket",icon="ðŸš€"}}
 local IW2=16; local IH2=18; local IG2=2; local ADM_W=186; local ITOT=#RCMDS*(IW2+IG2)-IG2; local CW2=ADM_W-12; local CSTART=CW2-ITOT-3
 local ADM_defX=math.floor(vp.X-ADM_W-5); local ADM_defY=FP_H+FP_defY+5
 local ADMpan,_,admMin=mkP(ADM_defX,ADM_defY,ADM_W,24,"Admin Panel",T.a2,"pos_ADM")
@@ -863,7 +863,7 @@ local function resADM()
 end
 pLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(resADM)
 admMin.MouseButton1Click:Connect(function()
-    admFolded=not admFolded; admMin.Text=admFolded and "+" or "─"; pScroll.Visible=not admFolded
+    admFolded=not admFolded; admMin.Text=admFolded and "+" or "â”€"; pScroll.Visible=not admFolded
     if admFolded then TweenService:Create(ADMpan,TweenInfo.new(0.2,Enum.EasingStyle.Quad),{Size=UDim2.fromOffset(ADM_W,24)}):Play()
     else local ch=math.min(pLayout.AbsoluteContentSize.Y+4,120); TweenService:Create(ADMpan,TweenInfo.new(0.2,Enum.EasingStyle.Quad),{Size=UDim2.fromOffset(ADM_W,22+ch+3)}):Play() end
 end)
