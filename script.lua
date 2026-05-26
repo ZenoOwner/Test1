@@ -1,2649 +1,579 @@
-local Players = game:GetService("Players")
-local CollectionService = game:GetService("CollectionService")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
+-- Aethen Hub v0.9 | @r9qbx | discord.gg/hyZGbJP9
+local DISCORD="discord.gg/hyZGbJP9"
+local Players=game:GetService("Players"); local RunService=game:GetService("RunService")
+local UIS=game:GetService("UserInputService"); local TweenService=game:GetService("TweenService")
+local PPS=game:GetService("ProximityPromptService"); local RS=game:GetService("ReplicatedStorage")
+local TeleportService=game:GetService("TeleportService"); local HttpService=game:GetService("HttpService")
+local CoreGui=game:GetService("CoreGui"); local Debris=game:GetService("Debris")
+local Lighting=game:GetService("Lighting"); local ContextActionService=game:GetService("ContextActionService")
+local lp=Players.LocalPlayer; local cam=workspace.CurrentCamera
 
-local _G_GUIS = {}
+for _,v in ipairs(CoreGui:GetChildren()) do if v:IsA("ScreenGui") and v.Name:sub(1,5)=="Aeth_" then v:Destroy() end end
+local SG=Instance.new("ScreenGui"); SG.Name="Aeth_Hub"; SG.ResetOnSpawn=false
+SG.ZIndexBehavior=Enum.ZIndexBehavior.Global; SG.IgnoreGuiInset=true; SG.Parent=CoreGui
 
-do
-    local pg = Players.LocalPlayer:WaitForChild("PlayerGui")
-    local KILL = {
-        ["FunGui"]=true, ["FunHubNotify"]=true,
-        ["PanelGui_Admin Panel"]=true, ["PanelGui_Fun Admin Spammer"]=true,
-        ["PanelGui_Actions"]=true, ["PanelGui_Booster"]=true,
-        ["PanelGui_Command Cooldowns"]=true, ["PanelGui_Defense"]=true,
-        ["PanelGui_Instant Steal"]=true, ["PanelGui_Instant Steal V2"]=true,
-        ["StealProgressGui"]=true, ["UI_Watermark"]=true,
-        ["UnlockBaseGui"]=true, ["AllowFriendsGui"]=true,
-        ["DiscordLabelGui"]=true,
-    }
-    for _, g in ipairs(pg:GetChildren()) do
-        if KILL[g.Name] then g:Destroy() end
-    end
+local T={bg=Color3.fromRGB(5,5,9),panel=Color3.fromRGB(7,7,13),surf=Color3.fromRGB(12,12,20),surf2=Color3.fromRGB(18,18,30),a1=Color3.fromRGB(225,225,240),a2=Color3.fromRGB(170,170,195),white=Color3.new(1,1,1),dim=Color3.fromRGB(100,100,122),str=Color3.fromRGB(150,150,178),red=Color3.fromRGB(255,65,65),grn=Color3.fromRGB(52,218,88),yel=Color3.fromRGB(255,200,40),pur=Color3.fromRGB(160,100,255)}
+
+-- GUI Helpers
+local function co(p,r) local c=Instance.new("UICorner",p); c.CornerRadius=UDim.new(0,r or 7) end
+local function ms(p,th,col,tr) local s=Instance.new("UIStroke",p); s.Thickness=th or 1; s.Color=col or T.str; s.Transparency=tr or 0.38; s.ApplyStrokeMode=Enum.ApplyStrokeMode.Border; return s end
+local function lb(par,props) local l=Instance.new("TextLabel"); l.BackgroundTransparency=1; l.Font=Enum.Font.GothamBold; l.TextColor3=T.white; l.BorderSizePixel=0; for k,v in pairs(props) do l[k]=v end; l.Parent=par; return l end
+local function btn(par,text,sz,pos,bg) local b=Instance.new("TextButton"); b.Size=sz; b.Position=pos; b.BackgroundColor3=bg or T.surf; b.BackgroundTransparency=0.22; b.Text=text; b.TextColor3=T.white; b.Font=Enum.Font.GothamBold; b.TextSize=9; b.BorderSizePixel=0; b.AutoButtonColor=false; b.Parent=par; co(b,5); ms(b,1,T.str,0.44); return b end
+local function rotS(f,col) local s=ms(f,1.3,col,0.22); local g=Instance.new("UIGradient",s); g.Color=ColorSequence.new{ColorSequenceKeypoint.new(0,Color3.new(1,1,1)),ColorSequenceKeypoint.new(0.25,Color3.new(0,0,0)),ColorSequenceKeypoint.new(0.5,col or T.a1),ColorSequenceKeypoint.new(0.75,Color3.new(0,0,0)),ColorSequenceKeypoint.new(1,Color3.new(1,1,1))}; task.spawn(function() while s and s.Parent do g.Rotation=(g.Rotation+0.9)%360; task.wait(0.016) end end) end
+local function particles(parent) for i=1,3 do local p=Instance.new("Frame",parent); p.BackgroundColor3=Color3.fromRGB(200,210,255); p.BackgroundTransparency=0.5; p.BorderSizePixel=0; p.ZIndex=0; local sz=math.random(2,4); p.Size=UDim2.fromOffset(sz,sz); local sx=math.random(); p.Position=UDim2.new(sx,0,1.05,0); co(p,5); task.spawn(function() while p and p.Parent do local nx=math.clamp(sx+math.random(-8,8)/100,0.02,0.98); TweenService:Create(p,TweenInfo.new(math.random(4,7),Enum.EasingStyle.Linear),{Position=UDim2.new(nx,0,-0.05,0),BackgroundTransparency=1}):Play(); task.wait(math.random(4,7)); if p and p.Parent then p.BackgroundTransparency=0.5; sx=math.random(); p.Position=UDim2.new(sx,0,1.05,0) end end end) end end
+local function clamp_pos(f) local vp=cam.ViewportSize; local px=math.clamp(f.Position.X.Offset,0,vp.X-f.Size.X.Offset); local py=math.clamp(f.Position.Y.Offset,0,vp.Y-f.Size.Y.Offset); f.Position=UDim2.fromOffset(px,py) end
+local function drag(h,f) local on,ds,sp=false,nil,nil; h.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then on=true; ds=i.Position; sp=f.Position; i.Changed:Connect(function() if i.UserInputState==Enum.UserInputState.End then on=false; clamp_pos(f) end end) end end); UIS.InputChanged:Connect(function(i) if not on then return end; if i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch then local d=i.Position-ds; f.Position=UDim2.new(sp.X.Scale,sp.X.Offset+d.X,sp.Y.Scale,sp.Y.Offset+d.Y); clamp_pos(f) end end) end
+local function mkPanel(x,y,w,h,title,col) local f=Instance.new("Frame"); f.Size=UDim2.fromOffset(w,h); f.Position=UDim2.fromOffset(x,y); f.BackgroundColor3=T.panel; f.BackgroundTransparency=0.14; f.BorderSizePixel=0; f.ClipsDescendants=true; f.Parent=SG; co(f,9); rotS(f,col or T.a1); particles(f); local hdr=Instance.new("Frame",f); hdr.Size=UDim2.new(1,0,0,22); hdr.BackgroundColor3=T.surf; hdr.BackgroundTransparency=0.18; hdr.BorderSizePixel=0; co(hdr,9); Instance.new("Frame",hdr).Size,Instance.new("Frame",hdr).BackgroundColor3=UDim2.new(1,0,0.5,0),T.surf; local sep=Instance.new("Frame",f); sep.Size=UDim2.new(1,-8,0,1); sep.Position=UDim2.fromOffset(4,22); sep.BackgroundColor3=T.str; sep.BackgroundTransparency=0.7; sep.BorderSizePixel=0; if title then lb(hdr,{Position=UDim2.new(0,7,0,0),Size=UDim2.new(1,-8,1,0),Text=title,TextSize=8,Font=Enum.Font.GothamBlack,TextXAlignment=Enum.TextXAlignment.Left,TextColor3=T.a1}) end; local content=Instance.new("Frame",f); content.Size=UDim2.new(1,0,1,-23); content.Position=UDim2.fromOffset(0,23); content.BackgroundTransparency=1; content.BorderSizePixel=0; drag(hdr,f); return f,hdr,content end
+local function toggle(parent,label,y,col) local row=Instance.new("Frame"); row.Size=UDim2.new(1,-8,0,19); row.Position=UDim2.new(0,4,0,y); row.BackgroundColor3=T.surf; row.BackgroundTransparency=0.3; row.BorderSizePixel=0; row.Parent=parent; co(row,5); local rs=ms(row,1,T.str,0.55); lb(row,{Position=UDim2.new(0,5,0,0),Size=UDim2.new(1,-32,1,0),Text=label,TextSize=8,Font=Enum.Font.GothamBold,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left}); local track=Instance.new("Frame",row); track.Size=UDim2.fromOffset(24,11); track.Position=UDim2.new(1,-27,0.5,-5.5); track.BackgroundColor3=T.surf2; track.BorderSizePixel=0; co(track,11); local knob=Instance.new("Frame",track); knob.Size=UDim2.fromOffset(7,7); knob.Position=UDim2.new(0,2,0.5,-3.5); knob.BackgroundColor3=T.a2; knob.BorderSizePixel=0; co(knob,7); local pb=Instance.new("TextButton",row); pb.Size=UDim2.new(1,0,1,0); pb.BackgroundTransparency=1; pb.Text=""; local c2=col or T.a1; local function set(v) TweenService:Create(track,TweenInfo.new(0.1),{BackgroundColor3=v and c2 or T.surf2}):Play(); TweenService:Create(knob,TweenInfo.new(0.1),{Position=v and UDim2.new(1,-9,0.5,-3.5) or UDim2.new(0,2,0.5,-3.5),BackgroundColor3=v and T.white or T.a2}):Play(); TweenService:Create(rs,TweenInfo.new(0.1),{Color=v and c2 or T.str,Transparency=v and 0.15 or 0.55}):Play(); local rl=row:FindFirstChildOfClass("TextLabel"); if rl then rl.TextColor3=v and T.white or T.dim end end; return pb,set end
+local function sBtn(par,text,x,y,w,h2,col) local b=Instance.new("TextButton"); b.Size=UDim2.fromOffset(w,h2 or 18); b.Position=UDim2.fromOffset(x,y); b.BackgroundColor3=col or T.surf2; b.BackgroundTransparency=0.2; b.Text=text; b.TextColor3=T.white; b.Font=Enum.Font.GothamBold; b.TextSize=8; b.BorderSizePixel=0; b.AutoButtonColor=false; b.Parent=par; co(b,4); return b end
+
+task.wait(0.1); local vp=cam.ViewportSize; if vp.X==0 then vp=Vector2.new(390,844) end
+local isStealing=false
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- BACKGROUND SYSTEMS
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+if not _G._AethBG then
+    _G._AethBG=true
+    -- Anti-ragdoll
+    RunService.Heartbeat:Connect(function()
+        local char=lp.Character; if not char then return end
+        local hum=char:FindFirstChildOfClass("Humanoid"); local root=char:FindFirstChild("HumanoidRootPart"); if not (hum and root) then return end
+        local s=hum:GetState(); local rag=(s==Enum.HumanoidStateType.Physics or s==Enum.HumanoidStateType.Ragdoll or s==Enum.HumanoidStateType.FallingDown)
+        if rag then
+            for _,d in ipairs(char:GetDescendants()) do if d:IsA("BallSocketConstraint") then d:Destroy() end end
+            for _,obj in ipairs(char:GetDescendants()) do if obj:IsA("Motor6D") and not obj.Enabled then obj.Enabled=true end end
+            if hum.Health>0 then hum:ChangeState(Enum.HumanoidStateType.Running) end
+            cam.CameraSubject=hum; root.Anchored=false; root.AssemblyLinearVelocity=Vector3.zero
+        end
+    end)
+    -- Anti-sentry v2
+    local sentryFirstSeen={}; local sentryTarget=nil
+    local function isMySentry(obj) local id=obj.Name:match("Sentry_(%d+)") or obj.Name:match("Beehive_(%d+)") or obj.Name:match("Turret_(%d+)"); if id and tonumber(id)==lp.UserId then return true end; local a=obj:GetAttribute("OwnerId") or obj:GetAttribute("PlayerId") or obj:GetAttribute("Owner"); return a and tonumber(tostring(a))==lp.UserId end
+    RunService.Heartbeat:Connect(function()
+        if isStealing then sentryTarget=nil; return end
+        local char=lp.Character; if not char then return end; local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp then return end; local now=tick()
+        if sentryTarget and sentryTarget.Parent then
+            local hum=char:FindFirstChildOfClass("Humanoid"); if hum then local weapon=(lp.Backpack and lp.Backpack:FindFirstChild("Bat")) or char:FindFirstChild("Bat"); if weapon then if weapon.Parent==lp.Backpack then hum:EquipTool(weapon) end; pcall(function() weapon:Activate() end) end end
+            local m=sentryTarget:IsA("BasePart") and sentryTarget or (sentryTarget:IsA("Model") and (sentryTarget.PrimaryPart or sentryTarget:FindFirstChildWhichIsA("BasePart"))); if m then m.CFrame=hrp.CFrame*CFrame.new(0,0,-5) end
+        else
+            sentryTarget=nil
+            for obj in pairs(sentryFirstSeen) do if not obj.Parent then sentryFirstSeen[obj]=nil end end
+            for _,obj in pairs(workspace:GetChildren()) do
+                if (obj.Name:find("Sentry") or obj.Name:find("Turret")) and not isMySentry(obj) then
+                    local part=obj:IsA("BasePart") and obj or (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")))
+                    if part and (hrp.Position-part.Position).Magnitude<=220 then
+                        if not sentryFirstSeen[obj] then sentryFirstSeen[obj]=now end
+                        if now-sentryFirstSeen[obj]>=3 then sentryTarget=obj; break end
+                    end
+                end
+            end
+        end
+    end)
 end
 
-local CONFIG_PATH = "FunHub_config.json"
-local Config = {data = {}, dirty = false}
-do
-    local hs = game:GetService("HttpService")
-    local ok, contents = pcall(function() return readfile(CONFIG_PATH) end)
-    if ok and contents then
-        local ok2, decoded = pcall(function() return hs:JSONDecode(contents) end)
-        if ok2 and type(decoded) == "table" then Config.data = decoded end
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- PLOT / BASE DETECTION
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local myPlotRef=nil; local stealHitbox=nil
+task.spawn(function()
+    while true do task.wait(1)
+        if not myPlotRef then
+            local plots=workspace:FindFirstChild("Plots"); if not plots then continue end
+            for _,p in ipairs(plots:GetChildren()) do
+                local sign=p:FindFirstChild("PlotSign"); if not sign then continue end
+                local yb=sign:FindFirstChild("YourBase"); if yb and yb:IsA("BillboardGui") and yb.Enabled then myPlotRef=p; stealHitbox=p:FindFirstChild("StealHitbox",true); break end
+                local tl=sign:FindFirstChild("TextLabel",true); if tl then local t=tl.Text:lower(); if t:find(lp.Name:lower(),1,true) then myPlotRef=p; stealHitbox=p:FindFirstChild("StealHitbox",true); break end end
+            end
+        end
     end
-    function Config:get(key, default)
-        local v = self.data[key]
-        if v == nil then return default end
-        return v
-    end
-    function Config:set(key, value)
-        self.data[key] = value
-        self.dirty = true
-    end
-    function Config:flush()
-        if not self.dirty then return end
-        self.dirty = false
-        pcall(function()
-            writefile(CONFIG_PATH, hs:JSONEncode(self.data))
-        end)
-    end
+end)
+local function isMyPlot(plot) if myPlotRef and plot==myPlotRef then return true end; local sign=plot:FindFirstChild("PlotSign"); if not sign then return false end; local yb=sign:FindFirstChild("YourBase"); return yb and yb:IsA("BillboardGui") and yb.Enabled end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- ESPs
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local ESPTAG="Aeth_"..tostring(math.random(1000,9999))
+local function mkPlayerESP(plr)
+    if plr==lp then return end; local char=plr.Character; if not char then return end; local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp or char:FindFirstChild(ESPTAG) then return end
+    local sel=Instance.new("SelectionBox",char); sel.Name=ESPTAG; sel.Adornee=char; sel.Color3=T.white; sel.LineThickness=0.05; sel.SurfaceTransparency=0.9; sel.SurfaceColor3=T.white
+    local bb=Instance.new("BillboardGui",char); bb.Name=ESPTAG.."N"; bb.Adornee=char:FindFirstChild("Head") or hrp; bb.Size=UDim2.fromOffset(120,30); bb.StudsOffset=Vector3.new(0,3,0); bb.AlwaysOnTop=true
+    local bg=Instance.new("Frame",bb); bg.Size=UDim2.new(1,0,1,0); bg.BackgroundColor3=T.bg; bg.BackgroundTransparency=0.25; bg.BorderSizePixel=0; co(bg,4); ms(bg,1,T.a1,0.3)
+    lb(bg,{Size=UDim2.new(1,0,0.55,0),BackgroundTransparency=1,Text=plr.DisplayName,Font=Enum.Font.GothamBold,TextSize=9,TextColor3=T.white})
+    local heldLbl=lb(bg,{Size=UDim2.new(1,0,0.45,0),Position=UDim2.new(0,0,0.55,0),BackgroundTransparency=1,Text="",Font=Enum.Font.Gotham,TextSize=7,TextColor3=T.dim})
+    task.spawn(function() while bb.Parent do task.wait(0.5); local tool=char and char:FindFirstChildOfClass("Tool"); heldLbl.Text=tool and tool.Name or "" end end)
+end
+local espOn=false
+local function enablePlayerESP() if espOn then return end; espOn=true; for _,p in ipairs(Players:GetPlayers()) do if p~=lp then task.defer(function() mkPlayerESP(p) end) end end; Players.PlayerAdded:Connect(function(p) p.CharacterAdded:Connect(function() task.wait(0.5); if espOn then mkPlayerESP(p) end end) end); for _,p in ipairs(Players:GetPlayers()) do if p~=lp then p.CharacterAdded:Connect(function() task.wait(0.5); if espOn then mkPlayerESP(p) end end) end end end
+local function disablePlayerESP() espOn=false; for _,p in ipairs(Players:GetPlayers()) do if p.Character then for _,v in ipairs(p.Character:GetChildren()) do if v.Name==ESPTAG or v.Name==ESPTAG.."N" then v:Destroy() end end end end end
+
+local timerESPs={}
+local function startTimerESP()
     task.spawn(function()
-        while true do task.wait(2); Config:flush() end
-    end)
-end
-_G.FunHubConfig = Config
-
-local function n(class, props, parent)
-    local inst = Instance.new(class)
-    if props then
-        for k, v in pairs(props) do
-            inst[k] = v
-        end
-    end
-    if parent ~= nil then inst.Parent = parent end
-    return inst
-end
-
-local function build_FunGui(_G_GUIS)
-    local _R = {}
-    do
-    _R.FunGui = n("ScreenGui", {Name="FunGui", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=false}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    _R.Frame = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 350, 0, 400), Position=UDim2.new(0.5, 0, 0.5, 0), AnchorPoint=Vector2.new(0.5, 0.5), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.3, Visible=false, ClipsDescendants=false, Active=false, Selectable=false}, _R.FunGui)
-    local UIStroke = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, _R.Frame)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke)
-    local Frame2 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 42), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, _R.Frame)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="FUNHUB V5.3", TextColor3=Color3.fromRGB(230, 235, 255), TextSize=18, Font=Enum.Font.GothamBlack, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame2)
-    local Frame3 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 56, 0, 22), Position=UDim2.new(1, -10, 0.5, 0), AnchorPoint=Vector2.new(1, 0.5), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame2)
-    n("UIListLayout", {Name="UIListLayout", FillDirection=Enum.FillDirection.Horizontal, VerticalAlignment=Enum.VerticalAlignment.Center, Padding=UDim.new(0, 6), Wraps=false}, Frame3)
-    _R.Frame4 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 22, 0, 22), BackgroundColor3=Color3.fromRGB(57, 64, 89), BorderSizePixel=0, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, _R.Frame4)
-    local UIStroke2 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, _R.Frame4)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke2)
-    _R.TextButton = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, _R.Frame4)
-    _R.Frame5 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 22, 0, 22), BackgroundColor3=Color3.fromRGB(255, 255, 255), BorderSizePixel=0, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, _R.Frame5)
-    local UIStroke3 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, _R.Frame5)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke3)
-    _R.TextButton2 = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, _R.Frame5)
-    local Frame6 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -24, 0, 36), Position=UDim2.new(0, 12, 0, 48), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, _R.Frame)
-    n("UIListLayout", {Name="UIListLayout", FillDirection=Enum.FillDirection.Horizontal, Padding=UDim.new(0, 8), Wraps=false}, Frame6)
-    local TextButton3 = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, -6, 1, 0), Position=UDim2.new(0, 0, 0, 4), BackgroundColor3=Color3.fromRGB(153, 153, 153), ClipsDescendants=false, Text="Main", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=14, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame6)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 12)}, TextButton3)
-    n("UIScale", {Name="UIScale"}, TextButton3)
-    local TextButton4 = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, -6, 1, 0), Position=UDim2.new(0, 0, 0, 4), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Text="Visual", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=14, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame6)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 12)}, TextButton4)
-    n("UIScale", {Name="UIScale"}, TextButton4)
-    local TextButton5 = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, -6, 1, 0), Position=UDim2.new(0, 0, 0, 4), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Text="Player", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=14, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame6)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 12)}, TextButton5)
-    n("UIScale", {Name="UIScale"}, TextButton5)
-    local TextButton6 = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, -6, 1, 0), Position=UDim2.new(0, 0, 0, 4), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Text="Utils", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=14, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame6)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 12)}, TextButton6)
-    n("UIScale", {Name="UIScale"}, TextButton6)
-    _R.Frame7 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, _R.Frame)
-    local ScrollingFrame = n("ScrollingFrame", {Name="ScrollingFrame", Size=UDim2.new(1, -24, 1, -96), Position=UDim2.new(0, 12, 0, 84), BackgroundTransparency=1, Active=false, CanvasSize=UDim2.new(0, 0, 0, 8), ScrollBarThickness=5, ScrollBarImageTransparency=0.2}, _R.Frame7)
-    n("UIListLayout", {Name="UIListLayout", Wraps=false}, ScrollingFrame)
-    local Frame8 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, ScrollingFrame)
-    n("UIListLayout", {Name="UIListLayout", SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0, 2), Wraps=false}, Frame8)
-    local TextLabel2 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -12, 0, 22), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Instant Steal", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=15, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame8)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6)}, TextLabel2)
-    local Frame9 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 12), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame8)
-    local Frame10 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -4, 0, 12), Position=UDim2.new(0, 2, 0, 0), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.35, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame9)
-    local Frame11 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame10)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame11)
-    local Frame12 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame11)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame12)
-    local Frame13 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame12)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame13)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Instant Steal Panel", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame13)
-    local Frame14 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame13)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame14)
-    local Frame15 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame14)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame15)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame13)
-    local Frame16 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame11)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame16)
-    local Frame17 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame16)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame17)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Instant Steal Panel V2", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame17)
-    local Frame18 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame17)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame18)
-    local Frame19 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame18)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame19)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame17)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, -2)}, Frame10)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame10)
-    local UIStroke4 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame10)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke4)
-    local Frame20 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, ScrollingFrame)
-    n("UIListLayout", {Name="UIListLayout", SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0, 2), Wraps=false}, Frame20)
-    local TextLabel5 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -12, 0, 22), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Stealing", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=15, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame20)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6)}, TextLabel5)
-    local Frame21 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 12), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame20)
-    local Frame22 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -4, 0, 12), Position=UDim2.new(0, 2, 0, 0), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.35, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame21)
-    local Frame23 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame22)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame23)
-    local Frame24 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame23)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame24)
-    local Frame25 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame24)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame25)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Auto Steal (Old)", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame25)
-    local Frame26 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame25)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame26)
-    local Frame27 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame26)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame27)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame25)
-    local Frame28 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame23)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame28)
-    local Frame29 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame28)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame29)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Auto Steal (New)", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame29)
-    local Frame30 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame29)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame30)
-    local Frame31 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame30)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame31)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame29)
-    local Frame32 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame23)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame32)
-    local Frame33 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame32)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame33)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Unlock Base", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame33)
-    local Frame34 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame33)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame34)
-    local Frame35 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame34)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame35)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame33)
-    local Frame36 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame23)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame36)
-    local Frame37 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame36)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame37)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Clone Devourer", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame37)
-    local Frame38 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame37)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame38)
-    local Frame39 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame38)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame39)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame37)
-    local Frame40 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame23)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame40)
-    local Frame41 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame40)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame41)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Auto Giant Potion", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame41)
-    local Frame42 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame41)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame42)
-    local Frame43 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame42)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame43)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame41)
-    local Frame44 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame23)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame44)
-    local Frame45 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame44)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame45)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Giant Potion Speed", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame45)
-    local Frame46 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame45)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame46)
-    local Frame47 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame46)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame47)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame45)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, -2)}, Frame22)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame22)
-    local UIStroke5 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame22)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke5)
-    local ScrollingFrame2 = n("ScrollingFrame", {Name="ScrollingFrame", Size=UDim2.new(1, -24, 1, -96), Position=UDim2.new(0, 12, 0, 84), BackgroundTransparency=1, Visible=false, Active=false, CanvasSize=UDim2.new(0, 0, 0, 8), ScrollBarThickness=5, ScrollBarImageTransparency=0.2}, _R.Frame7)
-    n("UIListLayout", {Name="UIListLayout", Wraps=false}, ScrollingFrame2)
-    local Frame48 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, ScrollingFrame2)
-    n("UIListLayout", {Name="UIListLayout", SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0, 2), Wraps=false}, Frame48)
-    local TextLabel12 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -12, 0, 22), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Optimizer", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=15, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame48)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6)}, TextLabel12)
-    local Frame49 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 12), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame48)
-    local Frame50 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -4, 0, 12), Position=UDim2.new(0, 2, 0, 0), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.35, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame49)
-    local Frame51 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame50)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame51)
-    local Frame52 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame51)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame52)
-    local Frame53 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame52)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame53)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="FPS Boost", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame53)
-    local Frame54 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame53)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame54)
-    local Frame55 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame54)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame55)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame53)
-    local Frame56 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame51)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame56)
-    local Frame57 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame56)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame57)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Game Stretcher", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame57)
-    local Frame58 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame57)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame58)
-    local Frame59 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame58)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame59)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame57)
-    local Frame60 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 46), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame51)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame60)
-    local Frame61 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame60)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame61)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -14, 0, 18), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Camera FOV", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame61)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 40, 0, 18), Position=UDim2.new(1, -54, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="70", TextColor3=Color3.fromRGB(140, 140, 160), TextSize=14, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Right, RichText=false}, Frame61)
-    local Frame62 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -28, 0, 6), Position=UDim2.new(0, 14, 1, -10), BackgroundColor3=Color3.fromRGB(25, 32, 70), ClipsDescendants=false, Active=false, Selectable=false}, Frame61)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame62)
-    local Frame63 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0.5798319578170776, 0, 1, 0), BackgroundColor3=Color3.fromRGB(40, 45, 62), ClipsDescendants=false, Active=false, Selectable=false}, Frame62)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame63)
-    local Frame64 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 14, 0, 14), Position=UDim2.new(0.5798319578170776, 0, 0.5, 0), AnchorPoint=Vector2.new(0.5, 0.5), BackgroundColor3=Color3.fromRGB(210, 225, 255), ZIndex=2, ClipsDescendants=false, Active=false, Selectable=false}, Frame62)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame64)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 24), Position=UDim2.new(0, 0, 0.5, -12), BackgroundTransparency=1, ZIndex=3, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame62)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, -2)}, Frame50)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame50)
-    local UIStroke6 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame50)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke6)
-    local Frame65 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, ScrollingFrame2)
-    n("UIListLayout", {Name="UIListLayout", SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0, 2), Wraps=false}, Frame65)
-    local TextLabel17 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -12, 0, 22), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Visual", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=15, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame65)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6)}, TextLabel17)
-    local Frame66 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 12), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame65)
-    local Frame67 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -4, 0, 12), Position=UDim2.new(0, 2, 0, 0), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.35, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame66)
-    local Frame68 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame67)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame68)
-    local Frame69 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame68)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame69)
-    local Frame70 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame69)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame70)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="X-Ray", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame70)
-    local Frame71 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame70)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame71)
-    local Frame72 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame71)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame72)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame70)
-    local Frame73 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame68)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame73)
-    local Frame74 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame73)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame74)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Anti Bee", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame74)
-    local Frame75 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame74)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame75)
-    local Frame76 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame75)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame76)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame74)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, -2)}, Frame67)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame67)
-    local UIStroke7 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame67)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke7)
-    local Frame77 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, ScrollingFrame2)
-    n("UIListLayout", {Name="UIListLayout", SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0, 2), Wraps=false}, Frame77)
-    local TextLabel20 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -12, 0, 22), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="ESP", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=15, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame77)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6)}, TextLabel20)
-    local Frame78 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 12), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame77)
-    local Frame79 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -4, 0, 12), Position=UDim2.new(0, 2, 0, 0), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.35, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame78)
-    local Frame80 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame79)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame80)
-    local Frame81 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame80)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame81)
-    local Frame82 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame81)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame82)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Player ESP", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame82)
-    local Frame83 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame82)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame83)
-    local Frame84 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame83)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame84)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame82)
-    local Frame85 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame80)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame85)
-    local Frame86 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame85)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame86)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Brainrot ESP", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame86)
-    local Frame87 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame86)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame87)
-    local Frame88 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame87)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame88)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame86)
-    local Frame89 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame80)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame89)
-    local Frame90 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame89)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame90)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Clone ESP", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame90)
-    local Frame91 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame90)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame91)
-    local Frame92 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame91)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame92)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame90)
-    local Frame93 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame80)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame93)
-    local Frame94 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame93)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame94)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Timer ESP", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame94)
-    local Frame95 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame94)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame95)
-    local Frame96 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame95)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame96)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame94)
-    local Frame97 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame80)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame97)
-    local Frame98 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame97)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame98)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Mine ESP", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame98)
-    local Frame99 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame98)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame99)
-    local Frame100 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame99)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame100)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame98)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, -2)}, Frame79)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame79)
-    local UIStroke8 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame79)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke8)
-    local ScrollingFrame3 = n("ScrollingFrame", {Name="ScrollingFrame", Size=UDim2.new(1, -24, 1, -96), Position=UDim2.new(0, 12, 0, 84), BackgroundTransparency=1, Visible=false, Active=false, CanvasSize=UDim2.new(0, 0, 0, 8), ScrollBarThickness=5, ScrollBarImageTransparency=0.2}, _R.Frame7)
-    n("UIListLayout", {Name="UIListLayout", Wraps=false}, ScrollingFrame3)
-    local Frame101 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, ScrollingFrame3)
-    n("UIListLayout", {Name="UIListLayout", SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0, 2), Wraps=false}, Frame101)
-    local TextLabel26 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -12, 0, 22), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Movement", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=15, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame101)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6)}, TextLabel26)
-    local Frame102 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 12), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame101)
-    local Frame103 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -4, 0, 12), Position=UDim2.new(0, 2, 0, 0), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.35, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame102)
-    local Frame104 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame103)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame104)
-    local Frame105 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame104)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame105)
-    local Frame106 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame105)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame106)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Anti Ragdoll", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame106)
-    local Frame107 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame106)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame107)
-    local Frame108 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame107)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame108)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame106)
-    local Frame109 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame104)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame109)
-    local Frame110 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame109)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame110)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Booster GUI", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame110)
-    local Frame111 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame110)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame111)
-    local Frame112 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame111)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame112)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame110)
-    local Frame113 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame104)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame113)
-    local Frame114 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame113)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame114)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Grapple Speed", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame114)
-    local Frame115 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame114)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame115)
-    local Frame116 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame115)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame116)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame114)
-    local Frame117 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame104)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame117)
-    local Frame118 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame117)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame118)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Infinite Jump", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame118)
-    local Frame119 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame118)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame119)
-    local Frame120 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame119)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame120)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame118)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, -2)}, Frame103)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame103)
-    local UIStroke9 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame103)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke9)
-    local Frame121 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, ScrollingFrame3)
-    n("UIListLayout", {Name="UIListLayout", SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0, 2), Wraps=false}, Frame121)
-    local TextLabel31 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -12, 0, 22), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Exploit", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=15, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame121)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6)}, TextLabel31)
-    local Frame122 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 12), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame121)
-    _R.Frame123 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -4, 0, 12), Position=UDim2.new(0, 2, 0, 0), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.35, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame122)
-    _R.Frame124 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, _R.Frame123)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, _R.Frame124)
-    local Frame125 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, _R.Frame124)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame125)
-    _R.Frame126 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame125)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, _R.Frame126)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Auto Reset On Balloon", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, _R.Frame126)
-    end
-    do
-    local Frame127 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, _R.Frame126)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame127)
-    local Frame128 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame127)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame128)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, _R.Frame126)
-    local Frame129 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, _R.Frame124)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame129)
-    local Frame130 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame129)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame130)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Anti Turret", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame130)
-    local Frame131 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame130)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame131)
-    local Frame132 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame131)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame132)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame130)
-    local Frame133 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, _R.Frame124)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame133)
-    local Frame134 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame133)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame134)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Aimbot", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame134)
-    local Frame135 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame134)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame135)
-    local Frame136 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame135)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame136)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame134)
-    local Frame137 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, _R.Frame124)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame137)
-    local Frame138 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame137)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame138)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Steal On Leave/Block", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame138)
-    local Frame139 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame138)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame139)
-    local Frame140 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame139)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame140)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame138)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, -2)}, _R.Frame123)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, _R.Frame123)
-    local UIStroke10 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, _R.Frame123)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke10)
-    local ScrollingFrame4 = n("ScrollingFrame", {Name="ScrollingFrame", Size=UDim2.new(1, -24, 1, -96), Position=UDim2.new(0, 12, 0, 84), BackgroundTransparency=1, Visible=false, Active=false, CanvasSize=UDim2.new(0, 0, 0, 8), ScrollBarThickness=5, ScrollBarImageTransparency=0.2}, _R.Frame7)
-    n("UIListLayout", {Name="UIListLayout", Wraps=false}, ScrollingFrame4)
-    local Frame141 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, ScrollingFrame4)
-    n("UIListLayout", {Name="UIListLayout", SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0, 2), Wraps=false}, Frame141)
-    local TextLabel36 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -12, 0, 22), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Admin Panel", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=15, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame141)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6)}, TextLabel36)
-    local Frame142 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 12), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame141)
-    local Frame143 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -4, 0, 12), Position=UDim2.new(0, 2, 0, 0), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.35, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame142)
-    local Frame144 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame143)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame144)
-    local Frame145 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame144)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame145)
-    local Frame146 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame145)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame146)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Admin Spammer", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame146)
-    local Frame147 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame146)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame147)
-    local Frame148 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame147)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame148)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame146)
-    local Frame149 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame144)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame149)
-    local Frame150 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame149)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame150)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Quick Admin Panel", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame150)
-    local Frame151 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame150)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame151)
-    local Frame152 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame151)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame152)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame150)
-    local Frame153 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame144)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame153)
-    local Frame154 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame153)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame154)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Command Cooldowns", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame154)
-    local Frame155 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame154)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame155)
-    local Frame156 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame155)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame156)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame154)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, -2)}, Frame143)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame143)
-    local UIStroke11 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame143)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke11)
-    local Frame157 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, ScrollingFrame4)
-    n("UIListLayout", {Name="UIListLayout", SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0, 2), Wraps=false}, Frame157)
-    local TextLabel40 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -12, 0, 22), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Protection", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=15, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame157)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6)}, TextLabel40)
-    local Frame158 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 12), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame157)
-    local Frame159 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -4, 0, 12), Position=UDim2.new(0, 2, 0, 0), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.35, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame158)
-    local Frame160 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame159)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame160)
-    local Frame161 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame160)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame161)
-    local Frame162 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame161)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame162)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Defense Panel", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame162)
-    local Frame163 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame162)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame163)
-    local Frame164 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame163)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame164)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame162)
-    local Frame165 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame160)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame165)
-    local Frame166 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame165)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame166)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Intruder Alarm", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame166)
-    local Frame167 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame166)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame167)
-    local Frame168 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame167)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame168)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame166)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, -2)}, Frame159)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame159)
-    local UIStroke12 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame159)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke12)
-    local Frame169 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, ScrollingFrame4)
-    n("UIListLayout", {Name="UIListLayout", SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0, 2), Wraps=false}, Frame169)
-    local TextLabel43 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -12, 0, 22), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Desync", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=15, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame169)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6)}, TextLabel43)
-    local Frame170 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 12), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame169)
-    local Frame171 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -4, 0, 12), Position=UDim2.new(0, 2, 0, 0), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.35, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame170)
-    local Frame172 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame171)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame172)
-    local Frame173 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame172)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame173)
-    local Frame174 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame173)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame174)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Reset Desync", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame174)
-    local Frame175 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame174)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame175)
-    local Frame176 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame175)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame176)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame174)
-    local Frame177 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame172)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame177)
-    local Frame178 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame177)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame178)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Unwalk (No Anim)", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame178)
-    local Frame179 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame178)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame179)
-    local Frame180 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame179)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame180)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame178)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, -2)}, Frame171)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame171)
-    local UIStroke13 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame171)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke13)
-    local Frame181 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, ScrollingFrame4)
-    n("UIListLayout", {Name="UIListLayout", SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0, 2), Wraps=false}, Frame181)
-    local TextLabel46 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -12, 0, 22), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Other", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=15, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame181)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6)}, TextLabel46)
-    local Frame182 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 12), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame181)
-    local Frame183 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -4, 0, 12), Position=UDim2.new(0, 2, 0, 0), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.35, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame182)
-    local Frame184 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 0), BackgroundTransparency=1, LayoutOrder=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame183)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame184)
-    local Frame185 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame184)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame185)
-    local Frame186 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame185)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame186)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Quantum Cloner", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame186)
-    local Frame187 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame186)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame187)
-    local Frame188 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame187)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame188)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame186)
-    local Frame189 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame184)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame189)
-    local Frame190 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame189)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame190)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Instant Reset (Old) <font color=\"rgb(140,140,160)\">(R)</font>", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame190)
-    local Frame191 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame190)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame191)
-    local Frame192 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame191)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame192)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame190)
-    local Frame193 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame184)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame193)
-    local Frame194 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame193)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame194)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Carpet TP (Next Base)", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame194)
-    local Frame195 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame194)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame195)
-    local Frame196 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame195)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame196)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame194)
-    local Frame197 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame184)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame197)
-    local Frame198 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame197)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame198)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Place Subspace Mine", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame198)
-    local Frame199 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame198)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame199)
-    local Frame200 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame199)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame200)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame198)
-    local Frame201 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame184)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame201)
-    local Frame202 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame201)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame202)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Allow Friends", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame202)
-    local Frame203 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame202)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame203)
-    local Frame204 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame203)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame204)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame202)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, -2)}, Frame183)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame183)
-    local UIStroke14 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame183)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke14)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, _R.Frame)
-    n("UIScale", {Name="UIScale", Scale=1e-07}, _R.Frame)
-    local TextButton45 = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 60, 0, 34), Position=UDim2.new(0, 15, 0, 120), BackgroundColor3=Color3.fromRGB(11, 13, 18), BackgroundTransparency=0.1, ClipsDescendants=false, Text="Fun", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=18, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, _R.FunGui)
-    n("UIScale", {Name="UIScale"}, TextButton45)
-    local UIStroke15 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, TextButton45)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=205.421}, UIStroke15)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 18)}, TextButton45)
-    end
-    _G_GUIS["FunGui"] = _R.FunGui
-    _G_GUIS["FunGui:colorBtnA"] = _R.Frame4
-    _G_GUIS["FunGui:colorBtnB"] = _R.Frame5
-    _G_GUIS["FunGui:colorBtnAClick"] = _R.TextButton
-    _G_GUIS["FunGui:colorBtnBClick"] = _R.TextButton2
-    return _R
-end
-build_FunGui(_G_GUIS)
-
-local function build_PanelGui_Admin_Panel(_G_GUIS)
-    local _R = {}
-    do
-    _R.PanelGui_FunAdminSpammer = n("ScreenGui", {Name="PanelGui_Fun Admin Spammer", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=false}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    local Frame = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 300, 0, 320), Position=UDim2.new(0.5, 174, 0.5, -163), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.1, ClipsDescendants=true, Active=true, Selectable=false}, _R.PanelGui_FunAdminSpammer)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame)
-    local UIStroke = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=222.627}, UIStroke)
-    local Frame2 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 30), BackgroundColor3=Color3.fromRGB(7, 8, 11), ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame2)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -36, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Fun Admin Spammer", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=13, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame2)
-    local TextButton = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 22, 0, 22), Position=UDim2.new(1, -26, 0.5, -11), BackgroundColor3=Color3.fromRGB(11, 13, 18), ClipsDescendants=false, Text="â€“", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame2)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, TextButton)
-    local TextButton2 = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 22, 0, 22), Position=UDim2.new(1, -52, 0.5, -11), BackgroundColor3=Color3.fromRGB(11, 13, 18), ZIndex=5, ClipsDescendants=false, Text="âš™", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=14, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame2)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, TextButton2)
-    local Frame3 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 1, -30), Position=UDim2.new(0, 0, 0, 30), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6), PaddingRight=UDim.new(0, 6)}, Frame3)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 30), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="No targets found", TextColor3=Color3.fromRGB(180, 180, 180), TextSize=13, Font=Enum.Font.Gotham, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false}, Frame3)
-    local Frame4 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 40), Position=UDim2.new(0, 0, 1, -40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6), PaddingRight=UDim.new(0, 6)}, Frame4)
-    local Frame5 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 34), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame4)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame5)
-    local Frame6 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame5)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame6)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Spam Closest", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=true}, Frame6)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame6)
-    end
-    _G_GUIS["PanelGui_Admin Panel"] = _R.PanelGui_FunAdminSpammer
-    return _R
-end
-build_PanelGui_Admin_Panel(_G_GUIS)
-
-local function build_PanelGui_Actions(_G_GUIS)
-    local _R = {}
-    do
-    _R.PanelGui_Actions = n("ScreenGui", {Name="PanelGui_Actions", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=false}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    local Frame = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 220, 0, 228), Position=UDim2.new(0.5, 218, 0.5, -336), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.1, ClipsDescendants=false, Active=true, Selectable=false}, _R.PanelGui_Actions)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame)
-    local UIStroke = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=196.03}, UIStroke)
-    local Frame2 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 30), BackgroundColor3=Color3.fromRGB(7, 8, 11), ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame2)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -36, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Actions", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=13, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame2)
-    local TextButton = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 22, 0, 22), Position=UDim2.new(1, -52, 0.5, -11), BackgroundColor3=Color3.fromRGB(11, 13, 18), ClipsDescendants=false, Text="â€“", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame2)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, TextButton)
-    local TextButton2 = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 22, 0, 22), Position=UDim2.new(1, -26, 0.5, -11), BackgroundColor3=Color3.fromRGB(14, 16, 22), ClipsDescendants=false, Text="Ã—", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame2)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, TextButton2)
-    local Frame3 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 1, -30), Position=UDim2.new(0, 0, 0, 30), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6), PaddingRight=UDim.new(0, 6)}, Frame3)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame3)
-    local Frame4 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 34), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame4)
-    local Frame5 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame4)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame5)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Rejoin", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=true}, Frame5)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame5)
-    local Frame6 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 34), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame6)
-    local Frame7 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame6)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame7)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Kick Self", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=true}, Frame7)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame7)
-    local Frame8 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 34), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame8)
-    local Frame9 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame8)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame9)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Ragdoll Self", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=true}, Frame9)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame9)
-    local Frame10 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 34), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame10)
-    local Frame11 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame10)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame11)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Reset Character", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=true}, Frame11)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame11)
-    local Frame12 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 34), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame12)
-    local Frame13 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame12)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame13)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Instant Reset", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=true}, Frame13)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame13)
-    end
-    _G_GUIS["PanelGui_Actions"] = _R.PanelGui_Actions
-    return _R
-end
-build_PanelGui_Actions(_G_GUIS)
-
-local function build_PanelGui_Booster(_G_GUIS)
-    local _R = {}
-    do
-    _R.PanelGui_Booster = n("ScreenGui", {Name="PanelGui_Booster", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=false}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    local Frame = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 220, 0, 124), Position=UDim2.new(0.5, 245, 0.5, 100), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.1, ClipsDescendants=false, Active=true, Selectable=false}, _R.PanelGui_Booster)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame)
-    local UIStroke = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=12.251}, UIStroke)
-    local Frame2 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 30), BackgroundColor3=Color3.fromRGB(7, 8, 11), ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame2)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -36, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Booster", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=13, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame2)
-    local TextButton = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 22, 0, 22), Position=UDim2.new(1, -26, 0.5, -11), BackgroundColor3=Color3.fromRGB(11, 13, 18), ClipsDescendants=false, Text="â€“", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame2)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, TextButton)
-    local Frame3 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 1, -30), Position=UDim2.new(0, 0, 0, 30), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6), PaddingRight=UDim.new(0, 6)}, Frame3)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame3)
-    local Frame4 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame4)
-    local Frame5 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame4)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame5)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Booster", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame5)
-    local Frame6 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame5)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame6)
-    local Frame7 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame6)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame7)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame5)
-    local Frame8 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 24), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame8)
-    local Frame9 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(25, 32, 70), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame8)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame9)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0.3499999940395355, 0, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Walk Speed", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame9)
-    local TextBox = n("TextBox", {Name="TextBox", SelectionGroup=false, Size=UDim2.new(0.30000001192092896, -10, 0.699999988079071, 0), Position=UDim2.new(0.699999988079071, 6, 0.15000000596046448, 0), BackgroundColor3=Color3.fromRGB(9, 10, 13), ClipsDescendants=false, Text="29", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, ClearTextOnFocus=false, MultiLine=false, RichText=false}, Frame9)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 6)}, TextBox)
-    local Frame10 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 24), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame10)
-    local Frame11 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(25, 32, 70), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame10)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame11)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0.3499999940395355, 0, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Jump Power", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame11)
-    local TextBox2 = n("TextBox", {Name="TextBox", SelectionGroup=false, Size=UDim2.new(0.30000001192092896, -10, 0.699999988079071, 0), Position=UDim2.new(0.699999988079071, 6, 0.15000000596046448, 0), BackgroundColor3=Color3.fromRGB(9, 10, 13), ClipsDescendants=false, Text="50", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, ClearTextOnFocus=false, MultiLine=false, RichText=false}, Frame11)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 6)}, TextBox2)
-    end
-    _G_GUIS["PanelGui_Booster"] = _R.PanelGui_Booster
-    return _R
-end
-build_PanelGui_Booster(_G_GUIS)
-
-local function build_PanelGui_Command_Cooldowns(_G_GUIS)
-    local _R = {}
-    do
-    _R.PanelGui_CommandCooldowns = n("ScreenGui", {Name="PanelGui_Command Cooldowns", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=false}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    local Frame = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 220, 0, 278), Position=UDim2.new(0.5, -465, 0.5, 49), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.1, ClipsDescendants=false, Active=true, Selectable=false}, _R.PanelGui_CommandCooldowns)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame)
-    local UIStroke = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=352.041}, UIStroke)
-    local Frame2 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 30), BackgroundColor3=Color3.fromRGB(7, 8, 11), ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame2)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -36, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Command Cooldowns", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=13, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame2)
-    local TextButton = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 22, 0, 22), Position=UDim2.new(1, -26, 0.5, -11), BackgroundColor3=Color3.fromRGB(11, 13, 18), ClipsDescendants=false, Text="â€“", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame2)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, TextButton)
-    local Frame3 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 1, -30), Position=UDim2.new(0, 0, 0, 30), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6), PaddingRight=UDim.new(0, 6)}, Frame3)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame3)
-    local Frame4 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 20), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, 14)}, Frame4)
-    local Frame5 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame4)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame5)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="rocket", TextColor3=Color3.fromRGB(250, 250, 250), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame5)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 50, 1, 0), Position=UDim2.new(1, -50, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="READY", TextColor3=Color3.fromRGB(0, 200, 0), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Right, RichText=false}, Frame5)
-    local Frame6 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 20), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, 14)}, Frame6)
-    local Frame7 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame6)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame7)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="ragdoll", TextColor3=Color3.fromRGB(250, 250, 250), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame7)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 50, 1, 0), Position=UDim2.new(1, -50, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="READY", TextColor3=Color3.fromRGB(0, 200, 0), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Right, RichText=false}, Frame7)
-    local Frame8 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 20), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, 14)}, Frame8)
-    local Frame9 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame8)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame9)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="balloon", TextColor3=Color3.fromRGB(250, 250, 250), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame9)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 50, 1, 0), Position=UDim2.new(1, -50, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="READY", TextColor3=Color3.fromRGB(0, 200, 0), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Right, RichText=false}, Frame9)
-    local Frame10 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 20), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, 14)}, Frame10)
-    local Frame11 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame10)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame11)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="inverse", TextColor3=Color3.fromRGB(250, 250, 250), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame11)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 50, 1, 0), Position=UDim2.new(1, -50, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="READY", TextColor3=Color3.fromRGB(0, 200, 0), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Right, RichText=false}, Frame11)
-    local Frame12 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 20), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, 14)}, Frame12)
-    local Frame13 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame12)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame13)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="nightvision", TextColor3=Color3.fromRGB(250, 250, 250), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame13)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 50, 1, 0), Position=UDim2.new(1, -50, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="READY", TextColor3=Color3.fromRGB(0, 200, 0), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Right, RichText=false}, Frame13)
-    local Frame14 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 20), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, 14)}, Frame14)
-    local Frame15 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame14)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame15)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="jail", TextColor3=Color3.fromRGB(250, 250, 250), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame15)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 50, 1, 0), Position=UDim2.new(1, -50, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="READY", TextColor3=Color3.fromRGB(0, 200, 0), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Right, RichText=false}, Frame15)
-    local Frame16 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 20), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, 14)}, Frame16)
-    local Frame17 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame16)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame17)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="control", TextColor3=Color3.fromRGB(250, 250, 250), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame17)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 50, 1, 0), Position=UDim2.new(1, -50, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="READY", TextColor3=Color3.fromRGB(0, 200, 0), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Right, RichText=false}, Frame17)
-    local Frame18 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 20), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, 14)}, Frame18)
-    local Frame19 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame18)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame19)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="tiny", TextColor3=Color3.fromRGB(250, 250, 250), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame19)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 50, 1, 0), Position=UDim2.new(1, -50, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="READY", TextColor3=Color3.fromRGB(0, 200, 0), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Right, RichText=false}, Frame19)
-    local Frame20 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 20), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, 14)}, Frame20)
-    local Frame21 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame20)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame21)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="jumpscare", TextColor3=Color3.fromRGB(250, 250, 250), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame21)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 50, 1, 0), Position=UDim2.new(1, -50, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="READY", TextColor3=Color3.fromRGB(0, 200, 0), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Right, RichText=false}, Frame21)
-    local Frame22 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 20), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6), PaddingLeft=UDim.new(0, 14)}, Frame22)
-    local Frame23 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame22)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame23)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="morph", TextColor3=Color3.fromRGB(250, 250, 250), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame23)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 50, 1, 0), Position=UDim2.new(1, -50, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="READY", TextColor3=Color3.fromRGB(0, 200, 0), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Right, RichText=false}, Frame23)
-    end
-    _G_GUIS["PanelGui_Command Cooldowns"] = _R.PanelGui_CommandCooldowns
-    return _R
-end
-build_PanelGui_Command_Cooldowns(_G_GUIS)
-
-local function build_PanelGui_Defense(_G_GUIS)
-    local _R = {}
-    do
-    _R.PanelGui_FunDefense = n("ScreenGui", {Name="PanelGui_Fun Defense", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=false}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    local Frame = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 280, 0, 128), Position=UDim2.new(0.5, -96, 0.5, 129), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.1, ClipsDescendants=false, Active=true, Selectable=false}, _R.PanelGui_FunDefense)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame)
-    local UIStroke = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=155.363}, UIStroke)
-    local Frame2 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 30), BackgroundColor3=Color3.fromRGB(7, 8, 11), ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame2)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -36, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Fun Defense", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=13, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame2)
-    local TextButton = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 22, 0, 22), Position=UDim2.new(1, -26, 0.5, -11), BackgroundColor3=Color3.fromRGB(11, 13, 18), ClipsDescendants=false, Text="â€“", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame2)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, TextButton)
-    local Frame3 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 1, -30), Position=UDim2.new(0, 0, 0, 30), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6), PaddingRight=UDim.new(0, 6)}, Frame3)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame3)
-    local Frame4 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame4)
-    local Frame5 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame4)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame5)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Auto Defense", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame5)
-    local Frame6 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame5)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame6)
-    local Frame7 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame6)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame7)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame5)
-    local Frame8 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame8)
-    local Frame9 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame8)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame9)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Anti Intruder", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame9)
-    local Frame10 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame9)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame10)
-    local Frame11 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame10)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame11)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame9)
-    local Frame12 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame12)
-    local Frame13 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame12)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame13)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Spam On Reset", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame13)
-    local Frame14 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame13)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame14)
-    local Frame15 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(1, -20, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame14)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame15)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame13)
-    end
-    _G_GUIS["PanelGui_Defense"] = _R.PanelGui_FunDefense
-    return _R
-end
-build_PanelGui_Defense(_G_GUIS)
-
-local function build_PanelGui_Instant_Steal(_G_GUIS)
-    local _R = {}
-    do
-    _R.PanelGui_InstantSteal = n("ScreenGui", {Name="PanelGui_Instant Steal", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=false}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    local Frame = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 220, 0, 174), Position=UDim2.new(0.5, -329, 0.5, -164), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.1, ClipsDescendants=false, Active=true, Selectable=false}, _R.PanelGui_InstantSteal)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame)
-    local UIStroke = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=244.582}, UIStroke)
-    local Frame2 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 30), BackgroundColor3=Color3.fromRGB(7, 8, 11), ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame2)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -36, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Instant Steal", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=13, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame2)
-    local TextButton = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 22, 0, 22), Position=UDim2.new(1, -26, 0.5, -11), BackgroundColor3=Color3.fromRGB(11, 13, 18), ClipsDescendants=false, Text="â€“", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame2)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, TextButton)
-    local Frame3 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 1, -30), Position=UDim2.new(0, 0, 0, 30), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6), PaddingRight=UDim.new(0, 6)}, Frame3)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame3)
-    local Frame4 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame4)
-    local Frame5 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame4)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame5)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Semi Mode", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame5)
-    local Frame6 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame5)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame6)
-    local Frame7 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame6)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame7)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame5)
-    local Frame8 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 34), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame8)
-    local Frame9 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame8)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame9)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Align (Semi)", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=true}, Frame9)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame9)
-    local Frame10 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 34), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame10)
-    local Frame11 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame10)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame11)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="TP To Brainrot (Semi)", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=true}, Frame11)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame11)
-    local Frame12 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame12)
-    local Frame13 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame12)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame13)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Full Mode", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame13)
-    local Frame14 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame13)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame14)
-    local Frame15 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame14)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame15)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame13)
-    end
-    _G_GUIS["PanelGui_Instant Steal"] = _R.PanelGui_InstantSteal
-    return _R
-end
-build_PanelGui_Instant_Steal(_G_GUIS)
-
-local function build_PanelGui_Instant_Steal_V2(_G_GUIS)
-    local _R = {}
-    do
-    _R.PanelGui_InstantStealV2 = n("ScreenGui", {Name="PanelGui_Instant Steal V2", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=false}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    local Frame = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 220, 0, 182), Position=UDim2.new(0.5, 288, 0.5, -88), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.1, ClipsDescendants=false, Active=true, Selectable=false}, _R.PanelGui_InstantStealV2)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame)
-    local UIStroke = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=48.619}, UIStroke)
-    local Frame2 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 30), BackgroundColor3=Color3.fromRGB(7, 8, 11), ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, Frame2)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -36, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Instant Steal V2", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=13, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=false}, Frame2)
-    local TextButton = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 22, 0, 22), Position=UDim2.new(1, -26, 0.5, -11), BackgroundColor3=Color3.fromRGB(11, 13, 18), ClipsDescendants=false, Text="â€“", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false, AutoButtonColor=false}, Frame2)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, TextButton)
-    local Frame3 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 1, -30), Position=UDim2.new(0, 0, 0, 30), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingLeft=UDim.new(0, 6), PaddingRight=UDim.new(0, 6)}, Frame3)
-    n("UIListLayout", {Name="UIListLayout", Padding=UDim.new(0, 4), Wraps=false}, Frame3)
-    local Frame4 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 26), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6), PaddingBottom=UDim.new(0, 6)}, Frame4)
-    local Frame5 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, 0), BackgroundColor3=Color3.fromRGB(15, 20, 40), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame4)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame5)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -70, 1, 0), Position=UDim2.new(0, 14, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Giant Potion", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, RichText=true}, Frame5)
-    local Frame6 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 42, 0, 22), Position=UDim2.new(1, -56, 0.5, -11), BackgroundColor3=Color3.fromRGB(17, 19, 27), ClipsDescendants=false, Active=false, Selectable=false}, Frame5)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame6)
-    local Frame7 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 18, 0, 18), Position=UDim2.new(0, 2, 0.5, -9), BackgroundColor3=Color3.fromRGB(210, 225, 255), ClipsDescendants=false, Active=false, Selectable=false}, Frame6)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(1, 0)}, Frame7)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame5)
-    local Frame8 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 34), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame8)
-    local Frame9 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame8)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame9)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Activate (Reset)", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=true}, Frame9)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame9)
-    local Frame10 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 34), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame10)
-    local Frame11 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame10)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame11)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Execute", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=true}, Frame11)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame11)
-    local Frame12 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, 0, 0, 34), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false}, Frame3)
-    n("UIPadding", {Name="UIPadding", PaddingLeft=UDim.new(0, 6)}, Frame12)
-    local Frame13 = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(1, -8, 1, -1), BackgroundColor3=Color3.fromRGB(23, 26, 36), ClipsDescendants=false, Active=false, Selectable=false}, Frame12)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame13)
-    n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 1, 0), Position=UDim2.new(0, 10, 0, 0), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="Execute (Full) <font color=\"rgb(140,140,160)\">(B)</font>", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=16, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=true}, Frame13)
-    n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(1, 0, 1, 0), BackgroundTransparency=1, ClipsDescendants=false, Text="", TextScaled=false, TextWrapped=false, RichText=false}, Frame13)
-    end
-    _G_GUIS["PanelGui_Instant Steal V2"] = _R.PanelGui_InstantStealV2
-    return _R
-end
-build_PanelGui_Instant_Steal_V2(_G_GUIS)
-
-local function build_AllowFriendsGui(_G_GUIS)
-    local _R = {}
-    do
-    _R.AllowFriendsGui = n("ScreenGui", {Name="AllowFriendsGui", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=true}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    local TextButton = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 150, 0, 38), Position=UDim2.new(1, -160, 0, 5), BackgroundColor3=Color3.fromRGB(6, 6, 9), BackgroundTransparency=0.15, ClipsDescendants=false, Text="Allow/Disallow", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=18, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false}, _R.AllowFriendsGui)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 12)}, TextButton)
-    local UIStroke = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, TextButton)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=126.479}, UIStroke)
-    end
-    _G_GUIS["AllowFriendsGui"] = _R.AllowFriendsGui
-    return _R
-end
-build_AllowFriendsGui(_G_GUIS)
-
-local function build_DiscordLabelGui(_G_GUIS)
-    local _R = {}
-    do
-    _R.DiscordLabelGui = n("ScreenGui", {Name="DiscordLabelGui", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=false}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    local TextLabel = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 250, 0, 30), Position=UDim2.new(0.5, 0, 1, -65), AnchorPoint=Vector2.new(0.5, 1), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="discord.gg/funhub", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=21, TextStrokeTransparency=0.7, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false}, _R.DiscordLabelGui)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Offset=Vector2.new(0.506125807762146, 0)}, TextLabel)
-    end
-    _G_GUIS["DiscordLabelGui"] = _R.DiscordLabelGui
-    return _R
-end
-build_DiscordLabelGui(_G_GUIS)
-
-local function build_StealProgressGui(_G_GUIS)
-    local _R = {}
-    do
-    _R.StealProgressGui = n("ScreenGui", {Name="StealProgressGui", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=false}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    local Frame = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 200, 0, 12), Position=UDim2.new(0.5, -100, 0.8999999761581421, 0), BackgroundColor3=Color3.fromRGB(30, 30, 30), BorderSizePixel=0, Visible=false, ClipsDescendants=false, Active=false, Selectable=false}, _R.StealProgressGui)
-    n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 0, 1, 0), BackgroundColor3=Color3.fromRGB(0, 255, 0), BorderSizePixel=0, ClipsDescendants=false, Active=false, Selectable=false}, Frame)
-    end
-    _G_GUIS["StealProgressGui"] = _R.StealProgressGui
-    return _R
-end
-build_StealProgressGui(_G_GUIS)
-
-local function build_UI_Watermark(_G_GUIS)
-    local _R = {}
-    do
-    _R.UI_Watermark = n("ScreenGui", {Name="UI_Watermark", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=false}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    local Frame = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 354, 0, 80), Position=UDim2.new(0.5, 0, 0.20000000298023224, 0), AnchorPoint=Vector2.new(0.5, 1), BackgroundColor3=Color3.fromRGB(25, 25, 25), BackgroundTransparency=0.2, ClipsDescendants=false, Active=false, Selectable=false}, _R.UI_Watermark)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 10)}, Frame)
-    local UIStroke = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, Frame)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Rotation=187.038}, UIStroke)
-    n("UIListLayout", {Name="UIListLayout", HorizontalAlignment=Enum.HorizontalAlignment.Center, VerticalAlignment=Enum.VerticalAlignment.Center, Padding=UDim.new(0, 2), Wraps=false}, Frame)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 8), PaddingBottom=UDim.new(0, 8)}, Frame)
-    local TextLabel = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 0, 22), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="FUNHUB V5.3", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=26, Font=Enum.Font.GothamBlack, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false}, Frame)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Offset=Vector2.new(-0.8670814037322998, 0)}, TextLabel)
-    local TextLabel2 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(0, 0, 0, 18), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="@flow_dev - discord.gg/funhub", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=24, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false}, Frame)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 6)}, TextLabel2)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(57, 64, 89)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))}), Offset=Vector2.new(-0.8670814037322998, 0)}, TextLabel2)
-    local TextLabel3 = n("TextLabel", {Name="TextLabel", SelectionGroup=false, Size=UDim2.new(1, -20, 0, 18), BackgroundTransparency=1, ClipsDescendants=false, Active=false, Selectable=false, Text="<font color=\"rgb(255,255,255)\">FPS: </font><font color=\"rgb(180,180,180)\">104</font><font color=\"rgb(255,255,255)\">  PING: </font><font color=\"rgb(180,180,180)\">34ms</font>", TextColor3=Color3.fromRGB(255, 255, 255), TextSize=21, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=true}, Frame)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 12)}, TextLabel3)
-    end
-    _G_GUIS["UI_Watermark"] = _R.UI_Watermark
-    return _R
-end
-build_UI_Watermark(_G_GUIS)
-
-local function build_UnlockBaseGui(_G_GUIS)
-    local _R = {}
-    do
-    _R.UnlockBaseGui = n("ScreenGui", {Name="UnlockBaseGui", SelectionGroup=false, ResetOnSpawn=false, IgnoreGuiInset=false}, Players.LocalPlayer:WaitForChild("PlayerGui"))
-    local Frame = n("Frame", {Name="Frame", SelectionGroup=false, Size=UDim2.new(0, 230, 0, 70), Position=UDim2.new(0.5, -93, 0.5, -409), BackgroundColor3=Color3.fromRGB(20, 25, 35), BackgroundTransparency=0.3, ClipsDescendants=false, Active=true, Selectable=true}, _R.UnlockBaseGui)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 18)}, Frame)
-    n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(87, 126, 255), Thickness=1.5, Transparency=0.2}, Frame)
-    n("UIListLayout", {Name="UIListLayout", FillDirection=Enum.FillDirection.Horizontal, HorizontalAlignment=Enum.HorizontalAlignment.Center, VerticalAlignment=Enum.VerticalAlignment.Center, Padding=UDim.new(0, 12), Wraps=false}, Frame)
-    n("UIPadding", {Name="UIPadding", PaddingTop=UDim.new(0, 8), PaddingBottom=UDim.new(0, 8), PaddingLeft=UDim.new(0, 12), PaddingRight=UDim.new(0, 12)}, Frame)
-    local TextButton = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 22, 0, 22), Position=UDim2.new(1, 6, 0.5, -11), AnchorPoint=Vector2.new(0, 0.5), BackgroundColor3=Color3.fromRGB(30, 35, 50), BackgroundTransparency=0.1, ClipsDescendants=false, Text="â†•", TextColor3=Color3.fromRGB(220, 230, 255), TextSize=14, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false}, Frame)
-    local UIStroke2 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, TextButton)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(87, 126, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(99, 12, 199))}), Rotation=114.517}, UIStroke2)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 6)}, TextButton)
-    local TextButton2 = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 50, 0, 50), BackgroundColor3=Color3.fromRGB(17, 25, 51), BackgroundTransparency=0.1, ClipsDescendants=false, Text="1", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=20, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false}, Frame)
-    local UIStroke3 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, TextButton2)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(87, 126, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(99, 12, 199))}), Rotation=114.517}, UIStroke3)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, TextButton2)
-    local TextButton3 = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 50, 0, 50), BackgroundColor3=Color3.fromRGB(17, 25, 51), BackgroundTransparency=0.1, ClipsDescendants=false, Text="2", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=20, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false}, Frame)
-    local UIStroke4 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, TextButton3)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(87, 126, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(99, 12, 199))}), Rotation=114.517}, UIStroke4)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, TextButton3)
-    local TextButton4 = n("TextButton", {Name="TextButton", SelectionGroup=false, Size=UDim2.new(0, 50, 0, 50), BackgroundColor3=Color3.fromRGB(17, 25, 51), BackgroundTransparency=0.1, ClipsDescendants=false, Text="3", TextColor3=Color3.fromRGB(210, 225, 255), TextSize=20, Font=Enum.Font.GothamBold, FontFace=Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal), TextScaled=false, TextWrapped=false, RichText=false}, Frame)
-    local UIStroke5 = n("UIStroke", {Name="UIStroke", Color=Color3.fromRGB(255, 255, 255), ApplyStrokeMode=Enum.ApplyStrokeMode.Border}, TextButton4)
-    n("UIGradient", {Name="UIGradient", Color=ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(87, 126, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(99, 12, 199))}), Rotation=114.517}, UIStroke5)
-    n("UICorner", {Name="UICorner", CornerRadius=UDim.new(0, 14)}, TextButton4)
-    end
-    _G_GUIS["UnlockBaseGui"] = _R.UnlockBaseGui
-    return _R
-end
-build_UnlockBaseGui(_G_GUIS)
-
-local function buildColorPicker()
-    local LP = Players.LocalPlayer
-    local screen = n("ScreenGui", {
-        Name = "FunHubColorPicker",
-        ResetOnSpawn = false,
-        IgnoreGuiInset = true,
-        DisplayOrder = 1100,
-        Enabled = false,
-    }, LP:WaitForChild("PlayerGui"))
-    local panel = n("Frame", {
-        Name = "ColorPicker",
-        Size = UDim2.fromOffset(200, 220),
-        Position = UDim2.fromOffset(0, 0),
-        BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-        BackgroundTransparency = 0.05,
-        BorderSizePixel = 0,
-        ZIndex = 200,
-    }, screen)
-    n("UICorner", {CornerRadius = UDim.new(0, 10)}, panel)
-    local stroke = n("UIStroke", {Color = Color3.fromRGB(255, 255, 255), Thickness = 1}, panel)
-    n("UIGradient", {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
-        }),
-        Rotation = 90,
-    }, stroke)
-    n("UIPadding", {
-        PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8),
-        PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8),
-    }, panel)
-    n("UIListLayout", {
-        FillDirection = Enum.FillDirection.Vertical,
-        Padding = UDim.new(0, 8),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-    }, panel)
-
-    local sv = n("Frame", {
-        Name = "SV",
-        Size = UDim2.new(1, 0, 0, 120),
-        BackgroundColor3 = Color3.fromRGB(255, 0, 0),
-        BorderSizePixel = 0,
-        ZIndex = 201,
-        LayoutOrder = 1,
-    }, panel)
-    n("UICorner", {CornerRadius = UDim.new(0, 6)}, sv)
-    n("UIGradient", {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
-        }),
-        Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0),
-            NumberSequenceKeypoint.new(1, 1),
-        }),
-    }, sv)
-    local svBlack = n("Frame", {
-        Name = "Black",
-        Size = UDim2.fromScale(1, 1),
-        BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        ZIndex = 202,
-    }, sv)
-    n("UICorner", {CornerRadius = UDim.new(0, 6)}, svBlack)
-    n("UIGradient", {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0)),
-        }),
-        Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 1),
-            NumberSequenceKeypoint.new(1, 0),
-        }),
-        Rotation = 90,
-    }, svBlack)
-    local svDot = n("Frame", {
-        Name = "Dot",
-        Size = UDim2.fromOffset(10, 10),
-        Position = UDim2.fromScale(1, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-        BorderSizePixel = 0,
-        ZIndex = 203,
-    }, sv)
-    n("UICorner", {CornerRadius = UDim.new(1, 0)}, svDot)
-    n("UIStroke", {Color = Color3.fromRGB(0, 0, 0), Thickness = 1.5}, svDot)
-    local svClick = n("TextButton", {
-        Name = "Click", Size = UDim2.fromScale(1, 1), Text = "",
-        BackgroundTransparency = 1, AutoButtonColor = false, ZIndex = 204,
-    }, sv)
-
-    local hue = n("Frame", {
-        Name = "Hue",
-        Size = UDim2.new(1, 0, 0, 16),
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-        BorderSizePixel = 0,
-        ZIndex = 201,
-        LayoutOrder = 2,
-    }, panel)
-    n("UICorner", {CornerRadius = UDim.new(1, 0)}, hue)
-    n("UIGradient", {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
-            ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
-            ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
-            ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 255, 255)),
-            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
-            ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0)),
-        }),
-    }, hue)
-    local hueDot = n("Frame", {
-        Name = "Dot",
-        Size = UDim2.fromOffset(10, 10),
-        Position = UDim2.fromScale(0, 0.5),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-        BorderSizePixel = 0,
-        ZIndex = 202,
-    }, hue)
-    n("UICorner", {CornerRadius = UDim.new(1, 0)}, hueDot)
-    n("UIStroke", {Color = Color3.fromRGB(0, 0, 0), Thickness = 1.5}, hueDot)
-    local hueClick = n("TextButton", {
-        Name = "Click", Size = UDim2.fromScale(1, 1), Text = "",
-        BackgroundTransparency = 1, AutoButtonColor = false, ZIndex = 203,
-    }, hue)
-
-    local preview = n("Frame", {
-        Name = "Preview",
-        Size = UDim2.new(1, 0, 0, 24),
-        BackgroundColor3 = Color3.fromRGB(255, 0, 0),
-        BorderSizePixel = 0,
-        ZIndex = 201,
-        LayoutOrder = 3,
-    }, panel)
-    n("UICorner", {CornerRadius = UDim.new(0, 6)}, preview)
-    local pStroke = n("UIStroke", {Color = Color3.fromRGB(255, 255, 255), Thickness = 1}, preview)
-    n("UIGradient", {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(57, 64, 89)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255)),
-        }),
-        Rotation = 90,
-    }, pStroke)
-
-    local state = {h = 0, s = 1, v = 1}
-    local target = nil
-    local callbacks = {}
-
-    local function refresh()
-        local col = Color3.fromHSV(state.h, state.s, state.v)
-        sv.BackgroundColor3 = Color3.fromHSV(state.h, 1, 1)
-        svDot.Position = UDim2.fromScale(state.s, 1 - state.v)
-        hueDot.Position = UDim2.fromScale(state.h, 0.5)
-        preview.BackgroundColor3 = col
-        if target then
-            target.BackgroundColor3 = col
-            local cb = callbacks[target]
-            if cb then cb(col) end
-        end
-    end
-
-    local function bindDrag(area, onMove)
-        local dragging = false
-        area.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1
-                or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                onMove(input.Position)
-            end
-        end)
-        area.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1
-                or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = false
-            end
-        end)
-        UserInputService.InputChanged:Connect(function(input)
-            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
-                or input.UserInputType == Enum.UserInputType.Touch) then
-                onMove(input.Position)
-            end
-        end)
-    end
-
-    bindDrag(svClick, function(pos)
-        local abs, size = sv.AbsolutePosition, sv.AbsoluteSize
-        state.s = math.clamp((pos.X - abs.X) / size.X, 0, 1)
-        state.v = 1 - math.clamp((pos.Y - abs.Y) / size.Y, 0, 1)
-        refresh()
-    end)
-    bindDrag(hueClick, function(pos)
-        local abs, size = hue.AbsolutePosition, hue.AbsoluteSize
-        state.h = math.clamp((pos.X - abs.X) / size.X, 0, 1)
-        refresh()
-    end)
-
-    local shield = n("TextButton", {
-        Name = "Shield",
-        Parent = screen,
-        Size = UDim2.fromScale(1, 1),
-        BackgroundTransparency = 1, AutoButtonColor = false, Text = "",
-        ZIndex = 1,
-    })
-    shield.MouseButton1Click:Connect(function()
-        screen.Enabled = false
-        target = nil
-    end)
-
-    local picker = {}
-    function picker:Toggle(btnFrame)
-        if screen.Enabled and target == btnFrame then
-            screen.Enabled = false
-            target = nil
-            return
-        end
-        target = btnFrame
-        state.h, state.s, state.v = Color3.toHSV(btnFrame.BackgroundColor3)
-
-        local cam = workspace.CurrentCamera
-        local vp = cam and cam.ViewportSize or Vector2.new(1280, 720)
-        local anchor = btnFrame.AbsolutePosition + Vector2.new(btnFrame.AbsoluteSize.X/2, btnFrame.AbsoluteSize.Y + 6)
-        local px = math.clamp(anchor.X - 100, 8, vp.X - 208)
-        local py = math.clamp(anchor.Y,        8, vp.Y - 228)
-        panel.Position = UDim2.fromOffset(px, py)
-        screen.Enabled = true
-        refresh()
-    end
-    picker.Open = picker.Toggle
-    function picker:OnChange(btnFrame, fn)
-        callbacks[btnFrame] = fn
-    end
-    return picker
-end
-
-local colorPicker = buildColorPicker()
-
-local btnA = _G_GUIS["FunGui:colorBtnA"]
-local btnB = _G_GUIS["FunGui:colorBtnB"]
-local clickA = _G_GUIS["FunGui:colorBtnAClick"]
-local clickB = _G_GUIS["FunGui:colorBtnBClick"]
-local function bindCircle(btn, click)
-    if not btn or not click or not colorPicker then return end
-    click.MouseButton1Click:Connect(function() colorPicker:Toggle(btn) end)
-    click.ZIndex = 100
-    click.Active = true
-end
-bindCircle(btnA, clickA)
-bindCircle(btnB, clickB)
-
-local PRIMARY_BASE   = Color3.fromRGB(57, 64, 89)
-local SECONDARY_BASE = Color3.fromRGB(255, 255, 255)
-local PRIMARY_40     = Color3.fromRGB(23, 26, 36)
-local PRIMARY_30     = Color3.fromRGB(17, 19, 27)
-local PRIMARY_12     = Color3.fromRGB(7, 8, 11)
-local TAB_SELECTED   = Color3.fromRGB(153, 153, 153)
-
-local Theme = {primary = PRIMARY_BASE, secondary = SECONDARY_BASE}
-local themed = {}
-
-local function near(a, b)
-    return math.abs(a.R - b.R) < 1/255 + 1e-3
-       and math.abs(a.G - b.G) < 1/255 + 1e-3
-       and math.abs(a.B - b.B) < 1/255 + 1e-3
-end
-local function mul(c, k)
-    return Color3.new(c.R * k, c.G * k, c.B * k)
-end
-
-local function registerNode(d)
-    if d:IsA("Frame") or d:IsA("TextButton") or d:IsA("TextBox") or d:IsA("TextLabel") then
-        if near(d.BackgroundColor3, PRIMARY_BASE) then
-            table.insert(themed, {kind = "bg", node = d, mult = 1.0})
-        elseif near(d.BackgroundColor3, PRIMARY_40) then
-            table.insert(themed, {kind = "bg", node = d, mult = 0.40})
-        elseif near(d.BackgroundColor3, PRIMARY_30) then
-            table.insert(themed, {kind = "bg", node = d, mult = 0.30})
-        elseif near(d.BackgroundColor3, PRIMARY_12) then
-            table.insert(themed, {kind = "bg", node = d, mult = 0.12})
-        end
-    elseif d:IsA("UIGradient") then
-        local kps = d.Color.Keypoints
-        local roles = {}
-        local any = false
-        for i, kp in ipairs(kps) do
-            if near(kp.Value, PRIMARY_BASE) then roles[i] = "P"; any = true
-            elseif near(kp.Value, SECONDARY_BASE) then roles[i] = "S"; any = true
-            else roles[i] = nil end
-        end
-        if any then
-            local times = {}
-            local orig = {}
-            for i, kp in ipairs(kps) do times[i] = kp.Time; orig[i] = kp.Value end
-            table.insert(themed, {kind = "grad", node = d, times = times, roles = roles, orig = orig})
-        end
-    end
-end
-
-local function registerGui(gui)
-    for _, d in ipairs(gui:GetDescendants()) do registerNode(d) end
-end
-
-local themeListeners = {}
-
-local function applyTheme()
-    local p, s = Theme.primary, Theme.secondary
-    local p40 = mul(p, 0.40)
-    local p30 = mul(p, 0.30)
-    local p12 = mul(p, 0.12)
-    for _, e in ipairs(themed) do
-        if e.kind == "bg" then
-            if e.mult == 1.0 then e.node.BackgroundColor3 = p
-            elseif e.mult == 0.40 then e.node.BackgroundColor3 = p40
-            elseif e.mult == 0.30 then e.node.BackgroundColor3 = p30
-            elseif e.mult == 0.12 then e.node.BackgroundColor3 = p12
-            end
-        elseif e.kind == "grad" then
-            local newKps = {}
-            for i, t in ipairs(e.times) do
-                local v = e.orig[i]
-                if e.roles[i] == "P" then v = p
-                elseif e.roles[i] == "S" then v = s end
-                newKps[i] = ColorSequenceKeypoint.new(t, v)
-            end
-            e.node.Color = ColorSequence.new(newKps)
-        end
-    end
-    for _, cb in ipairs(themeListeners) do pcall(cb, p, s) end
-end
-
-for name, gui in pairs(_G_GUIS) do
-    if not name:find(":") and typeof(gui) == "Instance" and gui:IsA("ScreenGui") then
-        registerGui(gui)
-    end
-end
-
-do
-    local saved = _G.FunHubConfig:get("theme", nil)
-    if saved then
-        if saved.primary then
-            Theme.primary = Color3.new(saved.primary[1], saved.primary[2], saved.primary[3])
-            if btnA then btnA.BackgroundColor3 = Theme.primary end
-        end
-        if saved.secondary then
-            Theme.secondary = Color3.new(saved.secondary[1], saved.secondary[2], saved.secondary[3])
-            if btnB then btnB.BackgroundColor3 = Theme.secondary end
-        end
-    end
-end
-
-local function _persistTheme()
-    _G.FunHubConfig:set("theme", {
-        primary = {Theme.primary.R, Theme.primary.G, Theme.primary.B},
-        secondary = {Theme.secondary.R, Theme.secondary.G, Theme.secondary.B},
-    })
-end
-
-if btnA then
-    colorPicker:OnChange(btnA, function(c)
-        Theme.primary = c
-        applyTheme()
-        _persistTheme()
-    end)
-end
-if btnB then
-    colorPicker:OnChange(btnB, function(c)
-        Theme.secondary = c
-        applyTheme()
-        _persistTheme()
-    end)
-end
-
-local strokeGrads, textGrads = {}, {}
-for name, gui in pairs(_G_GUIS) do
-    if not name:find(":") and typeof(gui) == "Instance" and gui:IsA("ScreenGui") then
-        for _, d in ipairs(gui:GetDescendants()) do
-            if d:IsA("UIGradient") then
-                if d.Parent and d.Parent:IsA("UIStroke") then
-                    table.insert(strokeGrads, d)
-                elseif d.Parent and d.Parent:IsA("TextLabel") then
-                    table.insert(textGrads, d)
+        while true do task.wait(0.5)
+            local plots=workspace:FindFirstChild("Plots"); if not plots then continue end
+            for _,plot in ipairs(plots:GetChildren()) do
+                local pur=plot:FindFirstChild("Purchases"); local pb2=pur and pur:FindFirstChild("PlotBlock"); local mp=pb2 and pb2:FindFirstChild("Main")
+                local tl2=mp and mp:FindFirstChild("BillboardGui") and mp.BillboardGui:FindFirstChild("RemainingTime")
+                if tl2 and mp then
+                    local e=timerESPs[plot.Name]
+                    if not e or not e.bb.Parent then
+                        if e then pcall(function() e.bb:Destroy() end) end
+                        local bb=Instance.new("BillboardGui"); bb.Size=UDim2.fromOffset(50,14); bb.StudsOffset=Vector3.new(0,7,0); bb.AlwaysOnTop=true; bb.Adornee=mp; bb.Parent=plot
+                        local bg=Instance.new("Frame",bb); bg.Size=UDim2.new(1,0,1,0); bg.BackgroundColor3=T.bg; bg.BackgroundTransparency=0.2; bg.BorderSizePixel=0; co(bg,4); local stk=ms(bg,0.8,T.yel,0.3)
+                        local tl=Instance.new("TextLabel",bg); tl.Size=UDim2.new(1,0,1,0); tl.BackgroundTransparency=1; tl.Font=Enum.Font.GothamBold; tl.TextSize=9; tl.TextColor3=T.yel
+                        timerESPs[plot.Name]={bb=bb,lbl=tl,stk=stk}; e=timerESPs[plot.Name]
+                    end
+                    e.lbl.Text=tl2.Text; local m,s2=tl2.Text:match("(%d+):(%d+)"); if m and s2 then local tot=tonumber(m)*60+tonumber(s2); local col=tot<=30 and T.red or tot<=60 and T.yel or T.grn; e.lbl.TextColor3=col; e.stk.Color=col end
                 end
             end
         end
-    end
+    end)
 end
-local _lastT = tick()
-RunService.RenderStepped:Connect(function()
-    local now = tick()
-    local dt = now - _lastT
-    _lastT = now
-    local rotDelta = 240 * dt
-    local offDelta = 1.48 * dt
-    for _, g in ipairs(strokeGrads) do
-        g.Rotation = (g.Rotation + rotDelta) % 360
-    end
-    for _, g in ipairs(textGrads) do
-        local x = g.Offset.X + offDelta
-        if x > 1 then x = x - 2 end
-        g.Offset = Vector2.new(x, g.Offset.Y)
-    end
+startTimerESP()
+
+local mineESPs={}
+local function addMineESP(child) if mineESPs[child] then return end; local nl=child.Name:lower(); if not (nl:find("subspace") or nl:find("mine")) then return end; if nl:find("bullet") then return end; local part=child:IsA("BasePart") and child or (child:IsA("Model") and (child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart"))); if not part then return end; local bb=Instance.new("BillboardGui"); bb.Size=UDim2.fromOffset(60,16); bb.StudsOffset=Vector3.new(0,3,0); bb.AlwaysOnTop=true; bb.Adornee=part; bb.Parent=workspace; local bg=Instance.new("Frame",bb); bg.Size=UDim2.new(1,0,1,0); bg.BackgroundColor3=Color3.fromRGB(22,4,4); bg.BackgroundTransparency=0.2; bg.BorderSizePixel=0; co(bg,4); ms(bg,1,T.red,0.15); local tl=Instance.new("TextLabel",bg); tl.Size=UDim2.new(1,0,1,0); tl.BackgroundTransparency=1; tl.Text="MINE"; tl.Font=Enum.Font.GothamBold; tl.TextSize=8; tl.TextColor3=T.red; mineESPs[child]={bb=bb}; child.AncestryChanged:Connect(function() if not child.Parent then pcall(function() bb:Destroy() end); mineESPs[child]=nil end end) end
+local mineESPOn=false
+local function enableMineESP() if mineESPOn then return end; mineESPOn=true; for _,d in pairs(workspace:GetDescendants()) do addMineESP(d) end; workspace.DescendantAdded:Connect(function(d) if mineESPOn then task.defer(function() addMineESP(d) end) end end) end
+local function disableMineESP() mineESPOn=false; for _,e in pairs(mineESPs) do pcall(function() e.bb:Destroy() end) end; mineESPs={} end
+
+-- Brainrot ESP
+local brainESPCache={}; local brainESPOn=false; local brainConns={}
+local function addBrainESP(model,plot) if not model or brainESPCache[model] or model.Name=="" then return end; local part=model:IsA("Model") and (model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")) or (model:IsA("BasePart") and model); if not part then return end; local bb=Instance.new("BillboardGui"); bb.Size=UDim2.fromOffset(110,22); bb.StudsOffset=Vector3.new(0,5,0); bb.AlwaysOnTop=true; bb.Adornee=part; bb.Parent=workspace; local bg=Instance.new("Frame",bb); bg.Size=UDim2.new(1,0,1,0); bg.BackgroundColor3=T.bg; bg.BackgroundTransparency=0.22; bg.BorderSizePixel=0; co(bg,4); ms(bg,1,T.a2,0.22); lb(bg,{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text=model.Name,Font=Enum.Font.GothamBold,TextSize=8,TextColor3=T.a1,TextTruncate=Enum.TextTruncate.AtEnd}); brainESPCache[model]=bb; model.AncestryChanged:Connect(function() if not model.Parent then pcall(function() bb:Destroy() end); brainESPCache[model]=nil end end) end
+local function startBrainESP() if brainESPOn then return end; brainESPOn=true; local plots=workspace:FindFirstChild("Plots"); if not plots then return end; for _,plot in ipairs(plots:GetChildren()) do local pods=plot:FindFirstChild("AnimalPodiums"); if not pods then continue end; for _,pod in ipairs(pods:GetChildren()) do local base=pod:FindFirstChild("Base"); local spawn=base and base:FindFirstChild("Spawn"); if spawn then for _,c in ipairs(spawn:GetChildren()) do addBrainESP(c,plot) end; local cn=spawn.ChildAdded:Connect(function(c) if brainESPOn then addBrainESP(c,plot) end end); table.insert(brainConns,cn) end end end end
+local function stopBrainESP() brainESPOn=false; for _,c in ipairs(brainConns) do pcall(function() c:Disconnect() end) end; brainConns={}; for _,bb in pairs(brainESPCache) do pcall(function() bb:Destroy() end) end; brainESPCache={} end
+
+-- Clone ESP (Quantum Cloner objects)
+local cloneESPs={}; local cloneESPOn=false
+local function addCloneESP(obj) if cloneESPs[obj] then return end; local nl=obj.Name:lower(); if not (nl:find("quantum") or nl:find("clone") or nl:find("cloner")) then return end; local part=obj:IsA("BasePart") and obj or (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))); if not part then return end; local bb=Instance.new("BillboardGui"); bb.Size=UDim2.fromOffset(80,16); bb.StudsOffset=Vector3.new(0,4,0); bb.AlwaysOnTop=true; bb.Adornee=part; bb.Parent=workspace; local bg=Instance.new("Frame",bb); bg.Size=UDim2.new(1,0,1,0); bg.BackgroundColor3=Color3.fromRGB(4,4,22); bg.BackgroundTransparency=0.2; bg.BorderSizePixel=0; co(bg,4); ms(bg,1,T.pur,0.15); local tl=Instance.new("TextLabel",bg); tl.Size=UDim2.new(1,0,1,0); tl.BackgroundTransparency=1; tl.Text="CLONER"; tl.Font=Enum.Font.GothamBold; tl.TextSize=8; tl.TextColor3=T.pur; cloneESPs[obj]={bb=bb}; obj.AncestryChanged:Connect(function() if not obj.Parent then pcall(function() bb:Destroy() end); cloneESPs[obj]=nil end end) end
+local function enableCloneESP() if cloneESPOn then return end; cloneESPOn=true; for _,d in pairs(workspace:GetDescendants()) do addCloneESP(d) end; workspace.DescendantAdded:Connect(function(d) if cloneESPOn then task.defer(function() addCloneESP(d) end) end end) end
+local function disableCloneESP() cloneESPOn=false; for _,e in pairs(cloneESPs) do pcall(function() e.bb:Destroy() end) end; cloneESPs={} end
+
+-- Friends ESP
+local friendESPCache={}; local friendESPOn=false; local friendConns={}
+local function buildFriendBB(main,isOpen) local bb=Instance.new("BillboardGui"); bb.Adornee=main; bb.Size=UDim2.fromOffset(50,16); bb.StudsOffset=Vector3.new(0,5,0); bb.AlwaysOnTop=true; bb.Parent=main; local bg=Instance.new("Frame",bb); bg.Size=UDim2.new(1,0,1,0); bg.BackgroundColor3=T.bg; bg.BackgroundTransparency=0.22; bg.BorderSizePixel=0; co(bg,4); ms(bg,1,isOpen and T.grn or T.red,0.22); lb(bg,{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text=isOpen and "OPEN" or "CLOSED",TextColor3=isOpen and T.grn or T.red,Font=Enum.Font.GothamBold,TextSize=8}); return bb end
+local function addFriendESP(plot) if not plot:IsA("Model") then return end; local fp=plot:FindFirstChild("FriendPanel"); if not fp then return end; local main=fp:FindFirstChild("Main"); if not main then return end; local prompt=main:FindFirstChildOfClass("ProximityPrompt"); if not prompt then return end; if friendESPCache[plot] then pcall(function() friendESPCache[plot]:Destroy() end); friendESPCache[plot]=nil end; friendESPCache[plot]=buildFriendBB(main,prompt.ObjectText=="Disallow Friends"); local c=prompt:GetPropertyChangedSignal("ObjectText"):Connect(function() if not friendESPOn then return end; if friendESPCache[plot] then pcall(function() friendESPCache[plot]:Destroy() end); friendESPCache[plot]=nil end; friendESPCache[plot]=buildFriendBB(main,prompt.ObjectText=="Disallow Friends") end); table.insert(friendConns,c) end
+local function enableFriendESP() if friendESPOn then return end; friendESPOn=true; local plots=workspace:FindFirstChild("Plots"); if not plots then return end; for _,p in ipairs(plots:GetChildren()) do addFriendESP(p) end; local c=plots.ChildAdded:Connect(function(p) if friendESPOn then task.wait(0.5); addFriendESP(p) end end); table.insert(friendConns,c) end
+local function disableFriendESP() friendESPOn=false; for _,c in ipairs(friendConns) do pcall(function() c:Disconnect() end) end; friendConns={}; for _,bb in pairs(friendESPCache) do pcall(function() bb:Destroy() end) end; friendESPCache={} end
+
+-- Xray (LocalTransparencyModifier)
+local xrayOn=false; local xrayOrig={}
+local function enableXray() if xrayOn then return end; xrayOn=true; for _,obj in ipairs(workspace:GetDescendants()) do if obj:IsA("BasePart") then local n=obj.Name:lower(); if n:find("floor") or n:find("wall") or n:find("base") or n:find("plot") or n:find("ceil") then if not xrayOrig[obj] then xrayOrig[obj]=obj.LocalTransparencyModifier end; obj.LocalTransparencyModifier=0.72 end end end end
+local function disableXray() if not xrayOn then return end; xrayOn=false; for obj,t in pairs(xrayOrig) do pcall(function() if obj and obj.Parent then obj.LocalTransparencyModifier=t end end) end; xrayOrig={} end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- ADMIN REMOTE
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local ADM_REMOTE=nil
+task.spawn(function()
+    pcall(function() if not lp.Character then lp.CharacterAdded:Wait() end end); task.wait(1.5)
+    pcall(function() local net=RS:WaitForChild("Packages"):WaitForChild("Net"); local ch=net:GetChildren(); local n2i={}; for i,o in ipairs(ch) do n2i[o.Name]=i end; local a=n2i["RF/a0e78691-cb9b-4efc-ac08-9c06fea70059"]; if a and ch[a+1] then ADM_REMOTE=ch[a+1] end end)
+end)
+local ADM_UUID="f888ee6e-c86d-46e1-93d7-0639d6635d42"
+local function aFire(tgt,cmd) task.spawn(function() pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,tgt,cmd) end) end) end
+local CMD_CD={ragdoll=30,balloon=30,nightvision=60,tiny=60,jail=60,jumpscare=60,control=60,morph=60,rocket=120,inverse=60}
+local cmdCdEnd={}
+local function fireCmd(tgt,cmd) if not ADM_REMOTE then return end; aFire(tgt,cmd); cmdCdEnd[cmd]=os.clock()+(CMD_CD[cmd] or 30) end
+local function spamAll(tgt) for _,cmd in ipairs({"balloon","tiny","rocket","inverse","morph","jumpscare","control"}) do aFire(tgt,cmd); cmdCdEnd[cmd]=os.clock()+(CMD_CD[cmd] or 30); task.wait(0.05) end end
+local function getClosestPlayer() local char=lp.Character; if not char then return nil end; local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp then return nil end; local best,bd=nil,math.huge; for _,p in ipairs(Players:GetPlayers()) do if p~=lp and p.Character then local h=p.Character:FindFirstChild("HumanoidRootPart"); if h then local d=(h.Position-hrp.Position).Magnitude; if d<bd then bd=d; best=p end end end end; return best end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- FLASH TP
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local FLASH_NAMES={"Flash Teleport","Flash","FlashTP","Flash TP"}
+local FLASH_RF=nil
+task.spawn(function() pcall(function() local net=RS:WaitForChild("Packages"):WaitForChild("Net"); FLASH_RF=net:FindFirstChild("RF/Tools/Flash/Activate") or net:WaitForChild("RF/Tools/Flash/Activate",10) end) end)
+task.spawn(function() while true do task.wait(0.5); pcall(function() local fa=RS:FindFirstChild("Assets") and RS.Assets:FindFirstChild("Tools") and RS.Assets.Tools:FindFirstChild("Flash Teleport"); if fa then for _,v in ipairs(fa:GetDescendants()) do if v:IsA("ParticleEmitter") or v:IsA("Beam") or v:IsA("Trail") then pcall(function() v.Enabled=false end) end; if v:IsA("Sound") then pcall(function() v.Volume=0 end) end end end end) end end)
+local function equipFlash() pcall(function() local char=lp.Character; if not char then return end; local hum=char:FindFirstChildOfClass("Humanoid"); if not hum then return end; for _,n in ipairs(FLASH_NAMES) do local t=char:FindFirstChild(n) or (lp.Backpack and lp.Backpack:FindFirstChild(n)); if t then if t.Parent~=char then hum:EquipTool(t) end; return end end end) end
+local cfA=CFrame.new(-322.066,-7.871,111.991)*CFrame.Angles(0.332,-0.019,0.000); local cfB=CFrame.new(-325.856,-7.866,113.027)*CFrame.Angles(0.327,3.130,0.000)
+local lookA2=cfA.LookVector; local lookB2=cfB.LookVector; local desiredY=lookA2.Y
+local function flatV(v) local f=Vector3.new(v.X,0,v.Z); return f.Magnitude>0 and f.Unit or f end
+local function bLook(bl) local h2=flatV(bl); local fs=math.sqrt(math.max(0,1-desiredY^2)); return Vector3.new(h2.X*fs,desiredY,h2.Z*fs) end
+local function alignCam() local pos=cam.CFrame.Position; local cf=flatV(cam.CFrame.LookVector); local best=cf:Dot(flatV(lookA2))>cf:Dot(flatV(lookB2)) and bLook(lookA2) or bLook(lookB2); cam.CameraType=Enum.CameraType.Scriptable; cam.CFrame=CFrame.lookAt(pos,pos+best); task.wait(); cam.CameraType=Enum.CameraType.Custom end
+local StealCBs={}
+local function buildCBs(prompt) if StealCBs[prompt] then return end; local d={hold={},trig={}}; local ok1,c1=pcall(getconnections,prompt.PromptButtonHoldBegan); if ok1 and type(c1)=="table" then for _,c in ipairs(c1) do if type(c.Function)=="function" then table.insert(d.hold,c.Function) end end end; local ok2,c2=pcall(getconnections,prompt.Triggered); if ok2 and type(c2)=="table" then for _,c in ipairs(c2) do if type(c.Function)=="function" then table.insert(d.trig,c.Function) end end end; if #d.hold>0 or #d.trig>0 then StealCBs[prompt]=d end end
+local function fireCBs(prompt) local d=StealCBs[prompt]; if not d then return end; for _,fn in ipairs(d.hold) do task.spawn(fn) end; task.wait(0.05); for _,fn in ipairs(d.trig) do task.spawn(fn) end end
+local flashEnabled=false; local sliderValue=0.91; local activePrompts={}; local lagOnSteal=false
+PPS.PromptButtonHoldBegan:Connect(function(prompt)
+    if not flashEnabled or prompt.ActionText~="Steal" or activePrompts[prompt] then return end
+    activePrompts[prompt]=true; local fired=false; local fireAt=os.clock()+math.max(prompt.HoldDuration,0.001)*sliderValue; local conn
+    conn=RunService.RenderStepped:Connect(function()
+        if fired then conn:Disconnect(); return end
+        if not prompt or not prompt.Parent then conn:Disconnect(); activePrompts[prompt]=nil; return end
+        if os.clock()>=fireAt then
+            fired=true; conn:Disconnect(); activePrompts[prompt]=nil; isStealing=true; task.delay(0.9,function() isStealing=false end)
+            if lagOnSteal then local dl=os.clock()+0.05; local x=0; while os.clock()<dl do for i=1,800 do x=x+i end end end
+            if FLASH_RF then pcall(function() FLASH_RF:InvokeServer() end) else local char=lp.Character; local tool=char and char:FindFirstChildOfClass("Tool"); if tool then pcall(function() tool:Activate() end) end end
+            task.spawn(function() task.wait(0.1); buildCBs(prompt); if StealCBs[prompt] then fireCBs(prompt) end end)
+        end
+    end)
+    prompt.PromptButtonHoldEnded:Connect(function() if not fired then fired=true; activePrompts[prompt]=nil; conn:Disconnect() end end)
 end)
 
-local Notify = {}
-do
-    local LP = Players.LocalPlayer
-    local screen = n("ScreenGui", {
-        Name = "FunHubNotify", ResetOnSpawn = false, IgnoreGuiInset = true,
-        DisplayOrder = 1500,
-    }, LP:WaitForChild("PlayerGui"))
-    local holder = n("Frame", {
-        Name = "Holder",
-        Size = UDim2.fromOffset(380, 300),
-        Position = UDim2.new(0, 0, 1, -20),
-        AnchorPoint = Vector2.new(0, 1),
-        BackgroundTransparency = 1,
-    }, screen)
-    n("UIListLayout", {
-        FillDirection = Enum.FillDirection.Vertical,
-        VerticalAlignment = Enum.VerticalAlignment.Bottom,
-        Padding = UDim.new(0, 10),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-    }, holder)
-    n("UIPadding", {PaddingLeft = UDim.new(0, 20), PaddingBottom = UDim.new(0, 20)}, holder)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- SPEED / JUMP / CARPET / INFINITE JUMP
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local speedEnabled=false; local stealingSpeed=30; local potionOn=false
+local jumpPwrOn=false; local jumpPower=50; local infJumpOn=false; local carpetSpdOn=false; local carpetSpeed=40
+local function activatePotion() task.spawn(function() pcall(function() local char=lp.Character; if not char then return end; local hum=char:FindFirstChildOfClass("Humanoid"); if not hum then return end; local bp=lp:FindFirstChild("Backpack"); local tool=char:FindFirstChild("Giant Potion") or (bp and bp:FindFirstChild("Giant Potion")); if not tool then return end; hum:EquipTool(tool); task.wait(0.05); tool:Activate() end) end) end
+RunService.Heartbeat:Connect(function()
+    local char=lp.Character; if not char then return end
+    local root=char:FindFirstChild("HumanoidRootPart"); local hum=char:FindFirstChildOfClass("Humanoid"); if not root or not hum then return end
+    if speedEnabled and hum.MoveDirection.Magnitude>0 then root.Velocity=Vector3.new(hum.MoveDirection.X*stealingSpeed,root.Velocity.Y,hum.MoveDirection.Z*stealingSpeed) end
+    if carpetSpdOn and hum.MoveDirection.Magnitude>0 then root.Velocity=Vector3.new(hum.MoveDirection.X*carpetSpeed,root.Velocity.Y,hum.MoveDirection.Z*carpetSpeed) end
+    if jumpPwrOn then hum.JumpPower=jumpPower end
+end)
+local function equipCarpet() task.spawn(function() pcall(function() local char=lp.Character; if not char then return end; local hum=char:FindFirstChildOfClass("Humanoid"); if not hum then return end; local bp=lp:FindFirstChild("Backpack"); local names={"Flying Carpet","Witch's Broom","Santa's Sleigh","Cupid's Wings"}; for _,n in ipairs(names) do local t=char:FindFirstChild(n) or (bp and bp:FindFirstChild(n)); if t then if t.Parent~=char then hum:EquipTool(t) end; return end end end) end) end
+-- Infinite jump
+UIS.JumpRequest:Connect(function() if infJumpOn then local char=lp.Character; local hum=char and char:FindFirstChildOfClass("Humanoid"); if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end end end)
 
-    local seq = 0
-    function Notify.show(title, subtitle, duration)
-        duration = duration or 3
-        seq = seq + 1
-        local theme = _G.FunHubTheme
-        local p = theme and (select(1, theme.get())) or Color3.fromRGB(57,64,89)
-        local s = theme and (select(2, theme.get())) or Color3.fromRGB(255,255,255)
-
-        local card = n("Frame", {
-            Name = "Notif_"..seq,
-            Size = UDim2.fromOffset(0, 56),
-            BackgroundColor3 = p,
-            BackgroundTransparency = 0.05,
-            BorderSizePixel = 0,
-            ClipsDescendants = true,
-            LayoutOrder = seq,
-            ZIndex = 50,
-        }, holder)
-        n("UICorner", {CornerRadius = UDim.new(0, 12)}, card)
-
-        local titleLbl = n("TextLabel", {
-            Name = "Title",
-            Size = UDim2.new(1, -20, 0, 18),
-            Position = UDim2.fromOffset(10, 6),
-            BackgroundTransparency = 1, Text = title or "",
-            TextColor3 = Color3.fromRGB(255,255,255), TextSize = 15,
-            Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left,
-            TextYAlignment = Enum.TextYAlignment.Center,
-            ZIndex = 51,
-        }, card)
-        local titleGrad = n("UIGradient", {
-            Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, p),
-                ColorSequenceKeypoint.new(0.5, s),
-                ColorSequenceKeypoint.new(1, p),
-            }),
-        }, titleLbl)
-
-        n("TextLabel", {
-            Name = "Sub",
-            Size = UDim2.new(1, -20, 0, 24),
-            Position = UDim2.fromOffset(10, 30),
-            BackgroundTransparency = 1, Text = subtitle or "",
-            TextColor3 = Color3.fromRGB(210,225,255), TextSize = 15,
-            Font = Enum.Font.Gotham, TextXAlignment = Enum.TextXAlignment.Left,
-            TextYAlignment = Enum.TextYAlignment.Top,
-            ZIndex = 51,
-        }, card)
-
-        local barBg = n("Frame", {
-            Name = "BarBg",
-            Size = UDim2.new(1, -24, 0, 3),
-            Position = UDim2.new(0, 12, 1, -6),
-            BackgroundColor3 = s,
-            BackgroundTransparency = 0.7,
-            BorderSizePixel = 0,
-            ZIndex = 52,
-        }, card)
-        n("UICorner", {CornerRadius = UDim.new(1, 0)}, barBg)
-        local barFill = n("Frame", {
-            Name = "BarFill",
-            Size = UDim2.fromScale(1, 1),
-            BackgroundColor3 = s,
-            BorderSizePixel = 0,
-            ZIndex = 53,
-        }, barBg)
-        n("UICorner", {CornerRadius = UDim.new(1, 0)}, barFill)
-
-        if _G.FunHubThemeListeners then
-            local listener
-            listener = function(np, ns)
-                if not card.Parent then return end
-                card.BackgroundColor3 = np
-                titleGrad.Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, np),
-                    ColorSequenceKeypoint.new(0.5, ns),
-                    ColorSequenceKeypoint.new(1, np),
-                })
-                barBg.BackgroundColor3 = ns
-                barFill.BackgroundColor3 = ns
-            end
-            table.insert(_G.FunHubThemeListeners, listener)
-        end
-
-        TweenService:Create(card, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-            {Size = UDim2.fromOffset(148, 56)}):Play()
-        TweenService:Create(barFill, TweenInfo.new(duration, Enum.EasingStyle.Linear),
-            {Size = UDim2.fromScale(0, 1)}):Play()
-
-        task.delay(duration, function()
-            TweenService:Create(card, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
-                {Size = UDim2.fromOffset(0, 56)}):Play()
-            task.wait(0.3)
-            card:Destroy()
-        end)
-    end
-end
-_G.FunHubNotify = Notify
-
-do
-    local wm = _G_GUIS["UI_Watermark"]
-    if wm then
-        local fpsLabel
-        for _, d in ipairs(wm:GetDescendants()) do
-            if d:IsA("TextLabel") and d.RichText and d.Text:find("FPS:") then
-                fpsLabel = d; break
-            end
-        end
-        if fpsLabel then
-            local frameCount, lastTick = 0, tick()
-            local lastFps = 60
-            RunService.Heartbeat:Connect(function()
-                frameCount = frameCount + 1
-                local now = tick()
-                if now - lastTick >= 0.5 then
-                    lastFps = math.floor(frameCount / (now - lastTick) + 0.5)
-                    frameCount = 0; lastTick = now
-                end
-            end)
-            task.spawn(function()
-                while fpsLabel.Parent do
-                    local stats = game:GetService("Stats")
-                    local ping = math.floor(stats.Network.ServerStatsItem["Data Ping"]:GetValue() + 0.5)
-                    fpsLabel.Text = string.format(
-                        '<font color="rgb(255,255,255)">FPS: </font><font color="rgb(180,180,180)">%d</font><font color="rgb(255,255,255)">  PING: </font><font color="rgb(180,180,180)">%dms</font>',
-                        lastFps, ping)
-                    task.wait(0.5)
-                end
-            end)
-        end
-    end
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- IRISH RESET
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local tpPos=CFrame.new(1000003.56,999999.69,8.17)
+local function doReset()
+    local c=lp.Character; if not c then return end; local h=c:FindFirstChild("HumanoidRootPart"); local hum=c:FindFirstChildOfClass("Humanoid"); if not h or not hum then return end
+    cam.CameraType=Enum.CameraType.Scriptable; task.delay(0.6,function() local ch=lp.Character; local hm=ch and ch:FindFirstChildOfClass("Humanoid"); if hm then cam.CameraType=Enum.CameraType.Custom; cam.CameraSubject=hm end end); h.CFrame=tpPos
+    local con; con=RunService.Heartbeat:Connect(function() if not c or not c.Parent then con:Disconnect(); return end; if hum.Health<=0 then con:Disconnect(); return end; h.CFrame=tpPos end)
+    -- Defense spam on reset
+    task.spawn(function() task.wait(0.1); local closest=getClosestPlayer(); if closest and ADM_REMOTE then for _,cmd in ipairs({"rocket","tiny","inverse","morph","jumpscare"}) do aFire(closest,cmd); task.wait(0.05) end end end)
 end
 
-do
-    local LP = Players.LocalPlayer
-    local screen = n("ScreenGui", {
-        Name = "PanelGui_Admin Panel", ResetOnSpawn = false, IgnoreGuiInset = false,
-        DisplayOrder = 1000, Enabled = false,
-    }, LP:WaitForChild("PlayerGui"))
-    _G_GUIS["PanelGui_Admin Panel"] = screen
-
-    local panel = n("Frame", {
-        Name = "Frame",
-        Size = UDim2.fromOffset(420, 74),
-        Position = UDim2.new(0.5, 87, 0.5, 234),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = Color3.fromRGB(25, 25, 25),
-        BackgroundTransparency = 0.1,
-        BorderSizePixel = 0,
-    }, screen)
-    n("UICorner", {CornerRadius = UDim.new(0, 14)}, panel)
-    local stroke = n("UIStroke", {Color = Color3.fromRGB(255,255,255), Thickness = 1}, panel)
-    n("UIGradient", {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(57,64,89)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255)),
-        }), Rotation = 90,
-    }, stroke)
-
-    local title = n("Frame", {
-        Size = UDim2.new(1, 0, 0, 30),
-        BackgroundColor3 = Color3.fromRGB(7, 8, 11),
-        BorderSizePixel = 0,
-    }, panel)
-    n("UICorner", {CornerRadius = UDim.new(0, 14)}, title)
-    n("TextLabel", {
-        Size = UDim2.new(1, -36, 1, 0), Position = UDim2.new(0, 10, 0, 0),
-        BackgroundTransparency = 1, Text = "Admin Panel",
-        TextColor3 = Color3.fromRGB(255,255,255), TextSize = 13,
-        Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left,
-    }, title)
-    local minBtn = n("TextButton", {
-        Name = "Min",
-        Size = UDim2.fromOffset(22, 22),
-        Position = UDim2.new(1, -26, 0.5, -11),
-        BackgroundColor3 = Color3.fromRGB(23, 26, 36),
-        Text = "â€“", TextColor3 = Color3.fromRGB(255,255,255), TextSize = 16,
-        Font = Enum.Font.GothamBold,
-    }, title)
-    n("UICorner", {CornerRadius = UDim.new(1, 0)}, minBtn)
-
-    local content = n("Frame", {
-        Size = UDim2.new(1, 0, 1, -30), Position = UDim2.new(0, 0, 0, 30),
-        BackgroundTransparency = 1,
-    }, panel)
-    n("UIPadding", {PaddingTop = UDim.new(0, 6), PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6)}, content)
-    local row = n("Frame", {
-        Size = UDim2.new(1, 0, 0, 32),
-        BackgroundTransparency = 1,
-    }, content)
-    n("TextLabel", {
-        Size = UDim2.new(0.3, 0, 1, 0), Position = UDim2.new(0, 0, 0, 0),
-        BackgroundTransparency = 1,
-        Text = ("%s (@%s)"):format(LP.DisplayName, LP.Name),
-        TextColor3 = Color3.fromRGB(220,220,220), TextSize = 13,
-        Font = Enum.Font.Gotham, TextXAlignment = Enum.TextXAlignment.Left,
-    }, row)
-    local btnRow = n("Frame", {
-        Size = UDim2.new(0.7, 0, 1, 0), Position = UDim2.new(0.3, 0, 0, 0),
-        BackgroundTransparency = 1,
-    }, row)
-    n("UIListLayout", {
-        FillDirection = Enum.FillDirection.Horizontal,
-        HorizontalAlignment = Enum.HorizontalAlignment.Right,
-        Padding = UDim.new(0, 6),
-    }, btnRow)
-    for _, emoji in ipairs({"ðŸ¤","ðŸ”’","ðŸš€","ðŸ¤¸â€â™‚ï¸","ðŸŽˆ"}) do
-        local b = n("TextButton", {
-            Size = UDim2.fromOffset(30, 30),
-            BackgroundColor3 = Color3.fromRGB(23, 26, 36),
-            Text = emoji, TextColor3 = Color3.fromRGB(230,230,230), TextSize = 14,
-            Font = Enum.Font.GothamBold,
-        }, btnRow)
-        n("UICorner", {CornerRadius = UDim.new(0, 4)}, b)
-        n("UIStroke", {Color = Color3.fromRGB(255,255,255), Thickness = 1.5}, b)
-    end
-
-    _G_GUIS["__pendingDrag"] = _G_GUIS["__pendingDrag"] or {}
-    table.insert(_G_GUIS["__pendingDrag"], {title, panel})
-    minBtn.MouseButton1Click:Connect(function()
-        content.Visible = not content.Visible
-        panel.Size = content.Visible and UDim2.fromOffset(420, 74) or UDim2.fromOffset(420, 30)
-        minBtn.Text = content.Visible and "â€“" or "+"
-    end)
-end
-
-do
-    local LP = Players.LocalPlayer
-    local screen = n("ScreenGui", {
-        Name = "AdminSpammerConfig", ResetOnSpawn = false, IgnoreGuiInset = false,
-        DisplayOrder = 1000, Enabled = false,
-    }, LP:WaitForChild("PlayerGui"))
-    _G_GUIS["AdminSpammerConfig"] = screen
-
-    local panel = n("Frame", {
-        Size = UDim2.fromOffset(280, 340),
-        Position = UDim2.new(0.5, 379, 0.5, 80),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-        BorderSizePixel = 0,
-    }, screen)
-    n("UICorner", {CornerRadius = UDim.new(0, 10)}, panel)
-    local stk = n("UIStroke", {Color = Color3.fromRGB(255,255,255), Thickness = 1}, panel)
-    n("UIGradient", {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(57,64,89)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255)),
-        }), Rotation = 90,
-    }, stk)
-    local closeBtn = n("TextButton", {
-        Size = UDim2.fromOffset(22, 22),
-        Position = UDim2.new(1, -26, 0, 4),
-        BackgroundColor3 = Color3.fromRGB(160, 40, 40),
-        Text = "Ã—", TextColor3 = Color3.fromRGB(255,255,255), TextSize = 16,
-        Font = Enum.Font.GothamBold,
-    }, panel)
-    n("UICorner", {CornerRadius = UDim.new(1, 0)}, closeBtn)
-    closeBtn.MouseButton1Click:Connect(function() screen.Enabled = false end)
-
-    local header = n("Frame", {
-        Size = UDim2.new(1, 0, 0, 28),
-        Position = UDim2.fromOffset(0, 4),
-        BackgroundTransparency = 1,
-    }, panel)
-    n("TextLabel", {
-        Size = UDim2.new(0.5, 0, 1, 0), Position = UDim2.new(0, 8, 0, 0),
-        BackgroundTransparency = 1, Text = "Command",
-        TextColor3 = Color3.fromRGB(160,160,160), TextSize = 12,
-        Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left,
-    }, header)
-    n("TextLabel", {
-        Size = UDim2.fromOffset(60, 28), Position = UDim2.new(1, -150, 0, 0),
-        BackgroundTransparency = 1, Text = "Click 1",
-        TextColor3 = Color3.fromRGB(255,192,67), TextSize = 12, Font = Enum.Font.GothamBold,
-    }, header)
-    n("TextLabel", {
-        Size = UDim2.fromOffset(60, 28), Position = UDim2.new(1, -85, 0, 0),
-        BackgroundTransparency = 1, Text = "Click 2",
-        TextColor3 = Color3.fromRGB(159,72,72), TextSize = 12, Font = Enum.Font.GothamBold,
-    }, header)
-
-    local scroll = n("ScrollingFrame", {
-        Size = UDim2.new(1, -8, 1, -30), Position = UDim2.fromOffset(4, 26),
-        BackgroundTransparency = 1, BorderSizePixel = 0,
-        ScrollBarThickness = 4, CanvasSize = UDim2.new(0,0,0,0),
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
-    }, panel)
-    n("UIListLayout", {Padding = UDim.new(0, 4)}, scroll)
-
-    local commands = {"rocket","ragdoll","balloon","inverse","nightvision","jail","control","tiny","jumpscare","morph"}
-    local saved = _G.FunHubConfig:get("spammer", {})
-    local config = {}
-    for _, cmd in ipairs(commands) do
-        config[cmd] = saved[cmd] or 1
-    end
-    _G.FunHubSpammerConfig = config
-
-    for _, cmd in ipairs(commands) do
-        local row = n("Frame", {
-            Size = UDim2.new(1, 0, 0, 26),
-            BackgroundTransparency = 1,
-        }, scroll)
-        n("TextLabel", {
-            Size = UDim2.new(1, -140, 1, 0), Position = UDim2.fromOffset(8, 0),
-            BackgroundTransparency = 1, Text = cmd,
-            TextColor3 = Color3.fromRGB(210,225,255), TextSize = 13,
-            Font = Enum.Font.GothamBold, TextXAlignment = Enum.TextXAlignment.Left,
-        }, row)
-        local slot1 = n("TextButton", {
-            Size = UDim2.fromOffset(22, 22),
-            Position = UDim2.new(1, -126, 0, 3),
-            BackgroundColor3 = Color3.fromRGB(40,160,40),
-            Text = "âœ“", TextColor3 = Color3.fromRGB(255,255,255), TextSize = 13,
-            Font = Enum.Font.GothamBold,
-        }, row)
-        n("UICorner", {CornerRadius = UDim.new(0, 4)}, slot1)
-        local slot2 = n("TextButton", {
-            Size = UDim2.fromOffset(22, 22),
-            Position = UDim2.new(1, -66, 0, 3),
-            BackgroundColor3 = Color3.fromRGB(40,160,40),
-            Text = "âœ“", TextColor3 = Color3.fromRGB(255,255,255), TextSize = 13,
-            Font = Enum.Font.GothamBold,
-        }, row)
-        n("UICorner", {CornerRadius = UDim.new(0, 4)}, slot2)
-        local function refresh()
-            if config[cmd] == 1 then
-                slot1.BackgroundColor3 = Color3.fromRGB(40,160,40); slot1.Text = "âœ“"
-                slot2.BackgroundColor3 = Color3.fromRGB(160,40,40); slot2.Text = "X"
-            else
-                slot1.BackgroundColor3 = Color3.fromRGB(160,40,40); slot1.Text = "X"
-                slot2.BackgroundColor3 = Color3.fromRGB(40,160,40); slot2.Text = "âœ“"
-            end
-        end
-        local function save()
-            local s = _G.FunHubConfig:get("spammer", {})
-            s[cmd] = config[cmd]
-            _G.FunHubConfig:set("spammer", s)
-        end
-        slot1.MouseButton1Click:Connect(function() config[cmd] = 1; refresh(); save() end)
-        slot2.MouseButton1Click:Connect(function() config[cmd] = 2; refresh(); save() end)
-        refresh()
-    end
-end
-
-do
-    local LP = Players.LocalPlayer
-    local sp = LP.PlayerGui:FindFirstChild("PanelGui_Fun Admin Spammer")
-    if sp then _G_GUIS["PanelGui_Fun Admin Spammer"] = sp end
-end
-
-do
-    local LP = Players.LocalPlayer
-    local sp = LP.PlayerGui:FindFirstChild("PanelGui_Fun Admin Spammer")
-    if not sp then return end
-    local frame = sp:FindFirstChildOfClass("Frame")
-    local title = frame and frame:FindFirstChildOfClass("Frame")
-    if title then
-        for _, b in ipairs(title:GetChildren()) do
-            if b:IsA("TextButton") and (b.Text == "âš™" or b.Text == "âš™ï¸") then
-                b.MouseButton1Click:Connect(function()
-                    local cfg = LP.PlayerGui:FindFirstChild("AdminSpammerConfig")
-                    if cfg then cfg.Enabled = not cfg.Enabled end
-                end)
-            end
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- AUTO GRAB v2
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local grabEnabled=false; local activeHolds={}
+local function getGrabPrompts() local result={}; local char=lp.Character; local root=char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso")); if not root then return result end; local plots=workspace:FindFirstChild("Plots"); if not plots then return result end; for _,plot in ipairs(plots:GetChildren()) do if isMyPlot(plot) then continue end; local pods=plot:FindFirstChild("AnimalPodiums"); if not pods then continue end; for _,pod in ipairs(pods:GetChildren()) do local base=pod:FindFirstChild("Base"); if not base then continue end; local spawn=base:FindFirstChild("Spawn"); if not spawn then continue end; local att=spawn:FindFirstChild("PromptAttachment"); if not att then continue end; for _,p in ipairs(att:GetChildren()) do if p:IsA("ProximityPrompt") and (p.ActionText=="Steal" or p.ActionText=="Grab") then table.insert(result,{prompt=p,dist=(spawn.Position-root.Position).Magnitude,spawn=spawn}) end end end end; return result end
+lp.CharacterAdded:Connect(function() for p in pairs(activeHolds) do pcall(function() p:InputHoldEnd() end) end; activeHolds={}; isStealing=false end)
+RunService.Heartbeat:Connect(function()
+    if not grabEnabled then return end; local char=lp.Character; local root=char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso")); if not root then return end
+    local prompts=getGrabPrompts(); local seen={}
+    for _,entry in ipairs(prompts) do
+        local p=entry.prompt; local dist=entry.dist; seen[p]=true
+        if not activeHolds[p] then activeHolds[p]={startTime=os.clock(),fired=false,potFired=false}; pcall(function() p.Enabled=true end); pcall(function() p:InputHoldBegin() end) end
+        local data=activeHolds[p]; if data.fired then continue end
+        local progress=(os.clock()-data.startTime)/1.5
+        if potionOn and not data.potFired and progress>=0.78 then data.potFired=true; activatePotion() end
+        if (dist<=12 and progress>=0.92) or progress>=1.05 then
+            data.fired=true; isStealing=true
+            if not flashEnabled then pcall(function() fireproximityprompt(p) end); pcall(function() fireproximityprompt(p,10000) end); pcall(function() local conns=getconnections(p.Triggered); if conns then for _,c in ipairs(conns) do if c.Function then task.spawn(c.Function) end end end end) end
+            task.spawn(function() task.wait(0.1); pcall(function() p:InputHoldEnd() end); activeHolds[p]=nil; task.wait(0.3); isStealing=false end)
         end
     end
-
-    local frames = {}
-    for _, c in ipairs(frame:GetChildren()) do
-        if c:IsA("Frame") then table.insert(frames, c) end
-    end
-    local content = frames[2]
-    if not content then return end
-
-    local emptyLabel
-    local templateRow
-    for _, c in ipairs(content:GetChildren()) do
-        if c:IsA("TextLabel") and c.Text:lower():find("no target") then
-            emptyLabel = c
-        elseif c:IsA("TextButton") and c.Size.Y.Offset == 44 then
-            templateRow = c
-        end
-    end
-
-    if not templateRow then
-        templateRow = n("TextButton", {
-            Size = UDim2.new(1, -6, 0, 44),
-            BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-            BackgroundTransparency = 0.1, Text = "", AutoButtonColor = false,
-        }, content)
-        n("UICorner", {CornerRadius = UDim.new(0, 8)}, templateRow)
-        n("UIStroke", {Color = Color3.fromRGB(255,255,255), Thickness = 0}, templateRow)
-        n("ImageLabel", {
-            Name = "Avatar", Size = UDim2.fromOffset(32, 32),
-            Position = UDim2.new(0, 6, 0.5, -16),
-            BackgroundTransparency = 1,
-        }, templateRow)
-        n("TextLabel", {
-            Name = "DName", Size = UDim2.new(1, -50, 0, 20),
-            Position = UDim2.fromOffset(44, 4),
-            BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(255,255,255),
-            TextSize = 14, Font = Enum.Font.GothamBold,
-            TextXAlignment = Enum.TextXAlignment.Left,
-        }, templateRow)
-        n("TextLabel", {
-            Name = "UName", Size = UDim2.new(1, -50, 0, 16),
-            Position = UDim2.fromOffset(44, 22),
-            BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(160,160,160),
-            TextSize = 12, Font = Enum.Font.Gotham,
-            TextXAlignment = Enum.TextXAlignment.Left,
-        }, templateRow)
-    end
-    templateRow.Visible = false
-
-    if not content:FindFirstChildOfClass("UIListLayout") then
-        n("UIListLayout", {
-            FillDirection = Enum.FillDirection.Vertical,
-            Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.Name,
-        }, content)
-    end
-
-    local rowsByPlayer = {}
-    _G.FunHubSelectedTarget = nil
-
-    local function makeRow(plr)
-        if plr == LP then return end
-        local row = templateRow:Clone()
-        row.Name = "P_"..plr.UserId
-        row.Visible = true
-        row.Parent = content
-        local av = row:FindFirstChild("Avatar")
-        if not av then
-            for _, ch in ipairs(row:GetDescendants()) do
-                if ch:IsA("ImageLabel") then av = ch; break end
-            end
-        end
-        if av then
-            av.Image = ("rbxthumb://type=AvatarHeadShot&id=%d&w=100&h=100"):format(plr.UserId)
-        end
-        local labels = {}
-        for _, ch in ipairs(row:GetDescendants()) do
-            if ch:IsA("TextLabel") then table.insert(labels, ch) end
-        end
-        if labels[1] then labels[1].Text = plr.DisplayName end
-        if labels[2] then labels[2].Text = "(@"..plr.Name..")" end
-
-        local stroke = row:FindFirstChildOfClass("UIStroke")
-        if not stroke then
-            stroke = n("UIStroke", {
-                Color = Color3.fromRGB(255, 255, 255),
-                Thickness = 0,
-                Transparency = 0.2,
-            }, row)
-        end
-
-        local function setStroke(thick)
-            stroke.Thickness = thick
-        end
-
-        if row:IsA("TextButton") then
-            row.MouseEnter:Connect(function()
-                if _G.FunHubSelectedTarget ~= plr then setStroke(1) end
-            end)
-            row.MouseLeave:Connect(function()
-                if _G.FunHubSelectedTarget ~= plr then setStroke(0) end
-            end)
-            row.MouseButton1Click:Connect(function()
-                _G.FunHubSelectedTarget = plr
-                for p2, r2 in pairs(rowsByPlayer) do
-                    local sk = r2:FindFirstChildOfClass("UIStroke")
-                    if sk then sk.Thickness = (p2 == plr) and 1.5 or 0 end
-                end
-            end)
-        end
-        rowsByPlayer[plr] = row
-    end
-
-    local function refresh()
-        if emptyLabel then
-            emptyLabel.Visible = (next(rowsByPlayer) == nil)
-        end
-    end
-
-    for _, plr in ipairs(Players:GetPlayers()) do makeRow(plr) end
-    refresh()
-    Players.PlayerAdded:Connect(function(p) makeRow(p); refresh() end)
-    Players.PlayerRemoving:Connect(function(p)
-        local r = rowsByPlayer[p]
-        if r then r:Destroy(); rowsByPlayer[p] = nil end
-        refresh()
-    end)
-end
-
-_G.FunHubTheme = {
-    setPrimary = function(c)
-        Theme.primary = c
-        if btnA then btnA.BackgroundColor3 = c end
-        applyTheme()
-    end,
-    setSecondary = function(c)
-        Theme.secondary = c
-        if btnB then btnB.BackgroundColor3 = c end
-        applyTheme()
-    end,
-    get = function() return Theme.primary, Theme.secondary end,
-}
-_G.FunHubThemeListeners = themeListeners
-
-local Behavior = {}
-
-function Behavior.makeDraggable(handle, target, saveKey)
-    local dragging, dragStart, startPos
-    handle.Active = true
-    handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = target.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                    if saveKey then
-                        local positions = _G.FunHubConfig:get("positions", {})
-                        positions[saveKey] = {
-                            target.Position.X.Scale, target.Position.X.Offset,
-                            target.Position.Y.Scale, target.Position.Y.Offset,
-                        }
-                        _G.FunHubConfig:set("positions", positions)
-                    end
-                end
-            end)
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
-            or input.UserInputType == Enum.UserInputType.Touch) then
-            local d = input.Position - dragStart
-            target.Position = UDim2.new(
-                startPos.X.Scale, startPos.X.Offset + d.X,
-                startPos.Y.Scale, startPos.Y.Offset + d.Y)
-        end
-    end)
-
-    if saveKey then
-        local positions = _G.FunHubConfig:get("positions", {})
-        local p = positions[saveKey]
-        if p then
-            target.Position = UDim2.new(p[1], p[2], p[3], p[4])
-        end
-    end
-end
-
-function Behavior.wireMinimize(btn, panel, contentArea)
-    local originalSize = panel.Size
-    local collapsedY = contentArea.Position.Y.Offset
-    local minimized = false
-    btn.MouseButton1Click:Connect(function()
-        minimized = not minimized
-        contentArea.Visible = not minimized
-        if minimized then
-            panel.Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset,
-                                   0, collapsedY)
-            btn.Text = "+"
-        else
-            panel.Size = originalSize
-            btn.Text = "â€“"
-        end
-    end)
-end
-
-local TOGGLE_TWEEN = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local _toggleStates = {}
-
-local function _toggleColor(state)
-    local theme = _G.FunHubTheme
-    local p = Color3.fromRGB(57, 64, 89)
-    if theme then p = (select(1, theme.get())) end
-    local m = state and 0.40 or 0.30
-    return Color3.new(p.R * m, p.G * m, p.B * m)
-end
-
-local TOGGLE_TO_GUI = {
-    ["Instant Steal Panel"]    = "PanelGui_Instant Steal",
-    ["Instant Steal Panel V2"] = "PanelGui_Instant Steal V2",
-    ["Booster GUI"]            = "PanelGui_Booster",
-    ["Admin Spammer"]          = "PanelGui_Fun Admin Spammer",
-    ["Quick Admin Panel"]      = "PanelGui_Admin Panel",
-    ["Command Cooldowns"]      = "PanelGui_Command Cooldowns",
-    ["Defense Panel"]          = "PanelGui_Fun Defense",
-    ["Allow Friends"]          = "AllowFriendsGui",
-    ["Unlock Base"]            = "UnlockBaseGui",
-}
-
-function Behavior.wireToggle(pill)
-    local knob
-    for _, ch in ipairs(pill:GetChildren()) do
-        if ch:IsA("Frame") and ch.Size.X.Offset > 0 and ch.Size.X.Offset < pill.Size.X.Offset then
-            knob = ch; break
-        end
-    end
-    local function findBtn(scope)
-        for _, ch in ipairs(scope:GetChildren()) do
-            if ch:IsA("TextButton") and ch.Text == "" and ch.BackgroundTransparency >= 0.9 then
-                return ch
-            end
-        end
-    end
-    local row = pill.Parent
-    local clickBtn = findBtn(pill) or (row and findBtn(row))
-    if not knob or not clickBtn then return end
-
-    local labelText
-    if row then
-        for _, ch in ipairs(row:GetChildren()) do
-            if ch:IsA("TextLabel") and ch.Text ~= "" then labelText = ch.Text; break end
-        end
-    end
-    local linkedGui
-    if labelText then
-        local target = TOGGLE_TO_GUI[labelText]
-        if target then
-            linkedGui = Players.LocalPlayer.PlayerGui:FindFirstChild(target)
-        end
-    end
-
-    local entry = {state = false, knob = knob, pill = pill}
-    _toggleStates[pill] = entry
-
-    local function apply(animate)
-        local goalBG = _toggleColor(entry.state)
-        local goalPos = entry.state
-            and UDim2.new(1, -20, 0.5, -9)
-            or  UDim2.new(0, 2,   0.5, -9)
-        if animate then
-            TweenService:Create(pill, TOGGLE_TWEEN, {BackgroundColor3 = goalBG}):Play()
-            TweenService:Create(knob, TOGGLE_TWEEN, {Position = goalPos}):Play()
-        else
-            pill.BackgroundColor3 = goalBG
-            knob.Position = goalPos
-        end
-        if linkedGui then linkedGui.Enabled = entry.state end
-    end
-
-    local savedToggles = _G.FunHubConfig:get("toggles", {})
-    if labelText then
-        if savedToggles[labelText] ~= nil then entry.state = savedToggles[labelText] end
-    end
-    apply(false)
-
-    local rowLabel
-    if row then
-        for _, c in ipairs(row:GetChildren()) do
-            if c:IsA("TextLabel") and c.Text ~= "" then rowLabel = c; break end
-        end
-    end
-    local baseLabelText = rowLabel and rowLabel.Text or labelText
-    local function refreshLabel()
-        if not rowLabel then return end
-        local kb = _G.FunHubConfig:get("keybinds", {})
-        local key = labelText and kb[labelText]
-        if key then
-            rowLabel.Text = baseLabelText .. ' <font color="rgb(140,140,160)">('..key..')</font>'
-            rowLabel.RichText = true
-        else
-            rowLabel.Text = baseLabelText
-        end
-    end
-    refreshLabel()
-
-    local function fire()
-        entry.state = not entry.state
-        apply(true)
-        if labelText then
-            local t = _G.FunHubConfig:get("toggles", {})
-            t[labelText] = entry.state
-            _G.FunHubConfig:set("toggles", t)
-            if _G.FunHubNotify then
-                _G.FunHubNotify.show(labelText, entry.state and "On" or "Off")
-            end
-        end
-    end
-    clickBtn.MouseButton1Click:Connect(fire)
-
-    if labelText then
-        clickBtn.MouseButton2Click:Connect(function()
-            if rowLabel then
-                rowLabel.RichText = true
-                rowLabel.Text = baseLabelText .. ' <font color="rgb(140,140,160)">(...)</font>'
-            end
-            local conn
-            conn = UserInputService.InputBegan:Connect(function(input, processed)
-                if processed then return end
-                if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-                conn:Disconnect()
-                local kb = _G.FunHubConfig:get("keybinds", {})
-                if input.KeyCode == Enum.KeyCode.Backspace then
-                    kb[labelText] = nil
-                else
-                    kb[labelText] = input.KeyCode.Name
-                end
-                _G.FunHubConfig:set("keybinds", kb)
-                refreshLabel()
-            end)
-        end)
-
-        UserInputService.InputBegan:Connect(function(input, processed)
-            if processed then return end
-            if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-            local kb = _G.FunHubConfig:get("keybinds", {})
-            if kb[labelText] and input.KeyCode.Name == kb[labelText] then
-                fire()
-            end
-        end)
-    end
-end
-
-table.insert(themeListeners, function()
-    for pill, e in pairs(_toggleStates) do
-        if pill.Parent then
-            pill.BackgroundColor3 = _toggleColor(e.state)
-        end
-    end
+    for p,data in pairs(activeHolds) do if not seen[p] then if not data.fired then pcall(function() p:InputHoldEnd() end) end; activeHolds[p]=nil end end
 end)
 
-local DEFAULT_ACTIONS = {
-    ["Rejoin"]              = function() return "Rejoining serverâ€¦" end,
-    ["Kick Self"]           = function() return "Goodbye" end,
-    ["Ragdoll Self"]        = function() return "Ragdolled" end,
-    ["Reset Character"]     = function() return "Reset" end,
-    ["Instant Reset"]       = function() return "Instant reset" end,
-    ["Execute"]             = function() return "Executed" end,
-    ["Execute (Full)"]      = function() return "Executed (Full)" end,
-    ["Activate (Reset)"]    = function() return "Activated" end,
-    ["Spam Closest"]        = function() return "Spamming closest" end,
-    ["Align (Semi)"]        = function() return "Aligned" end,
-    ["TP To Brainrot (Semi)"] = function() return "Teleporting" end,
-    ["Full Mode"]           = function() return "Full mode" end,
-    ["Semi Mode"]           = function() return "Semi mode" end,
-}
-
-function Behavior.wirePanelActionBtn(btn, lbl)
-    local baseText = lbl.Text:gsub("%s*<font[^>]*>%(.-%)</font>%s*$", "")
-    local function refresh()
-        local kb = _G.FunHubConfig:get("keybinds", {})
-        local key = kb[baseText]
-        if key then
-            lbl.RichText = true
-            lbl.Text = baseText .. ' <font color="rgb(140,140,160)">('..key..')</font>'
-        else
-            lbl.Text = baseText
-        end
-    end
-    refresh()
-
-    local function fire()
-        local action = DEFAULT_ACTIONS[baseText]
-        local msg
-        if action then
-            local ok, res = pcall(action)
-            if ok then msg = res end
-        end
-        if _G.FunHubNotify then
-            _G.FunHubNotify.show(baseText, msg or "Activated")
-        end
-    end
-    btn.MouseButton1Click:Connect(fire)
-    btn.MouseButton2Click:Connect(function()
-            lbl.RichText = true
-            lbl.Text = baseText .. ' <font color="rgb(140,140,160)">(...)</font>'
-            local conn
-            conn = UserInputService.InputBegan:Connect(function(input, processed)
-                if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-                conn:Disconnect()
-                local kb = _G.FunHubConfig:get("keybinds", {})
-                if input.KeyCode == Enum.KeyCode.Backspace then
-                    kb[baseText] = nil
-                else
-                    kb[baseText] = input.KeyCode.Name
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- BASE PROTECTOR
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local antiSteal=false; local autoKickBase=false; local antiIntruder=false; local lastPunish={}
+local function punish(p) if not ADM_REMOTE or not p or p==lp then return end; local uid=p.UserId; local now=os.clock(); if lastPunish[uid] and now-lastPunish[uid]<0.5 then return end; lastPunish[uid]=now; pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,p,"balloon") end); cmdCdEnd["balloon"]=os.clock()+(CMD_CD["balloon"] or 30); if autoKickBase then task.delay(0.05,function() lp:Kick("Protected") end) end end
+local function findThief() local sp=stealHitbox and stealHitbox.Position; if not sp then local hrp=lp.Character and lp.Character:FindFirstChild("HumanoidRootPart"); sp=hrp and hrp.Position end; if not sp then return nil end; local best,bd=nil,math.huge; for _,p in ipairs(Players:GetPlayers()) do if p~=lp and p.Character then local hrp=p.Character:FindFirstChild("HumanoidRootPart"); if hrp then local d=(hrp.Position-sp).Magnitude; if d<bd then bd=d; best=p end end end end; return best end
+local function isOnMyBase(prompt) if not myPlotRef then return false end; local a=prompt.Parent; while a and a~=workspace do if a==myPlotRef then return true end; a=a.Parent end; return false end
+pcall(function() if not hookfunction or not fireproximityprompt then return end; local old=fireproximityprompt; hookfunction(fireproximityprompt,newcclosure(function(prompt,...) if antiSteal and (prompt.ActionText or ""):lower():find("steal") and isOnMyBase(prompt) then local t=findThief(); if t then punish(t) end end; return old(prompt,...) end)) end)
+-- Anti intruder: check base every heartbeat
+local intruderConn=nil
+local function startAntiIntruder()
+    if intruderConn then return end
+    intruderConn=RunService.Heartbeat:Connect(function()
+        if not antiIntruder or not stealHitbox or not ADM_REMOTE then return end
+        local cf=stealHitbox.CFrame; local sz=stealHitbox.Size; local hx=sz.X*0.5; local hz=sz.Z*0.5
+        for _,p in ipairs(Players:GetPlayers()) do
+            if p~=lp and p.Character then
+                local hrp=p.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local rel=cf:PointToObjectSpace(hrp.Position)
+                    if math.abs(rel.X)<=hx and math.abs(rel.Z)<=hz then punish(p) end
                 end
-                _G.FunHubConfig:set("keybinds", kb)
-                refresh()
-            end)
-        end)
-    UserInputService.InputBegan:Connect(function(input)
-        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-        local kb = _G.FunHubConfig:get("keybinds", {})
-        if kb[baseText] and input.KeyCode.Name == kb[baseText] then
-            fire()
+            end
         end
     end)
 end
 
-function Behavior.wireRightClickBind(btn, opts)
-    opts = opts or {}
-    if not btn:IsA("TextButton") then return end
-    local labelText = btn.Text and btn.Text:match("^%s*(.-)%s*$") or ""
-    if labelText == "" then return end
-    local baseText = labelText:gsub("%s*<font[^>]*>%(.-%)</font>%s*$", "")
-    local function refresh()
-        local kb = _G.FunHubConfig:get("keybinds", {})
-        local key = kb[baseText]
-        if key then
-            btn.RichText = true
-            btn.Text = baseText .. ' <font color="rgb(140,140,160)">('..key..')</font>'
-        else
-            btn.Text = baseText
-        end
-    end
-    refresh()
-
-    local function fire()
-        local action = DEFAULT_ACTIONS[baseText]
-        local msg
-        if action then
-            local ok, res = pcall(action)
-            if ok then msg = res end
-        end
-        if not opts.suppressNotify and _G.FunHubNotify then
-            _G.FunHubNotify.show(baseText, msg or "Activated")
-        end
-    end
-
-    btn.MouseButton1Click:Connect(fire)
-    btn.MouseButton2Click:Connect(function()
-            btn.RichText = true
-            btn.Text = baseText .. ' <font color="rgb(140,140,160)">(...)</font>'
-            local conn
-            conn = UserInputService.InputBegan:Connect(function(input, processed)
-                if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-                conn:Disconnect()
-                local kb = _G.FunHubConfig:get("keybinds", {})
-                if input.KeyCode == Enum.KeyCode.Backspace then
-                    kb[baseText] = nil
-                else
-                    kb[baseText] = input.KeyCode.Name
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- STEAL ON LEAVE
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local stealOnLeave=false
+Players.PlayerRemoving:Connect(function(p)
+    if not stealOnLeave then return end
+    task.spawn(function()
+        local plots=workspace:FindFirstChild("Plots"); if not plots then return end
+        for _,plot in ipairs(plots:GetChildren()) do
+            for _,desc in ipairs(plot:GetDescendants()) do
+                if desc:IsA("ProximityPrompt") and (desc.ActionText=="Steal" or desc.ActionText=="Grab") and desc.Enabled then
+                    pcall(function() fireproximityprompt(desc) end); task.wait(0.05)
                 end
-                _G.FunHubConfig:set("keybinds", kb)
-                refresh()
-            end)
-        end)
-
-    UserInputService.InputBegan:Connect(function(input, processed)
-        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-        local kb = _G.FunHubConfig:get("keybinds", {})
-        if kb[baseText] and input.KeyCode.Name == kb[baseText] then
-            fire()
+            end
         end
     end)
+end)
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- AUTO RESET ON BALLOON (head size change)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local autoResetBalloon=false
+local function watchHead(char) local head=char:FindFirstChild("Head"); if not head then return end; head:GetPropertyChangedSignal("Size"):Connect(function() if autoResetBalloon and head.Size.Y>5 then task.wait(0.1); doReset() end end) end
+lp.CharacterAdded:Connect(function(char) if autoResetBalloon then task.wait(0.5); watchHead(char) end end)
+if lp.Character then task.spawn(function() watchHead(lp.Character) end) end
+
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- FPS BOOST
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local fpsBoostOn=false
+local function enableFPSBoost()
+    if fpsBoostOn then return end; fpsBoostOn=true
+    pcall(function() Lighting.GlobalShadows=false; Lighting.FogEnd=1e9 end)
+    for _,v in pairs(Lighting:GetDescendants()) do pcall(function() if v:IsA("PostEffect") then v.Enabled=false end end) end
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p.Character then
+            for _,d in ipairs(p.Character:GetDescendants()) do
+                pcall(function() if d:IsA("ParticleEmitter") or d:IsA("Beam") or d:IsA("Trail") or d:IsA("PointLight") or d:IsA("SpotLight") then d.Enabled=false end end)
+                pcall(function() if d:IsA("Accessory") then d:Destroy() end end)
+            end
+        end
+    end
+    for _,v in pairs(workspace:GetDescendants()) do pcall(function() if v:IsA("ParticleEmitter") or v:IsA("PointLight") then v.Enabled=false end end) end
 end
+local function disableFPSBoost() fpsBoostOn=false; pcall(function() Lighting.GlobalShadows=true; Lighting.FogEnd=100000 end) end
 
-function Behavior.wireAllToggles(root)
-    for _, d in ipairs(root:GetDescendants()) do
-        if d:IsA("Frame") then
-            local corner = d:FindFirstChildOfClass("UICorner")
-            if corner and corner.CornerRadius == UDim.new(1, 0)
-                and d.Size.X.Offset >= 30 and d.Size.X.Offset <= 60
-                and d.Size.Y.Offset >= 16 and d.Size.Y.Offset <= 28 then
-                local hasKnob = false
-                for _, k in ipairs(d:GetChildren()) do
-                    if k:IsA("Frame") then
-                        local kc = k:FindFirstChildOfClass("UICorner")
-                        if kc and kc.CornerRadius == UDim.new(1, 0) then
-                            hasKnob = true; break
-                        end
-                    end
-                end
-                if hasKnob then Behavior.wireToggle(d) end
-            end
-        end
-    end
-end
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- SOLAR AIMBOT (background)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local aimbotEnabled=false; local aimbotRemote=nil; local aimbotTarget=nil; local aimbotRange=350
+task.spawn(function() pcall(function() local net=RS:WaitForChild("Packages",5); if not net then return end; net=net:FindFirstChild("Net"); if not net then return end; local ch=net:GetChildren(); for i,obj in ipairs(ch) do if obj.Name=="RE/UseItem" then aimbotRemote=ch[i+1]; break end end end) end)
+local function getNearestTarget() if not lp.Character then return nil end; local myHRP=lp.Character:FindFirstChild("HumanoidRootPart"); if not myHRP then return nil end; local nearest,shortest=nil,aimbotRange; for _,pl in ipairs(Players:GetPlayers()) do if pl~=lp and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart") then local dist=(pl.Character.HumanoidRootPart.Position-myHRP.Position).Magnitude; if dist<shortest then shortest=dist; nearest=pl end end end; return nearest end
+RunService.Heartbeat:Connect(function() if aimbotEnabled then aimbotTarget=getNearestTarget() end end)
+local function fireAimbot() if not aimbotEnabled or not aimbotTarget or not aimbotTarget.Character then return end; local tPart=aimbotTarget.Character:FindFirstChild("HumanoidRootPart") or aimbotTarget.Character:FindFirstChild("Head"); if tPart and aimbotRemote then pcall(function() aimbotRemote:FireServer(tPart.Position,tPart) end) end end
+local function hookAimbot(tool) tool.Activated:Connect(function() fireAimbot() end) end
+lp.CharacterAdded:Connect(function(c) task.wait(0.5); for _,ch in ipairs(c:GetChildren()) do if ch:IsA("Tool") then hookAimbot(ch) end end end)
+workspace.DescendantAdded:Connect(function(obj) if obj:IsA("Tool") and lp.Character and obj:IsDescendantOf(lp.Character) then task.wait(0.1); hookAimbot(obj) end end)
+if lp.Character then for _,ch in ipairs(lp.Character:GetChildren()) do if ch:IsA("Tool") then hookAimbot(ch) end end end
 
-function Behavior.wirePanel(screenGui)
-    local panel = screenGui:FindFirstChildOfClass("Frame")
-    if not panel then return end
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- SUBSPACE MINE PLACER
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local function placeMine() task.spawn(function() pcall(function() local char=lp.Character; if not char then return end; local hum=char:FindFirstChildOfClass("Humanoid"); if not hum then return end; local bp=lp:FindFirstChild("Backpack"); local mine=char:FindFirstChild("Subspace Mine") or (bp and bp:FindFirstChild("Subspace Mine")); if not mine then return end; if mine.Parent~=char then hum:EquipTool(mine) end; task.wait(0.1); mine:Activate() end) end) end
 
-    local titleBar, contentArea
-    for _, ch in ipairs(panel:GetChildren()) do
-        if ch:IsA("Frame") then
-            if not titleBar then titleBar = ch
-            elseif not contentArea then contentArea = ch end
-        end
-    end
-    if titleBar then
-        Behavior.makeDraggable(titleBar, panel, screenGui.Name)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- FRIEND BASE TOGGLE (from SAB Friend GUI)
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local friendToggleCooldown=false
+local function findMyFriendPrompt() local plots=workspace:FindFirstChild("Plots"); if not plots then return nil end; for _,plot in ipairs(plots:GetChildren()) do for _,v in ipairs(plot:GetDescendants()) do if (v.ClassName=="StringValue" or v.ClassName=="ObjectValue") and (tostring(v.Value)==lp.Name or tostring(v.Value)==tostring(lp.UserId) or (v.ClassName=="ObjectValue" and v.Value==lp)) then for _,desc in ipairs(plot:GetDescendants()) do if desc:IsA("ProximityPrompt") and (desc.ObjectText=="Allow Friends" or desc.ObjectText=="Disallow Friends") then return desc end end end end end; local hrp=lp.Character and lp.Character:FindFirstChild("HumanoidRootPart"); if not hrp then return nil end; local best,bd=nil,math.huge; for _,plot in ipairs(plots:GetChildren()) do for _,desc in ipairs(plot:GetDescendants()) do if desc:IsA("ProximityPrompt") and (desc.ObjectText=="Allow Friends" or desc.ObjectText=="Disallow Friends") then local part=desc.Parent; if part:IsA("BasePart") then local d=(hrp.Position-part.Position).Magnitude; if d<bd then bd=d; best=desc end end end end end; return best end
+local function fireFriendPrompt(prompt) local ok=pcall(function() fireprompt(prompt) end); if not ok then local ok2,conns=pcall(getconnections,prompt.Triggered); if ok2 and conns then for _,c in ipairs(conns) do local fnOk,fn=pcall(function() return c.Function end); if fnOk and fn~=nil then pcall(function() c:Fire() end); break end end end end end
+local function getFriendBaseStatus() local p=findMyFriendPrompt(); if not p then return "?" end; return p.ObjectText=="Disallow Friends" and "OPEN" or "CLOSED" end
 
-        for _, ch in ipairs(titleBar:GetChildren()) do
-            if ch:IsA("TextButton") then
-                local t = ch.Text
-                if t == "-" or t == "â€“" or t == "â€”" then
-                    if contentArea then
-                        Behavior.wireMinimize(ch, panel, contentArea)
-                    end
-                    break
-                end
-            end
-        end
-    end
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- FOV
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+local fovValue=115; local fovLock=true
+RunService.RenderStepped:Connect(function() if fovLock then cam.FieldOfView=fovValue end end)
 
-    for _, d in ipairs(panel:GetDescendants()) do
-        if d:IsA("Frame") then
-            local corner = d:FindFirstChildOfClass("UICorner")
-            if corner and corner.CornerRadius == UDim.new(1, 0)
-                and d.Size.X.Offset >= 30 and d.Size.X.Offset <= 60
-                and d.Size.Y.Offset >= 16 and d.Size.Y.Offset <= 28 then
-                local hasKnob = false
-                for _, k in ipairs(d:GetChildren()) do
-                    if k:IsA("Frame") then
-                        local kc = k:FindFirstChildOfClass("UICorner")
-                        if kc and kc.CornerRadius == UDim.new(1, 0) then
-                            hasKnob = true; break
-                        end
-                    end
-                end
-                if hasKnob then Behavior.wireToggle(d) end
-            end
-        end
-    end
+-- CMD timer heartbeat
+local cmdBtnRefs={}; local lastDt=1/60
+RunService.Heartbeat:Connect(function(dt)
+    lastDt=dt; local now=os.clock()
+    for _,cmds in pairs(cmdBtnRefs) do for cmd,ib in pairs(cmds) do if ib and ib.Parent then local cd=cmdCdEnd[cmd]; if cd and cd>now then local rs=tostring(math.ceil(cd-now)); if ib.Text~=rs then ib.Text=rs; ib.TextColor3=T.red; ib.BackgroundColor3=Color3.fromRGB(65,8,8) end else local icon=ib:GetAttribute("icon"); if icon and ib.Text~=icon then ib.Text=icon; ib.TextColor3=T.a1; ib.BackgroundColor3=T.surf2 end end end end end
+end)
 
-    if contentArea then
-        for _, d in ipairs(contentArea:GetDescendants()) do
-            if d:IsA("TextButton") then
-                local t = d.Text
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+-- GUI PANELS
+-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+task.wait(0.15); vp=cam.ViewportSize; if vp.X==0 then vp=Vector2.new(390,844) end
+local W=160 -- standard panel width for mobile
 
-                if d.Name:sub(1, 2) == "P_" or (not d.Visible) then
+-- â”€â”€ HEADER BOX â”€â”€
+local hdrW=200; local hdrH=72
+local hdrF=Instance.new("Frame",SG); hdrF.Size=UDim2.fromOffset(hdrW,hdrH); hdrF.Position=UDim2.fromOffset(math.floor(vp.X*0.5-hdrW*0.5),3); hdrF.BackgroundColor3=T.panel; hdrF.BackgroundTransparency=0.14; hdrF.BorderSizePixel=0; co(hdrF,9); rotS(hdrF,T.a1); particles(hdrF); hdrF.Active=false
+lb(hdrF,{Position=UDim2.fromOffset(0,4),Size=UDim2.new(1,0,0,14),Text="Aethen Hub  v0.9",TextSize=11,Font=Enum.Font.GothamBlack,TextColor3=T.a1,TextXAlignment=Enum.TextXAlignment.Center,ZIndex=4})
+lb(hdrF,{Position=UDim2.fromOffset(0,18),Size=UDim2.new(1,0,0,10),Text="@r9qbx  â€¢  "..DISCORD,TextSize=7,Font=Enum.Font.Gotham,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Center,ZIndex=4})
+local fpsLb=lb(hdrF,{Position=UDim2.fromOffset(0,28),Size=UDim2.new(1,0,0,10),Text="FPS --  PING --ms",TextSize=7,Font=Enum.Font.GothamBold,TextColor3=T.grn,TextXAlignment=Enum.TextXAlignment.Center,ZIndex=4})
+task.spawn(function() while task.wait(0.7) do if not fpsLb.Parent then break end; local fps=math.min(999,math.floor(1/math.max(lastDt,0.001))); local ping=0; pcall(function() ping=math.floor(lp:GetNetworkPing()*1000) end); fpsLb.Text="FPS "..fps.."  PING "..ping.."ms"; fpsLb.TextColor3=fps<40 and T.red or fps<55 and T.yel or T.grn end end)
+local function hBtn(text,pos,w2,tc,bg2) local b=Instance.new("TextButton",hdrF); b.Size=UDim2.fromOffset(w2 or 50,13); b.Position=pos; b.BackgroundColor3=bg2 or T.surf; b.BackgroundTransparency=0.22; b.Text=text; b.TextColor3=tc or T.a1; b.Font=Enum.Font.GothamBold; b.TextSize=7; b.BorderSizePixel=0; b.AutoButtonColor=false; co(b,3); ms(b,1,T.str,0.5); b.ZIndex=5; return b end
+local grabHBtn=hBtn("Grab: OFF",UDim2.fromOffset(4,40),53,T.dim)
+local function updGrab() grabHBtn.Text=grabEnabled and "Grab: ON" or "Grab: OFF"; grabHBtn.TextColor3=grabEnabled and T.grn or T.dim end
+updGrab(); grabHBtn.MouseButton1Click:Connect(function() grabEnabled=not grabEnabled; updGrab() end)
+local resetHBtn=hBtn("Reset",UDim2.fromOffset(61,40),34,T.a2)
+resetHBtn.MouseButton1Click:Connect(function() task.spawn(doReset) end)
+local ragHBtn=hBtn("Rag",UDim2.fromOffset(99,40),28,T.red,Color3.fromRGB(22,5,5))
+ragHBtn.MouseButton1Click:Connect(function() if ADM_REMOTE then pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,lp,"ragdoll") end); cmdCdEnd["ragdoll"]=os.clock()+(CMD_CD["ragdoll"] or 30) end end)
+local prHBtn=hBtn("Pot+Rag",UDim2.fromOffset(131,40),65,T.pur,Color3.fromRGB(14,8,22))
+prHBtn.MouseButton1Click:Connect(function() task.spawn(function() activatePotion(); task.wait(0.5); if ADM_REMOTE then pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,lp,"ragdoll") end); cmdCdEnd["ragdoll"]=os.clock()+(CMD_CD["ragdoll"] or 30) end end) end)
 
-                elseif t == "" then
+-- â”€â”€ FLASH TP PANEL â”€â”€
+local FP,_,FPC=mkPanel(math.floor(vp.X-W-4),4,W,200,"Flash TP",T.a2); local fy=2
+-- Tabs
+local tRow=Instance.new("Frame",FPC); tRow.Size=UDim2.fromOffset(W,18); tRow.Position=UDim2.fromOffset(0,0); tRow.BackgroundColor3=T.surf2; tRow.BackgroundTransparency=0.1; tRow.BorderSizePixel=0
+local tM=Instance.new("TextButton",tRow); tM.Size=UDim2.new(0.5,0,1,0); tM.BackgroundColor3=T.a1; tM.Text="MAIN"; tM.Font=Enum.Font.GothamBlack; tM.TextSize=7; tM.TextColor3=T.bg; tM.BorderSizePixel=0; tM.AutoButtonColor=false; co(tM,0)
+local tE=Instance.new("TextButton",tRow); tE.Size=UDim2.new(0.5,0,1,0); tE.Position=UDim2.new(0.5,0,0,0); tE.BackgroundColor3=T.surf2; tE.Text="EXTRAS"; tE.Font=Enum.Font.GothamBlack; tE.TextSize=7; tE.TextColor3=T.dim; tE.BorderSizePixel=0; tE.AutoButtonColor=false; co(tE,0)
+local pg1c=Instance.new("Frame",FPC); pg1c.Size=UDim2.new(1,0,1,-18); pg1c.Position=UDim2.fromOffset(0,18); pg1c.BackgroundTransparency=1; pg1c.BorderSizePixel=0
+local pg2c=Instance.new("Frame",FPC); pg2c.Size=UDim2.new(1,0,1,-18); pg2c.Position=UDim2.fromOffset(0,18); pg2c.BackgroundTransparency=1; pg2c.BorderSizePixel=0; pg2c.Visible=false
+local function setFPTab(m) tM.BackgroundColor3=m and T.a1 or T.surf2; tM.TextColor3=m and T.bg or T.dim; tE.BackgroundColor3=not m and T.a1 or T.surf2; tE.TextColor3=not m and T.bg or T.dim; pg1c.Visible=m; pg2c.Visible=not m end
+tM.MouseButton1Click:Connect(function() setFPTab(true) end); tE.MouseButton1Click:Connect(function() setFPTab(false) end); setFPTab(true)
+-- Main tab rows
+local lagB,lagSet=toggle(pg1c,"Lag On Steal",2,T.a1); lagB.MouseButton1Click:Connect(function() lagOnSteal=not lagOnSteal; lagSet(lagOnSteal) end)
+local potB,potSet=toggle(pg1c,"Giant Potion",23,T.grn); potB.MouseButton1Click:Connect(function() potionOn=not potionOn; potSet(potionOn) end)
+local sep1=Instance.new("Frame",pg1c); sep1.Size=UDim2.new(1,-8,0,1); sep1.Position=UDim2.fromOffset(4,44); sep1.BackgroundColor3=T.str; sep1.BackgroundTransparency=0.7; sep1.BorderSizePixel=0
+local flB,flSet=toggle(pg1c,"Flash TP",47,T.a1); flB.MouseButton1Click:Connect(function() flashEnabled=not flashEnabled; flSet(flashEnabled) end)
+local trigLbl=lb(pg1c,{Position=UDim2.fromOffset(4,69),Size=UDim2.fromOffset(W-8,10),Text="Trigger: 91%",TextSize=7,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
+local slBg=Instance.new("Frame",pg1c); slBg.Size=UDim2.fromOffset(W-8,4); slBg.Position=UDim2.fromOffset(4,81); slBg.BackgroundColor3=T.surf; slBg.BorderSizePixel=0; co(slBg,3)
+local slFill=Instance.new("Frame",slBg); slFill.Size=UDim2.new(sliderValue,0,1,0); slFill.BackgroundColor3=T.a1; slFill.BorderSizePixel=0; co(slFill,3)
+local slK=Instance.new("Frame",slBg); slK.Size=UDim2.fromOffset(10,10); slK.AnchorPoint=Vector2.new(0.5,0.5); slK.Position=UDim2.new(sliderValue,0,0.5,0); slK.BackgroundColor3=T.white; slK.BorderSizePixel=0; co(slK,5)
+local slOn2=false
+local function setTr(pct) pct=math.clamp(pct,0,1); sliderValue=pct; slFill.Size=UDim2.new(pct,0,1,0); slK.Position=UDim2.new(pct,0,0.5,0); trigLbl.Text="Trigger: "..math.floor(pct*100).."%" end
+slBg.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then slOn2=true; setTr((i.Position.X-slBg.AbsolutePosition.X)/slBg.AbsoluteSize.X) end end)
+UIS.InputEnded:Connect(function(i) if (i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch) and slOn2 then slOn2=false end end)
+UIS.InputChanged:Connect(function(i) if not slOn2 then return end; if i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch then setTr((i.Position.X-slBg.AbsolutePosition.X)/slBg.AbsoluteSize.X) end end)
+local camBusy2=false; local camBtnF=sBtn(pg1c,"AUTO ALLIGN",4,90,W-8,17,T.surf); camBtnF.TextColor3=T.a1
+camBtnF.MouseButton1Click:Connect(function() if camBusy2 then return end; camBusy2=true; camBtnF.Text="Aligning..."; pcall(equipFlash); task.wait(0.05); pcall(alignCam); task.delay(1,function() camBtnF.Text="AUTO ALLIGN"; camBusy2=false end) end)
+local rstBtnF=sBtn(pg1c,"Instant Reset",4,111,W-8,15,Color3.fromRGB(40,6,6)); rstBtnF.TextColor3=T.red
+rstBtnF.MouseButton1Click:Connect(function() task.spawn(doReset) end)
+-- Extras tab: FOV slider
+lb(pg2c,{Position=UDim2.fromOffset(4,2),Size=UDim2.fromOffset(W-8,10),Text="FOV: 115",TextSize=7,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
+local fovLbl=pg2c:FindFirstChildOfClass("TextLabel")
+local fovBg=Instance.new("Frame",pg2c); fovBg.Size=UDim2.fromOffset(W-8,4); fovBg.Position=UDim2.fromOffset(4,14); fovBg.BackgroundColor3=T.surf; fovBg.BorderSizePixel=0; co(fovBg,3)
+local fovFill=Instance.new("Frame",fovBg); fovFill.Size=UDim2.new(0.5,0,1,0); fovFill.BackgroundColor3=T.a2; fovFill.BorderSizePixel=0; co(fovFill,3)
+local fovK=Instance.new("Frame",fovBg); fovK.Size=UDim2.fromOffset(10,10); fovK.AnchorPoint=Vector2.new(0.5,0.5); fovK.Position=UDim2.new(0.5,0,0.5,0); fovK.BackgroundColor3=T.white; fovK.BorderSizePixel=0; co(fovK,5)
+local fovSlOn=false
+local function setFov(pct) pct=math.clamp(pct,0,1); fovValue=math.floor(70+pct*110); fovFill.Size=UDim2.new(pct,0,1,0); fovK.Position=UDim2.new(pct,0,0.5,0); if fovLbl then fovLbl.Text="FOV: "..fovValue end end
+setFov(0.41)
+fovBg.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then fovSlOn=true; setFov((i.Position.X-fovBg.AbsolutePosition.X)/fovBg.AbsoluteSize.X) end end)
+UIS.InputEnded:Connect(function(i) if (i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch) and fovSlOn then fovSlOn=false end end)
+UIS.InputChanged:Connect(function(i) if not fovSlOn then return end; if i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch then setFov((i.Position.X-fovBg.AbsolutePosition.X)/fovBg.AbsoluteSize.X) end end)
 
-                    local hasToggle = false
-                    for _, sib in ipairs(d.Parent:GetChildren()) do
-                        if sib:IsA("Frame") and sib.Size.X.Offset == 42
-                            and sib.Size.Y.Offset == 22 then
-                            local cn = sib:FindFirstChildOfClass("UICorner")
-                            if cn and cn.CornerRadius == UDim.new(1, 0) then
-                                hasToggle = true; break
-                            end
-                        end
-                    end
-                    if not hasToggle then
-                        for _, sib in ipairs(d.Parent:GetChildren()) do
-                            if sib:IsA("TextLabel") and sib.Text ~= "" then
-                                Behavior.wirePanelActionBtn(d, sib)
-                                break
-                            end
-                        end
-                    end
-                elseif t ~= "â€“" and t ~= "+" and t ~= "Ã—" and t ~= "X" and t ~= "âœ“"
-                    and t ~= "âš™" and t ~= "âš™ï¸" then
-                    Behavior.wireRightClickBind(d)
-                end
-            end
-        end
-    end
-end
+-- â”€â”€ VISUAL PANEL â”€â”€
+local VP,_,VPC=mkPanel(4,hdrH+6,W,218,"Visuals",T.a2); local vy=2
+local espB,espSet=toggle(VPC,"Player ESP",vy,T.a1); vy=vy+21; espB.MouseButton1Click:Connect(function() if espOn then disablePlayerESP(); espSet(false) else enablePlayerESP(); espSet(true) end end)
+local brainB,brainSet=toggle(VPC,"Brainrot ESP",vy,T.a1); vy=vy+21; brainB.MouseButton1Click:Connect(function() if brainESPOn then stopBrainESP(); brainSet(false) else startBrainESP(); brainSet(true) end end)
+local mineB,mineSet=toggle(VPC,"Mine ESP",vy,T.red); vy=vy+21; mineB.MouseButton1Click:Connect(function() if mineESPOn then disableMineESP(); mineSet(false) else enableMineESP(); mineSet(true) end end)
+local cloneB,cloneSet=toggle(VPC,"Clone ESP",vy,T.pur); vy=vy+21; cloneB.MouseButton1Click:Connect(function() if cloneESPOn then disableCloneESP(); cloneSet(false) else enableCloneESP(); cloneSet(true) end end)
+local frdB,frdSet=toggle(VPC,"Friends ESP",vy,T.grn); vy=vy+21; frdB.MouseButton1Click:Connect(function() if friendESPOn then disableFriendESP(); frdSet(false) else enableFriendESP(); frdSet(true) end end)
+local xrB,xrSet=toggle(VPC,"Base Xray",vy,T.yel); vy=vy+21; xrB.MouseButton1Click:Connect(function() if xrayOn then disableXray(); xrSet(false) else enableXray(); xrSet(true) end end)
+local sentB,sentSet=toggle(VPC,"Anti Sentry",vy,T.grn); vy=vy+21; sentSet(true)
+sentB.MouseButton1Click:Connect(function() end)
+local fpsB,fpsSet=toggle(VPC,"FPS Boost",vy,T.grn); vy=vy+21; fpsB.MouseButton1Click:Connect(function() if fpsBoostOn then disableFPSBoost(); fpsSet(false) else enableFPSBoost(); fpsSet(true) end end)
+local aimbotB,aimbotSet=toggle(VPC,"Aimbot",vy,T.red); vy=vy+21; aimbotB.MouseButton1Click:Connect(function() aimbotEnabled=not aimbotEnabled; aimbotSet(aimbotEnabled) end)
 
-for name, gui in pairs(_G_GUIS) do
-    if not name:find(":") and typeof(gui) == "Instance" and gui:IsA("ScreenGui") then
-        gui.DisplayOrder = math.max(gui.DisplayOrder, 1000)
-    end
-end
+-- â”€â”€ PLAYER PANEL â”€â”€
+local PP,_,PPC=mkPanel(4,hdrH+VP.Size.Y.Offset+14,W,180,"Player",T.a1); local py2=2
+local spdB,spdSet=toggle(PPC,"Speed Boost",py2,T.grn); py2=py2+21; spdB.MouseButton1Click:Connect(function() speedEnabled=not speedEnabled; spdSet(speedEnabled) end)
+lb(PPC,{Position=UDim2.fromOffset(4,py2),Size=UDim2.fromOffset(W-8,9),Text="Speed: "..stealingSpeed,TextSize=7,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
+local spdNumLbl=PPC:FindFirstChildOfClass("TextLabel")
+local spdSlBg=Instance.new("Frame",PPC); spdSlBg.Size=UDim2.fromOffset(W-8,4); spdSlBg.Position=UDim2.fromOffset(4,py2+11); spdSlBg.BackgroundColor3=T.surf; spdSlBg.BorderSizePixel=0; co(spdSlBg,3)
+local spdSlFill=Instance.new("Frame",spdSlBg); spdSlFill.Size=UDim2.new(0.3,0,1,0); spdSlFill.BackgroundColor3=T.grn; spdSlFill.BorderSizePixel=0; co(spdSlFill,3)
+local spdSlK=Instance.new("Frame",spdSlBg); spdSlK.Size=UDim2.fromOffset(10,10); spdSlK.AnchorPoint=Vector2.new(0.5,0.5); spdSlK.Position=UDim2.new(0.3,0,0.5,0); spdSlK.BackgroundColor3=T.white; spdSlK.BorderSizePixel=0; co(spdSlK,5)
+local spdSlOn=false
+local function setSpdSlider(pct) pct=math.clamp(pct,0,1); stealingSpeed=math.floor(10+pct*90); spdSlFill.Size=UDim2.new(pct,0,1,0); spdSlK.Position=UDim2.new(pct,0,0.5,0); if spdNumLbl then spdNumLbl.Text="Speed: "..stealingSpeed end end
+spdSlBg.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then spdSlOn=true; setSpdSlider((i.Position.X-spdSlBg.AbsolutePosition.X)/spdSlBg.AbsoluteSize.X) end end)
+UIS.InputEnded:Connect(function(i) if (i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch) and spdSlOn then spdSlOn=false end end)
+UIS.InputChanged:Connect(function(i) if not spdSlOn then return end; if i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch then setSpdSlider((i.Position.X-spdSlBg.AbsolutePosition.X)/spdSlBg.AbsoluteSize.X) end end)
+py2=py2+37
+local jpB,jpSet=toggle(PPC,"Jump Power",py2,T.a2); py2=py2+21; jpB.MouseButton1Click:Connect(function() jumpPwrOn=not jumpPwrOn; jpSet(jumpPwrOn) end)
+lb(PPC,{Position=UDim2.fromOffset(4,py2),Size=UDim2.fromOffset(W-8,9),Text="Jump: "..jumpPower,TextSize=7,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left})
+local jpNumLbl=PPC:FindFirstChildOfClass("TextLabel")
+local jpSlBg=Instance.new("Frame",PPC); jpSlBg.Size=UDim2.fromOffset(W-8,4); jpSlBg.Position=UDim2.fromOffset(4,py2+11); jpSlBg.BackgroundColor3=T.surf; jpSlBg.BorderSizePixel=0; co(jpSlBg,3)
+local jpSlFill=Instance.new("Frame",jpSlBg); jpSlFill.Size=UDim2.new(0.3,0,1,0); jpSlFill.BackgroundColor3=T.a2; jpSlFill.BorderSizePixel=0; co(jpSlFill,3)
+local jpSlK=Instance.new("Frame",jpSlBg); jpSlK.Size=UDim2.fromOffset(10,10); jpSlK.AnchorPoint=Vector2.new(0.5,0.5); jpSlK.Position=UDim2.new(0.3,0,0.5,0); jpSlK.BackgroundColor3=T.white; jpSlK.BorderSizePixel=0; co(jpSlK,5)
+local jpSlOn=false
+local function setJpSlider(pct) pct=math.clamp(pct,0,1); jumpPower=math.floor(30+pct*220); jpSlFill.Size=UDim2.new(pct,0,1,0); jpSlK.Position=UDim2.new(pct,0,0.5,0); if jpNumLbl then jpNumLbl.Text="Jump: "..jumpPower end; local char=lp.Character; local hum=char and char:FindFirstChildOfClass("Humanoid"); if hum then hum.JumpPower=jumpPower end end
+jpSlBg.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then jpSlOn=true; setJpSlider((i.Position.X-jpSlBg.AbsolutePosition.X)/jpSlBg.AbsoluteSize.X) end end)
+UIS.InputEnded:Connect(function(i) if (i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch) and jpSlOn then jpSlOn=false end end)
+UIS.InputChanged:Connect(function(i) if not jpSlOn then return end; if i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch then setJpSlider((i.Position.X-jpSlBg.AbsolutePosition.X)/jpSlBg.AbsoluteSize.X) end end)
+py2=py2+37
+local ijB,ijSet=toggle(PPC,"Infinite Jump",py2,T.yel); py2=py2+21; ijB.MouseButton1Click:Connect(function() infJumpOn=not infJumpOn; ijSet(infJumpOn) end)
+local carpBtn=sBtn(PPC,"Carpet Speed",4,py2,W-8,17,T.surf2); carpBtn.TextColor3=T.a1
+carpBtn.MouseButton1Click:Connect(function() carpetSpdOn=not carpetSpdOn; carpBtn.BackgroundColor3=carpetSpdOn and Color3.fromRGB(8,22,8) or T.surf2; carpBtn.TextColor3=carpetSpdOn and T.grn or T.a1; if carpetSpdOn then equipCarpet() end end)
 
-if _G_GUIS["__pendingDrag"] then
-    for _, pair in ipairs(_G_GUIS["__pendingDrag"]) do
-        Behavior.makeDraggable(pair[1], pair[2])
-    end
-    _G_GUIS["__pendingDrag"] = nil
-end
-
-for name, gui in pairs(_G_GUIS) do
-    if not name:find(":") and typeof(gui) == "Instance" and gui:IsA("ScreenGui") then
-        if name ~= "FunGui" then
-            Behavior.wirePanel(gui)
-        else
-            Behavior.wireAllToggles(gui)
-
-            for _, d in ipairs(gui:GetDescendants()) do
-                if d:IsA("TextButton") and d.Text ~= ""
-                    and d:FindFirstAncestorOfClass("ScrollingFrame") then
-                    Behavior.wireRightClickBind(d)
-                end
-            end
-        end
-    end
-end
-
-do
-    local funGui = _G_GUIS["FunGui"]
-    if funGui then
-        local mainFrame = funGui:FindFirstChildOfClass("Frame")
-        local funBtn
-        for _, ch in ipairs(funGui:GetChildren()) do
-            if ch:IsA("TextButton") and ch.Text == "Fun" then funBtn = ch end
-        end
-
-        if mainFrame then
-
-            local scale
-            for _, ch in ipairs(mainFrame:GetChildren()) do
-                if ch:IsA("UIScale") then scale = ch end
-            end
-            mainFrame.Visible = true
-            if scale then scale.Scale = 1e-07 end
-
-            local header = mainFrame:FindFirstChildOfClass("Frame")
-            if header then Behavior.makeDraggable(header, mainFrame) end
-
-            local panelOpen = false
-            local function setPanelOpen(v)
-                panelOpen = v
-                local goal = {Scale = panelOpen and 1 or 1e-07}
-                TweenService:Create(scale, TweenInfo.new(0.25, Enum.EasingStyle.Quad), goal):Play()
-            end
-            if funBtn and scale then
-                Behavior.makeDraggable(funBtn, funBtn)
-                funBtn.MouseButton1Click:Connect(function()
-                    setPanelOpen(not panelOpen)
-                end)
-            end
-            if scale then
-                UserInputService.InputBegan:Connect(function(input, processed)
-                    if processed then return end
-                    if input.KeyCode == Enum.KeyCode.LeftControl
-                        or input.KeyCode == Enum.KeyCode.RightControl then
-                        setPanelOpen(not panelOpen)
-                    end
-                end)
-            end
-
-            local tabRow, pagesContainer
-            for _, ch in ipairs(mainFrame:GetChildren()) do
-                if ch:IsA("Frame") and ch:FindFirstChildOfClass("UIListLayout")
-                    and ch.Size.Y.Offset == 36 then
-                    tabRow = ch
-                end
-            end
-
-            for _, ch in ipairs(mainFrame:GetChildren()) do
-                if ch:IsA("Frame") and not ch:FindFirstChildOfClass("UIListLayout") then
-                    local sfCount = 0
-                    for _, p in ipairs(ch:GetChildren()) do
-                        if p:IsA("ScrollingFrame") then sfCount = sfCount + 1 end
-                    end
-                    if sfCount >= 2 then pagesContainer = ch; break end
-                end
-            end
-
-            local pages = {}
-            if pagesContainer then
-                for _, p in ipairs(pagesContainer:GetChildren()) do
-                    if p:IsA("ScrollingFrame") then table.insert(pages, p) end
-                end
-            end
-
-            for _, page in ipairs(pages) do
-                page.AutomaticCanvasSize = Enum.AutomaticSize.Y
-                page.ScrollBarThickness = 4
-                for _, d in ipairs(page:GetDescendants()) do
-
-                    if d:IsA("Frame") and d.Size.Y.Scale == 0 and d.Size.Y.Offset <= 30 then
-                        local safe = true
-                        for _, c in ipairs(d:GetChildren()) do
-                            if c:IsA("GuiObject") and c.Size.Y.Scale > 0 then
-                                safe = false; break
-                            end
-                        end
-                        if safe then
-                            d.AutomaticSize = Enum.AutomaticSize.Y
+-- â”€â”€ UTILITIES PANEL â”€â”€
+local UP,_,UPC=mkPanel(math.floor(vp.X-W-4),220,W,195,"Utilities",T.grn); local uy=2
+local stolB,stolSet=toggle(UPC,"Steal On Leave",uy,T.a1); uy=uy+21; stolB.MouseButton1Click:Connect(function() stealOnLeave=not stealOnLeave; stolSet(stealOnLeave) end)
+local arB,arSet=toggle(UPC,"Auto Reset (Balloon)",uy,T.red); uy=uy+21; arB.MouseButton1Click:Connect(function() autoResetBalloon=not autoResetBalloon; arSet(autoResetBalloon); if autoResetBalloon and lp.Character then watchHead(lp.Character) end end)
+local mineBtn=sBtn(UPC,"Place Subspace Mine",4,uy,W-8,17,T.surf2); mineBtn.TextColor3=T.a1; uy=uy+21; mineBtn.MouseButton1Click:Connect(function() placeMine() end)
+local sep2=Instance.new("Frame",UPC); sep2.Size=UDim2.new(1,-8,0,1); sep2.Position=UDim2.fromOffset(4,uy); sep2.BackgroundColor3=T.str; sep2.BackgroundTransparency=0.7; sep2.BorderSizePixel=0; uy=uy+5
+lb(UPC,{Position=UDim2.fromOffset(4,uy),Size=UDim2.fromOffset(W-8,10),Text="Unlock Base (Floor)",TextSize=7,TextColor3=T.dim})
+uy=uy+12
+local floorRow=Instance.new("Frame",UPC); floorRow.Size=UDim2.fromOffset(W-8,20); floorRow.Position=UDim2.fromOffset(4,uy); floorRow.BackgroundTransparency=1; floorRow.BorderSizePixel=0; uy=uy+24
+for fl=1,3 do
+    local fx=(fl-1)*((W-8)/3); local fb=sBtn(floorRow,"Floor "..fl,fx,0,math.floor((W-8)/3)-2,18,T.surf2); fb.TextColor3=T.a1
+    fb.MouseButton1Click:Connect(function()
+        task.spawn(function() pcall(function()
+            local plots=workspace:FindFirstChild("Plots"); if not plots then return end
+            for _,plot in ipairs(plots:GetChildren()) do
+                if isMyPlot(plot) then
+                    for _,desc in ipairs(plot:GetDescendants()) do
+                        if desc:IsA("ProximityPrompt") and (desc.ActionText:lower():find("unlock") or desc.ActionText:lower():find("floor "..fl) or desc.ActionText:lower():find("upgrade")) and desc.Enabled then
+                            pcall(function() fireproximityprompt(desc) end)
                         end
                     end
                 end
             end
-
-            if tabRow then
-                local tabs = {}
-                for _, b in ipairs(tabRow:GetChildren()) do
-                    if b:IsA("TextButton") then
-
-                        b.Size = UDim2.new(0, 75, 1, 0)
-                        b.Position = UDim2.new(0, 0, 0, 4)
-                        table.insert(tabs, b)
-                    end
-                end
-                local currentIdx = 1
-                local function paintTabs()
-                    local theme = _G.FunHubTheme
-                    local p, s
-                    if theme then p, s = theme.get() end
-                    p = p or Color3.fromRGB(57, 64, 89)
-                    s = s or Color3.fromRGB(255, 255, 255)
-                    local unsel = Color3.new(p.R * 0.40, p.G * 0.40, p.B * 0.40)
-                    local sel   = Color3.new(s.R * 0.60, s.G * 0.60, s.B * 0.60)
-                    for i, b in ipairs(tabs) do
-                        b.BackgroundColor3 = (i == currentIdx) and sel or unsel
-                    end
-                end
-                local function selectTab(idx)
-                    currentIdx = idx
-                    for i, p2 in ipairs(pages) do p2.Visible = (i == idx) end
-                    paintTabs()
-                end
-
-                if _G.FunHubThemeListeners then
-                    table.insert(_G.FunHubThemeListeners, paintTabs)
-                end
-                for i, b in ipairs(tabs) do
-                    b.MouseButton1Click:Connect(function() selectTab(i) end)
-                end
-                selectTab(1)
-            end
-        end
-    end
+        end) end)
+    end)
 end
+local apSpamBtn=sBtn(UPC,"Quick AP Spam (Closest)",4,uy,W-8,17,Color3.fromRGB(22,8,8)); apSpamBtn.TextColor3=T.red; uy=uy+21; apSpamBtn.MouseButton1Click:Connect(function() local t=getClosestPlayer(); if t then task.spawn(function() for _,cmd in ipairs({"balloon","ragdoll","tiny","rocket","jail","jumpscare","control","inverse","morph"}) do aFire(t,cmd); cmdCdEnd[cmd]=os.clock()+(CMD_CD[cmd] or 30); task.wait(0.06) end end) end end)
+local admSpamBtn=sBtn(UPC,"Admin Spammer (All Cmds)",4,uy,W-8,17,Color3.fromRGB(8,8,22)); admSpamBtn.TextColor3=T.a2; uy=uy+21; admSpamBtn.MouseButton1Click:Connect(function() local t=getClosestPlayer(); if t then task.spawn(function() spamAll(t) end) end end)
 
-_G.FunHubGUIs = _G_GUIS
-_G.FunHubColorPicker = colorPicker
+-- â”€â”€ DEFENSE PANEL â”€â”€
+local DP,_,DPC=mkPanel(math.floor(vp.X-W-4),420,W,120,"Defense",T.red); local dy=2
+local asB,asSet=toggle(DPC,"Auto Defense (Anti Steal)",dy,T.a1); dy=dy+21; asB.MouseButton1Click:Connect(function() antiSteal=not antiSteal; asSet(antiSteal) end)
+local akB,akSet=toggle(DPC,"Auto Kick Thief",dy,T.red); dy=dy+21; akB.MouseButton1Click:Connect(function() autoKickBase=not autoKickBase; akSet(autoKickBase) end)
+local aiB,aiSet=toggle(DPC,"Anti Intruder (AP)",dy,T.yel); dy=dy+21; aiB.MouseButton1Click:Connect(function() antiIntruder=not antiIntruder; aiSet(antiIntruder); if antiIntruder then startAntiIntruder() end end)
+local ragOnReset=toggle(DPC,"Defense On Reset",dy,T.pur); dy=dy+21
+
+-- â”€â”€ ADMIN PANEL â”€â”€
+local RCMDS={{cmd="ragdoll",icon="ðŸ¤¸"},{cmd="balloon",icon="ðŸŽˆ"},{cmd="tiny",icon="ðŸœ"},{cmd="jail",icon="ðŸ”’"},{cmd="rocket",icon="ðŸš€"}}
+local ADM_W=190; local IW2=16; local IH2=17; local IG2=2; local ITOT=#RCMDS*(IW2+IG2)-IG2; local CW2=ADM_W-12; local CSTART=CW2-ITOT-3
+local ADMpan,_,admC=mkPanel(math.floor(vp.X*0.5-ADM_W*0.5),math.floor(vp.Y-200),ADM_W,24,"Admin Panel",T.a2)
+local pScroll=Instance.new("ScrollingFrame",admC); pScroll.Size=UDim2.new(1,0,1,0); pScroll.BackgroundColor3=T.bg; pScroll.BackgroundTransparency=0.65; pScroll.BorderSizePixel=0; pScroll.ScrollBarThickness=2; pScroll.ScrollBarImageColor3=T.a1; pScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y; pScroll.CanvasSize=UDim2.new(0,0,0,0); co(pScroll,4)
+local pLayout=Instance.new("UIListLayout",pScroll); pLayout.Padding=UDim.new(0,2); pLayout.SortOrder=Enum.SortOrder.Name
+Instance.new("UIPadding",pScroll).PaddingTop=UDim.new(0,2)
+local function resAdm() local ch=math.min(pLayout.AbsoluteContentSize.Y+4,140); pScroll.Size=UDim2.fromOffset(ADM_W-8,ch); admC.Parent.Size=UDim2.fromOffset(ADM_W,22+ch+3+23) end
+pLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(resAdm)
+local pCards={}
+local function refreshPlayers()
+    for _,c in pairs(pCards) do pcall(function() c:Destroy() end) end; pCards={}; cmdBtnRefs={}
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p==lp then continue end
+        local card=Instance.new("Frame",pScroll); card.Name=p.Name; card.Size=UDim2.new(1,-4,0,28); card.BackgroundColor3=T.surf; card.BackgroundTransparency=0.26; card.BorderSizePixel=0; co(card,5)
+        local cs=ms(card,1,T.str,0.55)
+        local cz=Instance.new("TextButton",card); cz.Size=UDim2.fromOffset(CSTART,28); cz.BackgroundTransparency=1; cz.Text=""; cz.AutoButtonColor=false
+        local ava=Instance.new("ImageLabel",card); ava.Size=UDim2.fromOffset(17,17); ava.Position=UDim2.new(0,3,0.5,-8); ava.BackgroundColor3=T.surf2; ava.BorderSizePixel=0; co(ava,8)
+        task.spawn(function() local ok,img=pcall(Players.GetUserThumbnailAsync,Players,p.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size48x48); if ok then ava.Image=img end end)
+        lb(card,{Position=UDim2.new(0,22,0,2),Size=UDim2.fromOffset(CSTART-24,13),Text=p.DisplayName,TextSize=8,Font=Enum.Font.GothamBold,TextColor3=T.a1,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd})
+        lb(card,{Position=UDim2.new(0,22,0,14),Size=UDim2.fromOffset(CSTART-24,10),Text="@"..p.Name,TextSize=6,Font=Enum.Font.Gotham,TextColor3=T.dim,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd})
+        cmdBtnRefs[p.UserId]={}
+        for i,def in ipairs(RCMDS) do
+            local bx=CSTART+3+(i-1)*(IW2+IG2)
+            local ib=Instance.new("TextButton",card); ib.Size=UDim2.fromOffset(IW2,IH2); ib.Position=UDim2.new(0,bx,0.5,-IH2/2); ib.BackgroundColor3=T.surf2; ib.BackgroundTransparency=0.22; ib.Text=def.icon; ib.TextSize=10; ib.TextColor3=T.a1; ib.Font=Enum.Font.GothamBold; ib.BorderSizePixel=0; ib.AutoButtonColor=false; ib.Parent=card; co(ib,3); ms(ib,1,T.str,0.52); ib:SetAttribute("icon",def.icon)
+            cmdBtnRefs[p.UserId][def.cmd]=ib
+            local pd=p; local dc=def.cmd; ib.MouseButton1Click:Connect(function() fireCmd(pd,dc) end)
+        end
+        local pd=p
+        cz.MouseButton1Click:Connect(function()
+            for _,c2 in pairs(pCards) do local s2=c2:FindFirstChildOfClass("UIStroke"); if s2 then s2.Color=T.str; s2.Transparency=0.55 end; c2.BackgroundTransparency=0.26 end
+            cs.Color=T.a1; cs.Transparency=0; card.BackgroundTransparency=0
+            task.spawn(function() spamAll(pd) end)
+        end)
+        pCards[p.UserId]=card
+    end
+    task.defer(resAdm)
+end
+Players.PlayerAdded:Connect(function() task.wait(0.5); refreshPlayers() end)
+Players.PlayerRemoving:Connect(function() task.wait(0.2); refreshPlayers() end)
+task.delay(2,refreshPlayers)
+
+-- â”€â”€ FRIEND BASE HUD (always visible, top right) â”€â”€
+local fbHUD=Instance.new("Frame",SG); fbHUD.Size=UDim2.fromOffset(120,52); fbHUD.Position=UDim2.fromOffset(vp.X-128,20); fbHUD.BackgroundColor3=Color3.fromRGB(15,15,18); fbHUD.BackgroundTransparency=0.15; fbHUD.BorderSizePixel=0; co(fbHUD,10); ms(fbHUD,1,T.str,0.4)
+local fbStatus=lb(fbHUD,{Position=UDim2.fromOffset(0,5),Size=UDim2.new(1,0,0,18),Text="Base: ?",TextSize=9,Font=Enum.Font.GothamBold,TextColor3=T.grn,TextXAlignment=Enum.TextXAlignment.Center})
+local fbBtn=Instance.new("TextButton",fbHUD); fbBtn.Size=UDim2.fromOffset(108,20); fbBtn.Position=UDim2.fromOffset(6,26); fbBtn.BackgroundColor3=T.surf2; fbBtn.Text="Toggle"; fbBtn.TextColor3=T.white; fbBtn.Font=Enum.Font.GothamBold; fbBtn.TextSize=8; fbBtn.BorderSizePixel=0; fbBtn.AutoButtonColor=false; co(fbBtn,6)
+local function updateFBHUD() local st=getFriendBaseStatus(); fbStatus.Text="Base: "..st; fbStatus.TextColor3=st=="OPEN" and T.grn or st=="CLOSED" and T.red or T.yel end
+task.spawn(function() while task.wait(1) do if fbHUD.Parent then updateFBHUD() end end end)
+fbBtn.MouseButton1Click:Connect(function()
+    if friendToggleCooldown then return end; friendToggleCooldown=true
+    local prompt=findMyFriendPrompt(); if prompt then fireFriendPrompt(prompt) end
+    fbBtn.Text="Wait..."; fbBtn.BackgroundColor3=T.surf
+    task.delay(1.8,function() friendToggleCooldown=false; fbBtn.Text="Toggle"; fbBtn.BackgroundColor3=T.surf2; updateFBHUD() end)
+end)
+drag(fbHUD,fbHUD)
+
+print("Aethen Hub v0.9 loaded | @r9qbx | "..DISCORD)
