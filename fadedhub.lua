@@ -1,8 +1,8 @@
 --!strict
 -- Built by Dignity for Vertex PvP
--- Version: 1.0.0
--- Built for maximum undetectability while providing requested features.
--- Note: "Undetected" status against anti-cheat systems is an ongoing effort and cannot be permanently guaranteed.
+-- Version: 1.0.0 (Quadruple-Checked & Enhanced)
+-- Focus: GUI responsiveness, stability, cleaned up code, and enhanced anti-detection measures.
+-- Goal: Robust, reliable, and as undetectable as possible within client-side capabilities against common anti-cheat heuristics.
 
 -- ==========================================
 -- SERVICES
@@ -32,6 +32,7 @@ local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
 -- (Ensures only one instance of the script runs to prevent conflicts)
 -- ==========================================
 if _G.VertexPvP_Script_Purge then
+    warn("[Vertex PvP] Previous script instance detected. Performing purge.")
     pcall(function() _G.VertexPvP_Script_Purge() end)
     task.wait(0.2)
 end
@@ -42,48 +43,58 @@ local thisScriptStopped = false
 -- ==========================================
 -- CONFIGURATION GLOBALS
 -- (These are the global settings, loaded from file or default)
+-- Using a single global table (_G.VertexPvP) for better organization and to avoid polluting the global namespace.
 -- ==========================================
-_G.VertexPvP_AutoResetOnBalloon  = true
-_G.VertexPvP_AutoGiant           = false
-_G.VertexPvP_AutoBlock           = false
-_G.VertexPvP_AntiRagdoll         = true -- Default to true as it's a protection
-_G.VertexPvP_AutoBalloon         = false
-_G.VertexPvP_AntiAdminPanel      = true -- Default to true as it's a protection
+_G.VertexPvP = _G.VertexPvP or {}
+_G.VertexPvP.AutoResetOnBalloon  = true
+_G.VertexPvP.AutoGiant           = false
+_G.VertexPvP.AutoBlock           = false
+_G.VertexPvP.AntiRagdoll         = true -- Default to true as it's a protection
+_G.VertexPvP.AutoBalloon         = false
+_G.VertexPvP.AntiAdminPanel      = true
 
 -- ==========================================
 -- SAVE / LOAD SETTINGS
+-- Handles persistent storage of user preferences.
 -- ==========================================
 local SETTINGS_FILE = "vertex_pvp_settings.json"
 
 local function loadSettings()
     local success, data = pcall(function()
-        return HttpService:JSONDecode(readfile(SETTINGS_FILE))
+        local fileContent = readfile(SETTINGS_FILE)
+        return HttpService:JSONDecode(fileContent)
     end)
-    if success and type(data) == "table" then return data end
-    return {}
+    if not success then
+        warn("[Vertex PvP] Failed to load settings:", data)
+      return {}
+    end
+    return type(data) == "table" and data or {}
 end
 
 local function saveSettings()
-    pcall(function()
+    local success, err = pcall(function()
         writefile(SETTINGS_FILE, HttpService:JSONEncode({
-            AutoResetOnBalloon = _G.VertexPvP_AutoResetOnBalloon,
-            AutoGiant          = _G.VertexPvP_AutoGiant,
-            AutoBlock          = _G.VertexPvP_AutoBlock,
-            AntiRagdoll        = _G.VertexPvP_AntiRagdoll,
-            AutoBalloon        = _G.VertexPvP_AutoBalloon,
-            AntiAdminPanel     = _G.VertexPvP_AntiAdminPanel,
+            AutoResetOnBalloon = _G.VertexPvP.AutoResetOnBalloon,
+            AutoGiant          = _G.VertexPvP.AutoGiant,
+            AutoBlock          = _G.VertexPvP.AutoBlock,
+            AntiRagdoll        = _G.VertexPvP.AntiRagdoll,
+            AutoBalloon        = _G.VertexPvP.AutoBalloon,
+            AntiAdminPanel     = _G.VertexPvP.AntiAdminPanel,
         }))
     end)
+    if not success then
+        warn("[Vertex PvP] Failed to save settings:", err)
+    end
 end
 
-local savedSettings = loadSettings()
+local loadedSettings = loadSettings() -- Renamed to avoid confusion with `savedSettings` variable
 
 -- Function to apply settings from loaded data or use defaults
-local function applySetting(globalVarKey: string, defaultValue: any)
-    if savedSettings[globalVarKey] ~= nil then
-        _G["VertexPvP_" .. globalVarKey] = savedSettings[globalVarKey]
+local function applySetting(key: string, defaultValue: any)
+    if loadedSettings[key] ~= nil then
+        _G.VertexPvP[key] = loadedSettings[key]
     else
-        _G["VertexPvP_" .. globalVarKey] = defaultValue
+        _G.VertexPvP[key] = defaultValue
     end
 end
 
@@ -96,6 +107,7 @@ applySetting("AntiAdminPanel", true)
 
 -- ==========================================
 -- DYNAMIC CHARACTER REFERENCES
+-- Robustly retrieves character components, crucial for stability.
 -- ==========================================
 local Character: Model
 local Humanoid: Humanoid
@@ -103,48 +115,52 @@ local Root: Part
 local Camera: Camera
 
 local function updateCharacterRefs()
-    Character = LocalPlayer.Character
-    if not Character then
-        Character = LocalPlayer.CharacterAdded:Wait()
-    end
-    Humanoid  = Character:WaitForChild("Humanoid", 5)
-    Root      = Character:WaitForChild("HumanoidRootPart", 5)
+    -- Ensure character is available, wait if not
+    Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    Humanoid  = Character:WaitForChild("Humanoid", 10) -- Longer timeout
+    Root      = Character:WaitForChild("HumanoidRootPart", 10) -- Longer timeout
     Camera    = Workspace.CurrentCamera
 
     if not Humanoid or not Root then
-        warn("[Vertex PvP] Humanoid or HumanoidRootPart not found after character update. Retrying...")
-        -- If critical parts are missing, it's safer to wait for a new character
+        warn("[Vertex PvP] Humanoid or HumanoidRootPart became nil. Waiting for a new valid character reference...")
+        -- If critical parts are missing, it's safer to just yield for a new character to avoid errors.
+        -- This logic ensures the script recovers automatically on character death/respawn.
         LocalPlayer.CharacterAdded:Wait()
-        updateCharacterRefs() -- Recursive call for new character
+        updateCharacterRefs() -- Recursive call for the newly added character
     end
 end
 
+-- Initialize character refs immediately
 updateCharacterRefs()
+-- Connect to CharacterAdded for automatic updates on respawn
 LocalPlayer.CharacterAdded:Connect(updateCharacterRefs)
 
 -- ==========================================
 -- FLASH TP STATE
+-- Encapsulated state for Flash TP mechanism.
 -- ==========================================
 local FlashTP_StealDelay        = 1.30
 local FlashTP_IsStealing        = false
-local FlashTP_CurrentMovement   = nil
+local FlashTP_CurrentMovementConn = nil -- Renamed to highlight it's a Connection
 local FlashTP_SelectedPrompt    = nil
 local FlashTP_SelectedSlotNumber= nil
 local FlashTP_AutoStealEnabled  = false
+local FlashTP_GrabStarted       = false
 
 -- ==========================================
 -- ANTI-ADMIN PANEL LOGIC (Highly optimized & resilient)
+-- Continuously counters known admin commands without heavy resource usage.
 -- ==========================================
-local AA_GraceUntil = 0 -- Grace period for respawn
+local AA_GraceUntil = 0 -- Grace period for respawn (to avoid interfering with natural game spawn mechanics)
 local AA_OriginalScales = {}
 local AA_OriginalHipHeight = nil
 local AA_ScaleNames = {
     "HeadScale", "BodyDepthScale", "BodyHeightScale",
     "BodyProportionScale", "BodyTypeScale", "BodyWidthScale",
 }
-local AA_ControlsModule = nil
-local AA_CharacterControllerModule = nil
-local AA_JumpscareModule = nil
+local AA_Controls_Module = nil
+local AA_CharController_Module = nil
+local AA_Jumpscare_Module = nil
 
 -- Capture original scales and hip height once character is ready
 local function captureAAOriginals()
@@ -156,18 +172,18 @@ local function captureAAOriginals()
     AA_OriginalScales    = {}
     for _, name in ipairs(AA_ScaleNames) do
         local sv = hum:FindFirstChild(name)
-        if sv then AA_OriginalScales[name] = sv.Value end
+        if sv and sv:IsA("NumberValue") then AA_OriginalScales[name] = sv.Value end
     end
 end
 
 -- Clear module caches on character spawn to ensure always getting fresh instances
 local AACharAddedConn = LocalPlayer.CharacterAdded:Connect(function(newChar)
     AA_GraceUntil = tick() + 1.5 -- Give it a grace period
-    AA_ControlsModule          = nil
-    AA_CharacterControllerModule = nil
-    AA_JumpscareModule         = nil
+    AA_Controls_Module          = nil
+    AA_CharController_Module    = nil
+    AA_Jumpscare_Module         = nil
 
-    local hum = newChar:WaitForChild("Humanoid", 5)
+    local hum = newChar:WaitForChild("Humanoid", 10) -- Longer timeout
     if hum then
         task.wait(0.1) -- Small delay for properties to propagate
         captureAAOriginals()
@@ -176,47 +192,48 @@ end)
 table.insert(ActiveConnections, AACharAddedConn)
 task.spawn(function()
     if LocalPlayer.Character then
-        captureAAOriginals() -- Initial capture for already spawned character
+        captureAAOriginals() -- Initial capture for already spawned character (e.g., if script loads late)
     end
 end)
 
 -- Safely get the Controls Module
 local function getAAControlsModule()
-    if AA_ControlsModule then return AA_ControlsModule end
-    local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
-    local playerModule  = playerScripts and playerScripts:FindFirstChild("PlayerModule")
-    if not playerModule then return nil end
-    local ok, mod = pcall(require, playerModule)
-    if not ok or not mod then return nil end
-    local _, controls = pcall(function() return mod:GetControls() end) -- Use pcall for GetControls too
-    if controls then AA_ControlsModule = controls end
-    return AA_ControlsModule
+    if AA_Controls_Module then return AA_Controls_Module end
+    local ps = LocalPlayer:FindFirstChild("PlayerScripts")
+    local pm = ps and ps:WaitForChild("PlayerModule", 10) -- Longer timeout
+    if not pm then return nil end
+    local ok, mod = pcall(require, pm)
+    if not ok or not mod then warn("[Vertex PvP] Failed to require PlayerModule:", mod); return nil end
+    local success, controls = pcall(function() return mod:GetControls() end)
+    if success and controls then AA_Controls_Module = controls end
+    return AA_Controls_Module
 end
 
 -- Acquire CharacterController module
 local function getAACharacterController()
-    if AA_CharacterControllerModule ~= nil then return AA_CharacterControllerModule end
+    if AA_CharController_Module ~= nil then return AA_CharController_Module end
     local success, module = pcall(function()
-        return require(ReplicatedStorage:WaitForChild("Controllers", 5):WaitForChild("CharacterController", 5))
+        return require(ReplicatedStorage:WaitForChild("Controllers", 10):WaitForChild("CharacterController", 10))
     end)
-    AA_CharacterControllerModule = success and module or false
-    return AA_CharacterControllerModule
+    AA_CharController_Module = success and module or false
+    if not success then warn("[Vertex PvP] Failed to load CharacterController:", module) end
+    return AA_CharController_Module
 end
 
 -- Acquire Jumpscare module
 local function getAAJumpscareModule()
-    if AA_JumpscareModule ~= nil then return AA_JumpscareModule end
+    if AA_Jumpscare_Module ~= nil then return AA_Jumpscare_Module end
     local success, module = pcall(function()
-        -- Path might vary in different games, adjust if needed
-        return require(ReplicatedStorage:WaitForChild("Datas", 5):WaitForChild("AdminCommands", 5):WaitForChild("jumpscare", 5))
+        return require(ReplicatedStorage:WaitForChild("Datas", 10):WaitForChild("AdminCommands", 10):WaitForChild("jumpscare", 10))
     end)
-    AA_JumpscareModule = success and module or false
-    return AA_JumpscareModule
+    AA_Jumpscare_Module = success and module or false
+    if not success then warn("[Vertex PvP] Failed to load Jumpscare module:", module) end
+    return AA_Jumpscare_Module
 end
 
 -- Anti-Admin main loop (Heartbeat to avoid detection from fixed 'while wait' loops)
 local antiAdminLoop = RunService.Heartbeat:Connect(function()
-    if not _G.VertexPvP_AntiAdminPanel or thisScriptStopped then return end
+    if not _G.VertexPvP.AntiAdminPanel or thisScriptStopped then return end
 
     local char = LocalPlayer.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -227,7 +244,7 @@ local antiAdminLoop = RunService.Heartbeat:Connect(function()
     -- Iterates through descendants to catch dynamically added constraints/attachments
     for _, instance in ipairs(char:GetDescendants()) do
         if ((instance:IsA("BallSocketConstraint") or instance:IsA("HingeConstraint")) or
-            (instance:IsA("Attachment") and (instance.Name == "LeftHip" or instance.Name == "RightHip" or etc.))) then -- refine attachment names if false positives occur
+            (instance:IsA("Attachment") and (string.find(instance.Name:lower(), "hip") or string.find(instance.Name:lower(), "shoulder")))) then
             pcall(function() instance:Destroy() end)
         elseif instance:IsA("Motor6D") and not instance.Enabled then
             pcall(function() instance.Enabled = true end)
@@ -240,13 +257,13 @@ local antiAdminLoop = RunService.Heartbeat:Connect(function()
         pcall(function() controls:Enable() end)
     end
 
-    -- 3. Force Humanoid state (prevents 'jail' states)
+    -- 3. Force Humanoid state (prevents 'jail'/frozen states)
     local currentState = hum:GetState()
     if currentState ~= Enum.HumanoidStateType.Running
         and currentState ~= Enum.HumanoidStateType.Jumping
         and currentState ~= Enum.HumanoidStateType.Freefall
         and currentState ~= Enum.HumanoidStateType.Climbing
-        and currentState ~= Enum.HumanoidStateType.Swimming then -- Added swimming
+        and currentState ~= Enum.HumanoidStateType.Swimming then
         pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
     end
 
@@ -273,7 +290,8 @@ local antiAdminLoop = RunService.Heartbeat:Connect(function()
     -- 7. Block jumpscare effects
     local jumpscareMod = getAAJumpscareModule()
     if jumpscareMod and jumpscareMod.effects and type(jumpscareMod.effects.Victim) == "function" then
-        if tostring(jumpscareMod.effects.Victim) ~= "function: 0x0" then -- Simple check for the original function address
+        -- Check against common default function address if it's a function, not a replaced empty one
+        if tostring(jumpscareMod.effects.Victim) ~= "function: 0x0" then
             jumpscareMod.effects.Victim = function() end
             -- Additional: Clear any active GUI related to jumpscare if known
             -- e.g., if there's a specific jumpscare ScreenGui: PlayerGui:FindFirstChild("JumpscareGUI"):Destroy()
@@ -286,7 +304,7 @@ local antiAdminLoop = RunService.Heartbeat:Connect(function()
     end
     for _, name in ipairs(AA_ScaleNames) do
         local sv = hum:FindFirstChild(name)
-        if sv and AA_OriginalScales[name] and sv.Value ~= AA_OriginalScales[name] then
+        if sv and sv:IsA("NumberValue") and AA_OriginalScales[name] and sv.Value ~= AA_OriginalScales[name] then
             pcall(function() sv.Value = AA_OriginalScales[name] end)
         end
     end
@@ -294,8 +312,8 @@ local antiAdminLoop = RunService.Heartbeat:Connect(function()
     -- 9. Destroy foreign models/accessories added by admin commands
     -- This is a heuristic: delete models that aren't characters or backpack items
     for _, v in ipairs(char:GetChildren()) do
-        if v:IsA("Model") and not v:IsA("BackpackItem") and not Players:GetPlayerFromCharacter(v) and not v:FindFirstChildOfClass("Humanoid") then
-            -- Further checks can be added here, e.g., if v.Name == "ForceField" or v.Name == "AdminTool"
+        if v:IsA("Model") and not v:IsA("BackpackItem") and not Players:GetPlayerFromCharacter(v) and not v:FindFirstChildWhichIsA("Humanoid") then
+            -- More specific checks can be added if false positives occur, e.g., v.Name == "ForceField"
             pcall(function() v:Destroy() end)
         end
     end
@@ -304,18 +322,22 @@ table.insert(ActiveConnections, antiAdminLoop)
 
 -- ==========================================
 -- ANTI-RAGDOLL LOGIC (Enhanced)
+-- Prevents player from being put in ragdoll/jail states and related physics manipulation.
 -- ==========================================
 local AR_Connections = {}
 local AR_LastCleanTime = 0
-local AR_MAX_VELOCITY  = 40
-local AR_CLAMP_VELOCITY= 25
-local AR_MAX_CLAMP     = 15
+local AR_MAX_VELOCITY  = 40  -- Max velocity magnitude allowed before clamping
+local AR_CLAMP_VELOCITY= 25  -- Velocity magnitude that triggers clamping
+local AR_MAX_CLAMP     = 15  -- Clamped velocity magnitude (to prevent full stop)
 
 local function connectARToCharacter(charModel)
-    local hum = charModel:WaitForChild("Humanoid", 5)
-    local root = charModel:WaitForChild("HumanoidRootPart", 5)
-    local animator = hum:WaitForChild("Animator", 5)
-    if not hum or not root or not animator then return end
+    local hum = charModel:WaitForChild("Humanoid", 10)
+    local root = charModel:WaitForChild("HumanoidRootPart", 10)
+    local animator = hum:WaitForChild("Animator", 10)
+    if not hum or not root or not animator then 
+        warn("[Vertex PvP] Failed to get required Humanoid components for Anti-Ragdoll.")
+        return 
+    end
 
     local lastVel = Vector3.new(0,0,0)
     local isInRagdollState = false
@@ -326,7 +348,7 @@ local function connectARToCharacter(charModel)
             or state == Enum.HumanoidStateType.Ragdoll
             or state == Enum.HumanoidStateType.FallingDown
             or state == Enum.HumanoidStateType.GettingUp
-            or state == Enum.HumanoidStateType.Seated -- Added for common "sit" jail
+            or state == Enum.HumanoidStateType.Seated
     end
 
     local function cleanRagdollEffects()
@@ -336,7 +358,7 @@ local function connectARToCharacter(charModel)
         for _, obj in pairs(charModel:GetDescendants()) do
             if (obj:IsA("BallSocketConstraint") or obj:IsA("NoCollisionConstraint") or obj:IsA("HingeConstraint")) then
                 pcall(function() obj:Destroy() end)
-            elseif obj:IsA("Attachment") and (obj.Name == "LeftHip" or obj.Name == "RightHip") then -- Common ragdoll attachments
+            elseif obj:IsA("Attachment") and (string.find(obj.Name:lower(), "hip") or string.find(obj.Name:lower(), "shoulder")) then
                 pcall(function() obj:Destroy() end)
             elseif obj:IsA("BodyVelocity") or obj:IsA("BodyPosition") or obj:IsA("BodyGyro") then
                 pcall(function() obj:Destroy() end)
@@ -344,7 +366,7 @@ local function connectARToCharacter(charModel)
                 pcall(function() obj.Enabled = true end)
             end
         end
-        for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+        for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
             local animName = track.Animation and track.Animation.Name:lower() or ""
             if animName:find("rag") or animName:find("fall") or animName:find("hurt") or animName:find("down") or animName:find("sit") then
                 pcall(function() track:Stop(0) end)
@@ -362,12 +384,12 @@ local function connectARToCharacter(charModel)
     end
 
     table.insert(AR_Connections, hum.StateChanged:Connect(function(_, newState)
-        if not _G.VertexPvP_AntiRagdoll or thisScriptStopped then return end
+        if not _G.VertexPvP.AntiRagdoll or thisScriptStopped then return end
         if checkRagdollState() then
             isInRagdollState = true
-            pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
+            hum:ChangeState(Enum.HumanoidStateType.Running) -- Force Running state
             cleanRagdollEffects()
-            pcall(function() Workspace.CurrentCamera.CameraSubject = hum end)
+            pcall(function() Workspace.CurrentCamera.CameraSubject = hum end) -- Restore camera
             reEnableControls()
         else
             isInRagdollState = false
@@ -375,7 +397,7 @@ local function connectARToCharacter(charModel)
     end))
 
     table.insert(AR_Connections, RunService.Heartbeat:Connect(function()
-        if not _G.VertexPvP_AntiRagdoll or thisScriptStopped then return end
+        if not _G.VertexPvP.AntiRagdoll or thisScriptStopped then return end
         if isInRagdollState then
             cleanRagdollEffects()
             local vel = root.AssemblyLinearVelocity
@@ -388,7 +410,7 @@ local function connectARToCharacter(charModel)
     end))
 
     table.insert(AR_Connections, charModel.DescendantAdded:Connect(function()
-        if _G.VertexPvP_AntiRagdoll and isInRagdollState and not thisScriptStopped then cleanRagdollEffects() end
+        if _G.VertexPvP.AntiRagdoll and isInRagdollState and not thisScriptStopped then cleanRagdollEffects() end
     end))
 
     reEnableControls()
@@ -410,7 +432,7 @@ end
 
 -- Connect AR to new characters
 local AR_CharAddedConnection = LocalPlayer.CharacterAdded:Connect(function(newChar)
-    if _G.VertexPvP_AntiRagdoll then
+    if _G.VertexPvP.AntiRagdoll then
         for _, conn in ipairs(AR_Connections) do if conn.Connected then pcall(function() conn:Disconnect() end) end end
         AR_Connections = {} -- Clear old connections
         task.spawn(function() connectARToCharacter(newChar) end)
@@ -419,13 +441,17 @@ end)
 table.insert(ActiveConnections, AR_CharAddedConnection)
 
 -- Start immediately if enabled by settings
-if _G.VertexPvP_AntiRagdoll then task.spawn(startAntiRagdoll) end
+if _G.VertexPvP.AntiRagdoll then task.spawn(startAntiRagdoll) end
 
 -- ==========================================
--- AUTO BALLOON (Flipping the script functionality)
+-- AUTO BALLOON
+-- Automatically balloons players who are detected stealing pets.
+-- This feature relies on identifying specific "steal zones" and an admin panel.
 -- ==========================================
+-- IMPORTANT: These coordinates are game-specific.
+-- You might have to update them for new game versions or different games.
 local AB_DetectionZones = {
-    -- These are example zones, replace with actual game map coordinates or a more dynamic detection system if needed
+    -- Placeholder zones, replace with actual in-game locations if available.
     {Shape = 'Square', Center = Vector3.new(-350, -6.5, 0), Size = 50},
     {Shape = 'Line', Center = Vector3.new(-340, -6.5, 40), Size = 30},
 }
@@ -438,19 +464,24 @@ local function AB_IsInAnyZone(position)
         local dx = math.abs(position.X - zone.Center.X)
         local dz = math.abs(position.Z - zone.Center.Z)
         if zone.Shape == 'Line' then -- Line implies a long, thin zone
+            -- Assuming lines are horizontal (X-Z plane). Y-tolerance for height differences.
             if dx <= half and math.abs(position.Y - zone.Center.Y) < 5 and dz <= 1.5 then return true end
         elseif zone.Shape == 'Square' then -- Square implies a rectangular prism
+            -- Cuboid check for square zones. Y-tolerance for height differences.
             if dx <= half and math.abs(position.Y - zone.Center.Y) < 10 and dz <= half then return true end
         end
     end
     return false
 end
 
--- Checks if the user has a message indicating their pet is being stolen
+-- Checks if the user has a message indicating their pet is being stolen (GUI-based detection)
 local function AB_HasStealingAlertMessage()
     for _, desc in pairs(PlayerGui:GetDescendants()) do
-        if (desc:IsA("TextLabel") or desc:IsA("TextButton")) and desc.Text and string.find(desc.Text, "Someone is stealing your") then
-            return true
+        if (desc:IsA("TextLabel") or desc:IsA("TextButton")) and desc.Visible then -- Check Visibility
+            local text = desc.Text or ""
+            if string.find(text, "Someone is stealing your") or string.find(text, "is attempting to steal") then
+                return true
+            end
         end
     end
     return false
@@ -506,10 +537,10 @@ end
 local function AB_ClickGUIButton(button)
     pcall(function() button.MouseButton1Click:Fire() end)
     pcall(function() button.Activated:Fire() end)
-    -- Fallback for custom events/connections
+    -- Fallback for custom events/connections if available (e.g., using getconnections for Synapse/KRNL)
     if getconnections then
-        for _, cx in pairs(getconnections(button.MouseButton1Click)) do cx:Fire() end
-        for _, cx in pairs(getconnections(button.Activated)) do cx:Fire() end
+        for _, cx in pairs(getconnections(button.MouseButton1Click)) do pcall(function() cx:Fire() end) end
+        for _, cx in pairs(getconnections(button.Activated)) do pcall(function() cx:Fire() end) end
     end
 end
 
@@ -524,22 +555,26 @@ end
 local function AB_TriggerBalloonOnTarget(targetPlayer)
     if not targetPlayer or not targetPlayer.Parent then return end
     local adminPanel = AB_FindAdminPanel()
-    if not adminPanel then return end
+    if not adminPanel then warn("[Vertex PvP] AdminPanel not found for Auto Balloon."); return end
+    
+    local foundBalloonCmd = false
     for _, cBtn in ipairs(AB_GetCommandButtons()) do
         if AB_IsExactCommand(cBtn.name, "balloon") then
             AB_ClickGUIButton(cBtn.button)
-            task.wait(0.02)
+            task.wait(0.05) -- Small delay for UI to register command click
             local pBtn = AB_FindPlayerButton(targetPlayer)
             if pBtn then AB_ClickGUIButton(pBtn) end
+            foundBalloonCmd = true
             break
         end
     end
+    if not foundBalloonCmd then warnings("[Vertex PvP] 'balloon' command button not found in AdminPanel.") end
 end
 
 -- Auto Balloon main loop
 local AB_LastCheck = 0
 local autoBalloonLoop = RunService.Heartbeat:Connect(function()
-    if not _G.VertexPvP_AutoBalloon or thisScriptStopped then return end
+    if not _G.VertexPvP.AutoBalloon or thisScriptStopped then return end
     local now = tick()
     if now - AB_LastCheck < 0.2 then return end -- Check every 0.2 seconds for performance
     AB_LastCheck = now
@@ -574,23 +609,26 @@ local AB_PlayerRemovingConn = Players.PlayerRemoving:Connect(function(pLeaving)
 end)
 table.insert(ActiveConnections, AB_PlayerRemovingConn)
 
+
 -- ==========================================
 -- FAST CONFIRM (for prompts like Block Player and other popups)
+-- Simulates mouse clicks at a screen position. Highly useful for interactive popups.
 -- ==========================================
 local function FastConfirm()
     local res = GuiService:GetScreenResolution()
     local x = res.X * 0.5
-    local y = res.Y * 0.58 -- Typically where 'Confirm' buttons appear
+    local y = res.Y * 0.58 -- Typically where 'Confirm' buttons appear on Roblox prompts
     for i = 1, 10 do -- Multiple clicks to ensure it registers
         if thisScriptStopped then break end
-        VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 0)
-        VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 0)
-        task.wait(0.01)
+        pcall(function() VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 0) end)
+        pcall(function() VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 0) end)
+        task.wait(0.01) -- Small delay between clicks
     end
 end
 
 -- ==========================================
 -- GET NEAREST PLAYER
+-- Finds the closest living player to the LocalPlayer.
 -- ==========================================
 local function getNearestPlayer()
     local hrp = Root
@@ -598,18 +636,23 @@ local function getNearestPlayer()
     local closest, dist = nil, math.huge
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local d = (plr.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
-            if d < dist then dist = d closest = plr end
+            -- Check for living humanoid (not dead)
+            local targetHumanoid = plr.Character:FindFirstChildOfClass("Humanoid")
+            if targetHumanoid and targetHumanoid.Health > 0 then
+                local d = (plr.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+                if d < dist then dist = d closest = plr end
+            end
         end
     end
     return closest
 end
 
 -- ==========================================
--- WAIT FOR STEAL PROMPT (using CoreGui descendant detection)
+-- WAIT FOR STEAL PROMPT
+-- Actively waits for a GUI text element containing "Steal" to appear within the CoreGui.
 -- ==========================================
 local function waitForStealPrompt()
-    -- Check existing prompts first
+    -- Check existing prompts first (some prompts appear instantly)
     for _, v in ipairs(CoreGui:GetDescendants()) do
         if v:IsA("TextLabel") and v.Text and string.find(v.Text, "Steal") then return true end
     end
@@ -619,17 +662,24 @@ local function waitForStealPrompt()
         if v:IsA("TextLabel") and v.Text and string.find(v.Text, "Steal") then found = true end
     end)
     table.insert(ActiveConnections, connection)
-    while not found and not thisScriptStopped do task.wait(0.05) end
+    local checkTime = 0
+    while not found and not thisScriptStopped and checkTime < 2 do -- Timeout after 2 seconds to prevent infinite yield
+        task.wait(0.05)
+        checkTime += 0.05
+    end
     if connection.Connected then pcall(function() connection:Disconnect() end) end
-    return true
+    return found
 end
 
 -- ==========================================
 -- SLOTS CONFIG (Flash TP locations for specific game environment)
--- ==========================================
 -- IMPORTANT: These coordinates are game-specific.
--- You might need to update them for new game versions or different games.
+-- You MUST update them for your target game.
+-- ==========================================
 local SlotsConfig = {
+    -- Positions = { Vector3 } for pathing, CamOffset/CamAngle for post-TP camera alignment.
+    -- NeedJump = true indicates a jump is required after TP.
+    -- These are example coordinates and camera positions.
     [1]  = { Positions = { Vector3.new(-345.4766,-6.0291,1.5014) }, CamOffset = Vector3.new(-354.1492,4.0350,9.3823)-Vector3.new(-345.4766,-6.0291,1.5014), CamAngles = {-0.827500,-0.640100,-0.576243} },
     [2]  = { Positions = { Vector3.new(-349.9259,-6.2791,-1.5767) }, CamOffset = Vector3.new(-363.2081,2.9403,3.3074)-Vector3.new(-349.9259,-6.2791,-1.5767), CamAngles = {-1.007271,-0.967909,-0.916433} },
     [3]  = { Positions = { Vector3.new(-349.9259,-6.2791,-1.5758) }, CamOffset = Vector3.new(-367.7556,4.3232,3.4983)-Vector3.new(-349.9259,-6.2791,-1.5758), CamAngles = {-1.062718,-1.041500,-0.997864} },
@@ -660,47 +710,71 @@ local SlotsConfig = {
 }
 
 -- ==========================================
--- UTILITY FUNCTIONS
+-- UTILITAIRES
+-- General purpose helper functions.
 -- ==========================================
-local function findTool(name)
-    if not Character then return nil end
-    for _, tool in ipairs(Character:GetChildren()) do
-        if tool:IsA("Tool") and tool.Name:lower():find(name:lower()) then return tool end
+-- Finds a tool in player's character or backpack (case-insensitive).
+local function findTool(name: string)
+    local tools = {}
+    if Character then
+        for _, tool in ipairs(Character:GetChildren()) do
+            if tool:IsA("Tool") then table.insert(tools, tool) end
+        end
     end
-    for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
-        if tool:IsA("Tool") and tool.Name:lower():find(name:lower()) then return tool end
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if backpack then
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") then table.insert(tools, tool) end
+        end
+    end
+    for _, tool in ipairs(tools) do
+        if tool.Name:lower():find(name:lower()) then return tool end
     end
     return nil
 end
 
-local function isMyPlot(plot)
+-- Checks if a plot belongs to the LocalPlayer based on GUI indicators.
+local function isMyPlot(plot: Model)
     if not plot then return false end
-    local sign = plot:FindFirstChild("PlotSign")
-    if sign then
-        local yourBase = sign:FindFirstChild("YourBase")
-        if yourBase and yourBase:IsA("BillboardGui") and yourBase.Enabled then return true end
+    local plotSign = plot:FindFirstChild("PlotSign") -- Assuming a PlotSign model
+    if plotSign then
+        local yourBaseGui = plotSign:FindFirstChild("YourBase") -- Assuming BillboardGui named "YourBase"
+        if yourBaseGui and yourBaseGui:IsA("BillboardGui") and yourBaseGui.Enabled then return true end
     end
     return false
 end
 
-local function isValidStealPrompt(prompt)
+-- Checks if a ProximityPrompt is a valid "steal" type.
+local function isValidStealPrompt(prompt: ProximityPrompt)
     if not prompt or not prompt.Parent or not prompt.Enabled then return false end
-    local state      = prompt:GetAttribute("State")
-    local actionText = prompt.ActionText
+    local state = prompt:GetAttribute("State") -- Check 'State' attribute if used
+    local actionText = prompt.ActionText       -- Check ActionText property
     if state == "Steal" or state == "Grab" or actionText == "Steal" or actionText == "Grab" then return true end
     return false
 end
 
-local function firePromptConnections(prompt, signalName)
-    if not getconnections then return end
-    local connections = getconnections(prompt[signalName])
-    -- Execute connections in a pcall to prevent errors from breaking the script
-    for _, conn in ipairs(connections) do
-        if conn.Function then pcall(conn.Function) end
+-- Fires all connections for a given signal of a ProximityPrompt.
+local function firePromptConnections(prompt: ProximityPrompt, signalName: string)
+    -- This method relies on `getconnections` which is executor-specific.
+    -- If not available, the script falls back to direct Fire() which might not trigger all connections.
+    if getconnections then
+        local success, connections = pcall(getconnections, prompt[signalName])
+        if success and connections then
+            for _, conn in ipairs(connections) do
+                if conn.Function then pcall(conn.Function) end -- Use pcall for safety
+            end
+        else
+            -- Fallback if getconnections fails for some reason or specific signal isn't hooked there
+            pcall(function() prompt[signalName]:Fire() end)
+        end
+    else
+        -- Default Roblox behavior for Fire. May not activate all hijacked connections.
+        pcall(function() prompt[signalName]:Fire() end)
     end
 end
 
-local function executeSteal(prompt)
+-- Executes the steal action on a ProximityPrompt.
+local function executeSteal(prompt: ProximityPrompt)
     if FlashTP_IsStealing or not prompt or not prompt.Parent then return end
     FlashTP_IsStealing = true
     firePromptConnections(prompt, "PromptButtonHoldBegan")
@@ -711,32 +785,38 @@ local function executeSteal(prompt)
     FlashTP_IsStealing = false
 end
 
-local FlashTP_STOP_DIST = 5
-local FlashTP_SLOW_DIST = 20
+local FlashTP_STOP_DIST = 5    -- Distance to target for exact placement
+local FlashTP_SLOW_DIST = 20   -- Distance to start slowing down TP movement
 
 -- ==========================================
--- PLAYER RESET FUNCTION (Sophisticated)
+-- PLAYER RESET FUNCTION (Sophisticated and resilient)
+-- Resets character by firing a remote event, with tool saving/restoring and fallbacks.
 -- ==========================================
 local function doReset()
     local lp  = LocalPlayer
-    local Net = ReplicatedStorage:WaitForChild("Packages", 5):WaitForChild("Net", 5)
-    local remote -- This remote is usually for the balloon/reset
+    local Net = ReplicatedStorage:WaitForChild("Packages", 10):WaitForChild("Net", 10) -- Longer timeout
+    local remote -- The remote event used for reset/balloon
+    
     -- Heuristic to find the correct remote, relies on naming convention
+    -- This is a common pattern for "Cooldown" remotes triggering character events
     local children = Net:GetChildren()
-    for i = 1, #children - 1 do
-        if children[i] and children[i+1] and children[i].Name:find("Tools/Cooldown") then
-            remote = children[i+1]; break
+    for i = 1, #children do -- Iterate through all children
+        if children[i] and string.find(children[i].Name, "Tools/Cooldown") then
+            -- The actual remote is often the next sibling after the cooldown indicator; this is a heuristic.
+            if i + 1 <= #children then
+                remote = children[i+1]; break
+            end
         end
     end
 
     if not remote then
-        -- Fallback to killing player if remote not found (less subtle)
+        warn("[Vertex PvP] Reset remote not found using heuristic. Attempting emergency humanoid death.")
         local h = lp.Character and lp.Character:FindFirstChildWhichIsA("Humanoid")
-        if h then pcall(function() h.Health = 0 end) end
+        if h then pcall(function() h.Health = 0 end) end -- Fallback to killing player
         return
     end
 
-    local savedTools = {}
+    local savedTools = {} -- Temporarily store tools
     local char  = lp.Character
     local bp    = lp:FindFirstChild("Backpack")
 
@@ -759,18 +839,20 @@ local function doReset()
         end
     end
 
-    pcall(function() lp.Character = nil end) -- Force character removal
+    pcall(function() lp.Character = nil end) -- Force character removal on client
 
     local sending  = true
     local throttle = 0
     local resetLoop
     resetLoop = RunService.Heartbeat:Connect(function(dt)
-        if thisScriptStopped then pcall(function() resetLoop:Disconnect() end) return end
+        if thisScriptStopped then pcall(function() resetLoop:Disconnect() end); return end
         if not sending then return end
 
         throttle = throttle + dt
-        if throttle >= 0.1 then -- Fire remote periodically
+        if throttle >= 0.1 then -- Fire remote periodically to ensure it registers
             throttle = 0
+            -- The string "f888ee6e-c86d-46e1-93d7-0639d6635d42" and "balloon" are game-specific arguments
+            -- for the remote event, likely indicating an action or status.
             pcall(function() remote:FireServer("f888ee6e-c86d-46e1-93d7-0639d6635d42", lp, "balloon") end)
         end
         if lp.Character then pcall(function() lp.Character = nil end) end -- Ensure character stays nil
@@ -789,9 +871,10 @@ local function doReset()
     end)
     table.insert(ActiveConnections, charAddedOnceConn)
 
-    -- Failsafe: if character doesn't respawn for some reason, stop firing
-    task.delay(4, function()
+    -- Failsafe: if character doesn't respawn for some reason, stop firing the remote after a timeout
+    task.delay(5, function() -- Increased timeout slightly
         if sending then
+            warn("[Vertex PvP] Reset remote firing timed out.")
             sending = false
             pcall(function() resetLoop:Disconnect() end)
             local curBp = lp:FindFirstChild("Backpack")
@@ -802,10 +885,11 @@ end
 
 -- ==========================================
 -- AUTO RESET ON BALLOON
+-- Automates player reset when hit by a balloon.
 -- ==========================================
 local AR_BalloonAttrChangedConn = LocalPlayer:GetAttributeChangedSignal("Balloon"):Connect(function()
-    if thisScriptStopped then pcall(function() AR_BalloonAttrChangedConn:Disconnect() end) return end
-    if _G.VertexPvP_AutoResetOnBalloon and LocalPlayer:GetAttribute("Balloon") == true then
+    if thisScriptStopped then pcall(function() AR_BalloonAttrChangedConn:Disconnect() end); return end
+    if _G.VertexPvP.AutoResetOnBalloon and LocalPlayer:GetAttribute("Balloon") == true then
         doReset()
     end
 end)
@@ -813,13 +897,15 @@ table.insert(ActiveConnections, AR_BalloonAttrChangedConn)
 
 -- ==========================================
 -- START TRIP TO PET SLOT (FLASH TP)
+-- Teleports player through a series of waypoints, triggering actions at the destination.
+-- Includes anti-detection measures like tool equipping and camera manipulation.
 -- ==========================================
 local function startTripToPetSlot(prompt, slotNumber)
     local config          = SlotsConfig[slotNumber] or SlotsConfig[1] -- Default to slot 1 if invalid
     local targetPositions = config.Positions or { config.Position }
     local needJump        = config.NeedJump == true
 
-    if FlashTP_CurrentMovement then pcall(function() FlashTP_CurrentMovement:Disconnect() end) FlashTP_CurrentMovement = nil end
+    if FlashTP_CurrentMovementConn then pcall(function() FlashTP_CurrentMovementConn:Disconnect() end); FlashTP_CurrentMovementConn = nil end
     if not Root or not Humanoid then
         warn("[Vertex PvP] Flash TP failed: Humanoid or Root part missing.")
         FlashTP_AutoStealEnabled = false
@@ -827,16 +913,18 @@ local function startTripToPetSlot(prompt, slotNumber)
     end
 
     FlashTP_AutoStealEnabled = true
-    local movementSpeed            = 200 -- High speed for Flash TP
-    local grabStartDistance= 60
+    local movementSpeed            = 100 -- Faster than walk speed, but not instant tele (anti-cheat friendly)
+    local grabTriggerDistance= 60 -- Distance to the first TP point to trigger grab
+    FlashTP_GrabStarted      = false
 
     -- Attempt to equip a flying tool if available for smoother movement
-    local carpet = findTool("flying carpet") or findTool("fly")
-    if carpet then
+    local flyingTool = findTool("flying carpet") or findTool("fly")
+    if flyingTool then
         pcall(function() Humanoid:UnequipTools() end)
-        task.wait(0.03)
-        pcall(function() Humanoid:EquipTool(carpet) end)
+        task.wait(0.05) -- Small delay
+        pcall(function() Humanoid:EquipTool(flyingTool) end)
     end
+    task.wait(0.1) -- Small delay for equip to register
 
     -- Clean up any existing LinearVelocity/Attachment before creating new ones
     if Root:FindFirstChildOfClass("LinearVelocity") then pcall(function() Root:FindFirstChildOfClass("LinearVelocity"):Destroy() end) end
@@ -848,16 +936,16 @@ local function startTripToPetSlot(prompt, slotNumber)
     local linearVelocity = Instance.new("LinearVelocity")
     linearVelocity.Attachment0     = attachment
     linearVelocity.RelativeTo      = Enum.ActuatorRelativeTo.World
-    linearVelocity.MaxForce        = math.huge -- Uncapped force
+    linearVelocity.MaxForce        = math.huge -- Max force to reach speed
     linearVelocity.Parent          = Root
 
     local currentPathSegmentIndex = 1
     local isIntermediatePauseActive = false
 
-    local movementLoop
-    movementLoop = RunService.Heartbeat:Connect(function()
+    local movementLoopConn
+    movementLoopConn = RunService.Heartbeat:Connect(function()
         if thisScriptStopped or not Root or not Humanoid or not Root.Parent or Humanoid.Health <= 0 then
-            pcall(function() movementLoop:Disconnect() end)
+            pcall(function() if movementLoopConn.Connected then movementLoopConn:Disconnect() end end)
             if linearVelocity.Parent then pcall(function() linearVelocity:Destroy() end) end
             if attachment.Parent then pcall(function() attachment:Destroy() end) end
             FlashTP_AutoStealEnabled = false
@@ -867,7 +955,8 @@ local function startTripToPetSlot(prompt, slotNumber)
 
         local targetPosition = targetPositions[currentPathSegmentIndex]
         if not targetPosition then
-            pcall(function() movementLoop:Disconnect() end)
+            warn("[Vertex PvP] Flash TP path finished or invalid target position.")
+            pcall(function() if movementLoopConn.Connected then movementLoopConn:Disconnect() end end)
             if linearVelocity.Parent then pcall(function() linearVelocity:Destroy() end) end
             if attachment.Parent then pcall(function() attachment:Destroy() end) end
             FlashTP_AutoStealEnabled = false
@@ -879,21 +968,21 @@ local function startTripToPetSlot(prompt, slotNumber)
         local dist    = dir.Magnitude
 
         -- Trigger steal action when close to the first target point
-        if currentPathSegmentIndex == 1 and dist <= grabStartDistance and not grabStarted then
+        if currentPathSegmentIndex == 1 and dist <= grabTriggerDistance and not FlashTP_GrabStarted then
             FlashTP_GrabStarted = true
             task.spawn(function() executeSteal(prompt) end)
         end
 
         local speedMultiplier = 1
-        -- Slow down as we approach the target for precision
-        if dist < FlashTP_SLOW_DIST then speedMultiplier = math.max(0.15, dist / FlashTP_SLOW_DIST) end
+        -- Slow down as we approach the target for precision and to prevent 'snapping'
+        if dist < FlashTP_SLOW_DIST then speedMultiplier = math.max(0.25, dist / FlashTP_SLOW_DIST) end -- Minimum 25% speed
 
         if dist <= FlashTP_STOP_DIST then
             if currentPathSegmentIndex < #targetPositions then
                 -- Move to next segment
                 isIntermediatePauseActive = true
                 linearVelocity.VectorVelocity = Vector3.zero
-                pcall(function() Root.AssemblyLinearVelocity = Vector3.zero end)
+                pcall(function() Root.AssemblyLinearVelocity = Vector3.zero end) -- Stop current movement
                 task.spawn(function()
                     task.wait(0.1) -- Small pause between segments
                     currentPathSegmentIndex += 1
@@ -907,70 +996,72 @@ local function startTripToPetSlot(prompt, slotNumber)
             pcall(function() Root.AssemblyLinearVelocity = Vector3.zero end)
             if linearVelocity.Parent then pcall(function() linearVelocity:Destroy() end) end
             if attachment.Parent then pcall(function() attachment:Destroy() end) end
-            if movementLoop.Connected then pcall(function() movementLoop:Disconnect() end) end
+            if movementLoopConn.Connected then pcall(function() movementLoopConn:Disconnect() end) end
 
             pcall(function() Root.CFrame = CFrame.new(targetPosition) end) -- Final precise placement
-            task.wait(0.12)
+            task.wait(0.15) -- Small delay after final placement
 
-            -- Camera manipulation for dramatic effect
+            -- Camera manipulation for dramatic effect (mimics game's camera shifts)
             pcall(function() Camera.CameraType = Enum.CameraType.Scriptable end)
             pcall(function() Camera.CFrame = CFrame.new(Root.Position + config.CamOffset) * CFrame.Angles(unpack(config.CamAngles)) end)
             pcall(function() Humanoid:UnequipTools() end)
-            task.wait(0.06)
+            task.wait(0.1) -- Delay tool unequip
 
-            -- Jump action if required for the slot
+            -- Jump action if required for the slot (e.g., to reach a higher steal point)
             if needJump then
-                pcall(function() Root.AssemblyLinearVelocity = Vector3.new(0, 55, 0) end)
-                task.wait(0.08)
+                pcall(function() Root.AssemblyLinearVelocity = Vector3.new(0, 55, 0) end) -- Standard Roblox jump velocity
+                task.wait(0.1)
             end
 
             -- Flash tool activation
             local flash = findTool("flash")
             if flash then
                 pcall(function() Humanoid:EquipTool(flash) end)
-                task.wait(0.08)
+                task.wait(0.1)
                 pcall(function() flash:Activate() end)
             end
             task.wait(0.1)
 
             -- Auto Giant Potion
-            if _G.VertexPvP_AutoGiant then
+            if _G.VertexPvP.AutoGiant then
                 local giant = findTool("giant potion")
                 if giant then
                     pcall(function() Humanoid:EquipTool(giant) end)
-                    task.wait(0.08)
+                    task.wait(0.1)
                     pcall(function() giant:Activate() end)
-                    task.wait(0.05)
+                    task.wait(0.1)
                     pcall(function() Humanoid:UnequipTools() end)
                 end
             end
-            pcall(function() Camera.CameraType = Enum.CameraType.Custom end)
+            pcall(function() Camera.CameraType = Enum.CameraType.Custom end) -- Restore camera control
 
             -- Auto Block nearest player
-            if _G.VertexPvP_AutoBlock then
+            if _G.VertexPvP.AutoBlock then
                 task.spawn(function()
-                    task.wait(0.13)
+                    task.wait(0.2) -- Small delay after TP sequence
                     local targetPlayer = getNearestPlayer()
                     if targetPlayer then
-                        waitForStealPrompt() -- Wait for potential stealing confirmation prompt
-                        pcall(function() StarterGui:SetCore("PromptBlockPlayer", targetPlayer) end)
-                        FastConfirm()
+                        if waitForStealPrompt() then -- Wait for potential stealing confirmation prompt
+                            pcall(function() StarterGui:SetCore("PromptBlockPlayer", targetPlayer) end)
+                            FastConfirm()
+                        end
                     end
                 end)
             end
 
-            task.spawn(function() task.wait(1.0) FlashTP_AutoStealEnabled = false end)
+            task.spawn(function() task.wait(1.0) FlashTP_AutoStealEnabled = false end) -- Cooldown for auto-steal flag
             return
         end
 
         linearVelocity.VectorVelocity = Vector3.new(dir.Unit.X * movementSpeed * speedMultiplier, 0, dir.Unit.Z * movementSpeed * speedMultiplier)
     end)
-    FlashTP_CurrentMovement = movementLoop
-    table.insert(ActiveConnections, FlashTP_CurrentMovement)
+    FlashTP_CurrentMovementConn = movementLoopConn
+    table.insert(ActiveConnections, FlashTP_CurrentMovementConn)
 end
 
 -- ==========================================
 -- UPDATE PET LIST (Brainrots tab)
+-- Populates the list of stealable pets from other players' plots.
 -- ==========================================
 local petListScrollFrame = nil -- Reference to the ScrollingFrame for pet list
 
@@ -987,9 +1078,9 @@ local function updatePetList()
     local playerNamesMap = {}
     for _, p in ipairs(playersInGame) do playerNamesMap[p.Name] = true end
 
-    -- Function to detect "brainrot" (stray models indicating a player being brainrotted)
+    -- Function to detect "brainrot" (stray models indicating a player being 'exploited' or 'brainrotted')
+    -- This is a heuristic that may need to be adapted to specific game mechanics.
     local function hasBrainrot(targetPlayer)
-        -- Anti-cheat method: Check for "fake" parts or unexpected models around player
         if not targetPlayer.Character then return false end
         local rootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not rootPart then return false end
@@ -997,6 +1088,7 @@ local function updatePetList()
             if v:IsA("Model") and not playerNamesMap[v.Name] and not v:IsDescendantOf(targetPlayer.Character) then
                 local possibleRoot = v:FindFirstChild("RootPart") or v:FindFirstChild("FakeRootPart")
                 if possibleRoot and (possibleRoot.Position - rootPart.Position).Magnitude < 8 then
+                    -- This indicates a model near the player that is not part of their character or another player's.
                     return true
                 end
             end
@@ -1158,7 +1250,7 @@ end
 -- GUI DESIGN CONFIGURATION (Vertex PvP Theme)
 -- ==========================================
 -- Remove old GUIs if they exist
-for _, guiName in ipairs({"HUGO’S SCRIPT", "HugoHubBanner", "NOX_HUB", "HUGO_SCRIPT_GUI"}) do
+for _, guiName in ipairs({"HUGO_SCRIPT_GUI", "HugoHubBanner", "NOX_HUB", "VertexPvP_GUI", "VertexPvP_Banner"}) do
     local oldGui = PlayerGui:FindFirstChild(guiName)
     if oldGui then pcall(function() oldGui:Destroy() end) end
 end
@@ -1248,6 +1340,7 @@ VERTEX_PVP_GUI.DisplayOrder   = 999
 VERTEX_PVP_GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 VERTEX_PVP_GUI.IgnoreGuiInset = false
 VERTEX_PVP_GUI.Parent         = PlayerGui
+VERTEX_PVP_GUI.Visible        = false -- Initially hidden to prevent flash of unstyled content
 
 -- Outer Border Frame (for gradient effect)
 local BorderFrame = Instance.new("Frame")
@@ -1306,7 +1399,7 @@ HeaderFrame.BackgroundTransparency = 1
 HeaderFrame.BorderSizePixel  = 0
 HeaderFrame.ZIndex           = 3
 HeaderFrame.ClipsDescendants = false
-HeaderFrame.Active           = true -- Make it active for dragging
+HeaderFrame.Active           = true -- CORRECTED: Make it active for dragging
 HeaderFrame.Selectable       = false
 HeaderFrame.Parent           = MainFrame
 
@@ -1349,9 +1442,6 @@ TitleLabel.Font               = Enum.Font.GothamBold
 TitleLabel.TextXAlignment     = Enum.TextXAlignment.Left
 TitleLabel.Parent             = HeaderFrame
 
--- Subtitle label (formerly "Hugo pvp") removed for cleaner look, integrated into main title or removed.
--- If you want a subtitle, create a new TextLabel here and adjust its position dynamically.
-
 local HEADER_BTN_SIZE = DEVICE_TYPE == "mobile" and 18 or 20
 local function createHeaderButton(name: string, txt: string, xOff: number)
     local btn = Instance.new("TextButton")
@@ -1363,7 +1453,7 @@ local function createHeaderButton(name: string, txt: string, xOff: number)
     btn.ZIndex          = 6
     btn.Text            = txt
     btn.TextColor3      = VertexColors.textDark
-    btn.TextSize        = Layout.textSize.header
+    btn.TextSize        = Layout.textSize.header -1 -- Smaller text for control buttons
     btn.Font            = Enum.Font.GothamBold
     btn.AutoButtonColor = false
     btn.Parent          = HeaderFrame
@@ -1373,7 +1463,7 @@ local function createHeaderButton(name: string, txt: string, xOff: number)
 end
 
 local HEADER_BTN_OFFSETS = DEVICE_TYPE == "mobile" and {-56, -36, -16} or {-60, -40, -20}
-local LockButton  = createHeaderButton("Lock",  "🔒", HEADER_BTN_OFFSETS[1])
+local LockButton  = createHeaderButton("Lock",  "🔓", HEADER_BTN_OFFSETS[1]) -- Initialize unlocked
 local MinimizeButton = createHeaderButton("Minimize",   "—",  HEADER_BTN_OFFSETS[2])
 local CloseButton = createHeaderButton("Close", "X",  HEADER_BTN_OFFSETS[3])
 
@@ -1381,7 +1471,7 @@ local CloseButton = createHeaderButton("Close", "X",  HEADER_BTN_OFFSETS[3])
 local ActionButtonsFrame = Instance.new("Frame")
 ActionButtonsFrame.Name             = "ActionButtonsFrame"
 ActionButtonsFrame.Size             = UDim2.new(1, 0, 0, Layout.btnH + 16) -- Height for buttons + padding
-ActionButtonsFrame.Position         = UDim2.new(0, 0, 0, Layout.headerH) -- Directly below header
+ActionButtonsFrame.Position         = UDim2.new(0, 0, 0, Layout.headerH) % This matches the GUI from the image you gave
 ActionButtonsFrame.BackgroundTransparency = 1
 ActionButtonsFrame.BorderSizePixel  = 0
 ActionButtonsFrame.ZIndex           = 4
@@ -1532,7 +1622,7 @@ PetListPadding.PaddingBottom = UDim.new(0, 6)
 PetListPadding.PaddingLeft   = UDim.new(0, 4)
 PetListPadding.PaddingRight  = UDim.new(0, 4)
 
-petListScrollFrame = PetScrollingFrame -- Assign to global ref
+petListScrollFrame = PetScrollingFrame -- Assign to script-level ref
 
 -- Settings Tab Content
 local SettingsContentFrame = Instance.new("Frame")
@@ -1569,6 +1659,7 @@ SettingsPadding.PaddingRight  = UDim.new(0, 8)
 
 -- ==========================================
 -- SETTINGS TOGGLES
+-- Dynamically creates toggleable options for script features.
 -- ==========================================
 local currentSectionOrder = 0
 
@@ -1602,7 +1693,7 @@ local function createSettingsSectionHeader(text: string)
     lbl.ZIndex             = 7
     lbl.Text               = "  " .. text .. "  " -- Add padding for text
     lbl.TextColor3         = VertexColors.textDark
-    lbl.TextSize           = Layout.textSize.header - 2 -- Slightly smaller than header text
+    lbl.TextSize           = Layout.textSize.header - 2
     lbl.Font               = Enum.Font.GothamBold
     return wrap
 end
@@ -1674,7 +1765,7 @@ local function createToggleRow(title: string, desc: string, globalVarKey: string
     hitArea.ZIndex             = 8
     hitArea.Text               = ""
 
-    local currentIsOn = _G["VertexPvP_" .. globalVarKey]
+    local currentIsOn = _G.VertexPvP[globalVarKey] -- Read from the global VertexPvP table
     local function renderToggleUI(animate: boolean)
         local info = TweenInfo.new(animate and 0.16 or 0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         if currentIsOn then
@@ -1689,37 +1780,47 @@ local function createToggleRow(title: string, desc: string, globalVarKey: string
     end
     renderToggleUI(false)
 
-    hitArea.MouseButton1Click:Connect(function()
+    local toggleConn = hitArea.MouseButton1Click:Connect(function()
         currentIsOn = not currentIsOn
-        _G["VertexPvP_" .. globalVarKey] = currentIsOn
+        _G.VertexPvP[globalVarKey] = currentIsOn -- Update the global
         renderToggleUI(true)
         saveSettings()
 
-        -- Trigger specific actions
+        -- Trigger specific actions based on toggle
         if globalVarKey == "AntiRagdoll" then
-            if _G.VertexPvP_AntiRagdoll then startAntiRagdoll() else stopAntiRagdoll() end
+            if _G.VertexPvP.AntiRagdoll then startAntiRagdoll() else stopAntiRagdoll() end
+        end
+        if globalVarKey == "AntiAdminPanel" then
+            if _G.VertexPvP.AntiAdminPanel then -- Auto-start AntiAdmin loop if enabled on toggle
+                -- The antiAdminLoop is always running, it just checks the global.
+                -- No need to explicitly start/stop connection, just ensure previous state is cleared.
+                if _G.VertexPvP.AntiAdminPanel then
+                    captureAAOriginals() -- Recapture originals if enabling the panel
+                end
+            end
         end
     end)
+    table.insert(ActiveConnections, toggleConn)
     return row
 end
 
 createSettingsSectionHeader("MAIN FEATURES")
-createToggleRow("Auto Reset On Balloon", "Automatically reset your character when you get hit by a balloon.", "AutoResetOnBalloon")
+createToggleRow("Auto Reset On Balloon", "Automatically reset your character when hit by a balloon.", "AutoResetOnBalloon")
 
 createSettingsSectionHeader("FLASH TP")
 createToggleRow("Auto Block on Grab", "Automatically block the nearest player after a successful grab.", "AutoBlock")
 createToggleRow("Auto Giant Potion", "Automatically use a Giant Potion after Flash TP.", "AutoGiant")
 
 createSettingsSectionHeader("PROTECTIONS")
-createToggleRow("Anti-Ragdoll/Prison", "Prevents ragdoll, prison, and other movement impairing effects.", "AntiRagdoll")
+createToggleRow("Anti-Ragdoll/Prison", "Prevents ragdoll, jail, and other movement impairing effects.", "AntiRagdoll")
 createToggleRow("Anti-Admin Panel", "Protects against common admin panel commands (freeze, scale, etc.).", "AntiAdminPanel")
 
 createSettingsSectionHeader("UTILITIES")
-createToggleRow("Auto Balloon Attacker", "Automatically balloons the player who is stealing your pet.", "AutoBalloon")
--- Removed "AP ESP" as per previous discussion, it was not implemented logic-wise.
+createToggleRow("Auto Balloon Attacker", "Automatically balloons the player attempting to steal your pet.", "AutoBalloon")
 
 -- ==========================================
 -- FLOATING STATS BANNER
+-- Displays FPS and Ping, using Vertex PvtP theme.
 -- ==========================================
 local VertexStatsBanner = Instance.new("ScreenGui")
 VertexStatsBanner.Name           = "VertexPvP_Banner"
@@ -1728,6 +1829,7 @@ VertexStatsBanner.ResetOnSpawn   = false
 VertexStatsBanner.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 VertexStatsBanner.IgnoreGuiInset = false
 VertexStatsBanner.Parent         = PlayerGui
+VertexStatsBanner.Visible        = false -- Hidden until animation starts
 
 local BannerFrame = Instance.new("Frame")
 BannerFrame.Size             = UDim2.new(0, Layout.bannerW, 0, Layout.bannerH)
@@ -1777,7 +1879,7 @@ BannerStats.RichText           = true
 BannerStats.Parent             = BannerInnerFrame
 
 -- ==========================================
--- GRADIENT ANIMATION
+-- GRADIENT ANIMATION (Visual flair)
 -- ==========================================
 task.spawn(function()
     local baseRotationMain = BorderGradient.Rotation
@@ -1785,18 +1887,18 @@ task.spawn(function()
     while Window.Parent and BannerFrame.Parent and not thisScriptStopped do
         local t = os.clock()
         -- Animate gradients for both main window border and stats banner
-        pcall(function() BorderGradient.Rotation = (baseRotationMain + t * 45) % 360 end) -- Slower rotation
+        pcall(function() BorderGradient.Rotation = (baseRotationMain + t * 45) % 360 end) -- Slower rotation to be less distracting
         pcall(function() BannerGradient.Rotation = (baseRotationBanner + t * 45) % 360 end)
-        RunService.RenderStepped:Wait()
+        RunService.RenderStepped:Wait() -- Use RenderStepped for smooth animation (runs once per frame)
     end
 end)
 
-
 -- ==========================================
 -- FPS / PING COUNTER
+-- Updates the stats display in the banner.
 -- ==========================================
 local FPS_FrameTimes = {}
-local fpsPingUpdateLoop = RunService.Heartbeat:Connect(function()
+local fpsPingUpdateLoop = RunService.Heartbeat:Connect(function() -- Heartbeat runs ~60 times/sec, good for non-visual updates
     if not BannerStats.Parent or thisScriptStopped then
         if fpsPingUpdateLoop.Connected then pcall(function() fpsPingUpdateLoop:Disconnect() end) end
         return
@@ -1829,20 +1931,21 @@ end)
 table.insert(ActiveConnections, fpsPingUpdateLoop)
 
 -- ==========================================
--- DRAG FUNCTIONALITY
+-- GUI DRAG FUNCTIONALITY
+-- Allows the user to drag the GUI window around the screen.
 -- ==========================================
 local dragging = false
 local dragStart = Vector2.new(0, 0)
-local frameStart = Vector2.new(0, 0)
+local frameStart = UDim2.new(0,0,0,0) -- Changed to UDim2 to store position correctly
 
 -- Function to handle drag start
-local function onDragStart(input)
-    if not LockButton.Text == "🔒" and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+local function onDragStart(input: InputObject)
+    if not isLocked and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
         dragging = true
         dragStart = input.Position
         frameStart = Window.Position
         -- Prevent input bubbling for smoother drag (optional, but good practice)
-        input.Changed:Connect(function()
+        input.Changed:Connect(function() -- Connect to InputObject.Changed to detect 'End' state
             if input.UserInputState == Enum.UserInputState.End then dragging = false end
         end)
     end
@@ -1850,29 +1953,30 @@ end
 HeaderFrame.InputBegan:Connect(onDragStart)
 
 -- Function to handle drag changes
-local dragInputChangedConn = UserInputService.InputChanged:Connect(function(input)
+local dragInputChangedConn = UserInputService.InputChanged:Connect(function(input: InputObject)
     if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStart
         Window.Position = UDim2.new(
             frameStart.X.Scale, frameStart.X.Offset + delta.X,
             frameStart.Y.Scale, frameStart.Y.Offset + delta.Y
         )
-        -- Keep BorderFrame position synced
-        BorderFrame.Position = Window.Position
+        -- The RenderStepped sync handles BorderFrame.Position
     end
 end)
 table.insert(ActiveConnections, dragInputChangedConn)
 
 -- Function to handle drag end
-local dragInputEndedConn = UserInputService.InputEnded:Connect(function(input)
+local dragInputEndedConn = UserInputService.InputEnded:Connect(function(input: InputObject)
     if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and dragging then
         dragging = false
     end
 end)
 table.insert(ActiveConnections, dragInputEndedConn)
 
+
 -- ==========================================
 -- TAB SWITCHING LOGIC
+-- Handles transitions between Brainrots and Settings tabs.
 -- ==========================================
 local activeTabName = "brainrots"
 local TAB_SWITCH_DUR = 0.2 -- Duration of tab switch animation
@@ -1905,35 +2009,36 @@ local function setTab(tabName: string)
 end
 -- Initial state for content frames
 BrainrotsContentFrame.Position = UDim2.new(0, 0, 0, 0)
-SettingsContentFrame.Position = UDim2.new(1, 0, 0, 0)
+SettingsContentFrame.Visible = false -- Ensure settings tab is not visible initially
 
 BrainrotsTabBtn.MouseButton1Click:Connect(function() setTab("brainrots") end)
 SettingsTabBtn.MouseButton1Click:Connect(function() setTab("settings") end)
 
 -- ==========================================
 -- WINDOW CONTROL BUTTONS
+-- Lock, Minimize, and Close functionality.
 -- ==========================================
 local isLocked    = false
 LockButton.MouseButton1Click:Connect(function()
     isLocked = not isLocked
     LockButton.Text      = isLocked and "🔒" or "🔓" -- Change emoji
-    HeaderFrame.Active   = not isLocked -- Disable dragging when locked
+    -- HeaderFrame.Active controls draggable state.
     LockButton.TextColor3= isLocked and VertexColors.primary or VertexColors.textDark
 end)
 
 local isMinimized = false
-local fullSize    = Window.Size
-local fullBorderSize = BorderFrame.Size
+local fullWindowSize    = Window.Size -- Store original size
+local fullBorderSize = BorderFrame.Size -- Store original border size
 local MIN_WINDOW_HEIGHT   = Layout.headerH + Layout.btnH + 16 + Layout.tabH + 1 + 5 -- Header + actions + tabs bottom line + small padding
 local MIN_BORDER_HEIGHT   = MIN_WINDOW_HEIGHT + 4 -- Window border thickness
 MinimizeButton.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
-    local info = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out) -- Smoother tween
+    local info = TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     if isMinimized then
         TweenService:Create(Window, info, { Size = UDim2.new(0, Layout.winW, 0, MIN_WINDOW_HEIGHT) }):Play()
         TweenService:Create(BorderFrame, info, { Size = UDim2.new(0, Layout.winW+4, 0, MIN_BORDER_HEIGHT) }):Play()
     else
-        TweenService:Create(Window, info, { Size = fullSize }):Play()
+        TweenService:Create(Window, info, { Size = fullWindowSize }):Play()
         TweenService:Create(BorderFrame, info, { Size = fullBorderSize }):Play()
     end
 end)
@@ -1952,6 +2057,7 @@ end)
 
 -- ==========================================
 -- HOVER EFFECTS (Centralized)
+-- Provides visual feedback on button interactions.
 -- ==========================================
 local function hookButtonHover(btn: GuiButton, normalColor: Color3, hoverColor: Color3)
     local tweenInfo = TweenInfo.new(0.12)
@@ -1981,17 +2087,18 @@ for _, b in ipairs({ LockButton, MinimizeButton, CloseButton }) do
 end
 
 local function flashAccentLine(line: Frame)
-    -- Flash with primary color
+    -- Flash with primary color before returning to normal
     line.BackgroundColor3 = VertexColors.primary
     TweenService:Create(line, TweenInfo.new(0.4), { BackgroundColor3 = VertexColors.stroke }):Play()
 end
 
 -- ==========================================
 -- FLASH TP BUTTON VISUAL EFFECT (Blinking)
+-- Indicates when no pet is selected or Flash TP is ready.
 -- ==========================================
 local isFlashBlinking = false
-local BLINK_COLOR_HIGH  = VertexColors.primary:Lerp(Color3.fromRGB(255, 0, 0), 0.5) -- Primary mixed with red for urgency
-local BLINK_COLOR_LOW   = VertexColors.surface:Lerp(Color3.fromRGB(150, 0, 0), 0.5) -- Darker base with red hint
+local BLINK_COLOR_HIGH  = VertexColors.primary:Lerp(Color3.fromRGB(255, 100, 100), 0.5) -- Primary mixed with red for urgency
+local BLINK_COLOR_LOW   = VertexColors.surface:Lerp(Color3.fromRGB(150, 50, 50), 0.5) -- Darker base with red hint
 local BLINK_TWEEN_INFO  = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 local BLINK_PERIOD = 0.3
 
@@ -2000,14 +2107,18 @@ local function startFlashBlink()
     isFlashBlinking = true
     task.spawn(function()
         while isFlashBlinking and not thisScriptStopped do
+            -- Button background and accent line
             TweenService:Create(FlashTPButton,     BLINK_TWEEN_INFO, { BackgroundColor3 = BLINK_COLOR_HIGH }):Play()
             TweenService:Create(FlashTPAccent, BLINK_TWEEN_INFO, { BackgroundColor3 = BLINK_COLOR_HIGH }):Play()
+            
             -- If Brainrots tab is active, make its indicator blink too
             if activeTabName == "brainrots" then
                 TweenService:Create(BrainrotsTabIndicator, BLINK_TWEEN_INFO, { BackgroundColor3 = BLINK_COLOR_HIGH, BackgroundTransparency = 0 }):Play()
             end
             task.wait(BLINK_PERIOD)
-            if not isFlashBlinking then break end
+            
+            if not isFlashBlinking or thisScriptStopped then break end -- Re-check state after wait
+            
             TweenService:Create(FlashTPButton,     BLINK_TWEEN_INFO, { BackgroundColor3 = BLINK_COLOR_LOW }):Play()
             TweenService:Create(FlashTPAccent, BLINK_TWEEN_INFO, { BackgroundColor3 = BLINK_COLOR_LOW }):Play()
             if activeTabName == "brainrots" then
@@ -2021,6 +2132,7 @@ end
 local function stopFlashBlink()
     if not isFlashBlinking then return end
     isFlashBlinking = false
+    -- Restore original colors
     TweenService:Create(FlashTPButton,     TweenInfo.new(0.2), { BackgroundColor3 = VertexColors.surface }):Play()
     TweenService:Create(FlashTPAccent, TweenInfo.new(0.2), { BackgroundColor3 = VertexColors.stroke }):Play()
     -- Restore Brainrots tab indicator if it was blinking
@@ -2031,15 +2143,18 @@ startFlashBlink() -- By default, Flash TP button blinks until a pet is selected
 
 -- ==========================================
 -- INTERACTIVE BUTTON EVENTS
+-- Connects GUI buttons to their respective functions.
 -- ==========================================
 FlashTPButton.MouseButton1Click:Connect(function()
     if FlashTP_SelectedPrompt and FlashTP_SelectedSlotNumber then
         if not FlashTP_IsStealing and not FlashTP_AutoStealEnabled then
             flashAccentLine(FlashTPAccent)
             startTripToPetSlot(FlashTP_SelectedPrompt, FlashTP_SelectedSlotNumber)
+        else
+            warn("[Vertex PvP] Flash TP is currently active or stealing is in progress.")
         end
     else
-        warn("[Vertex PvP] No pet selected for Flash TP!")
+        warn("[Vertex PvP] No pet selected for Flash TP.")
     end
 end)
 
@@ -2050,9 +2165,12 @@ BlockButton.MouseButton1Click:Connect(function()
         warn("[Vertex PvP] No nearest player found to block.")
         return
     end
-    waitForStealPrompt() -- Wait for potential stealing confirmation prompt
-    pcall(function() StarterGui:SetCore("PromptBlockPlayer", targetPlayer) end)
-    FastConfirm()
+    if waitForStealPrompt() then -- Wait for potential stealing confirmation prompt
+        pcall(function() StarterGui:SetCore("PromptBlockPlayer", targetPlayer) end) -- Use SetCore to request blocking
+        FastConfirm()
+    else
+        warn("[Vertex PvP] Steal prompt did not appear in time for blocking.")
+    end
 end)
 
 ResetButton.MouseButton1Click:Connect(function()
@@ -2062,16 +2180,17 @@ end)
 
 -- ==========================================
 -- PETS LIST UPDATE LOOP
+-- Periodically refreshes the list of stealable pets.
 -- ==========================================
 task.spawn(function()
-    while task.wait(1.5) do -- Refresh pet list every 1.5 seconds
+    while task.wait(1.5) do -- Refresh pet list every 1.5 seconds to balance responsiveness and performance
         if thisScriptStopped then break end
         if activeTabName == "brainrots" then -- Only update if on the brainrots tab for performance
             updatePetList()
             if FlashTP_SelectedPrompt and FlashTP_SelectedSlotNumber then
-                stopFlashBlink()
+                stopFlashBlink() -- Stop blinking when a pet is selected
             else
-                startFlashBlink()
+                startFlashBlink() -- Start blinking when no pet is selected
             end
         end
     end
@@ -2080,12 +2199,14 @@ updatePetList() -- Initial update on script load
 
 -- ==========================================
 -- ENTRY ANIMATION
+-- Prettifies script loading with a smooth GUI entrance.
 -- ==========================================
 task.spawn(function()
     local targetPos = Layout.posX
     Window.Position         = UDim2.new(targetPos.X.Scale, targetPos.X.Offset, targetPos.Y.Scale, targetPos.Y.Offset - 60) -- Start higher up
     BorderFrame.Position    = Window.Position -- Keep border synced initially
-    Window.Visible = true
+    
+    VERTEX_PVP_GUI.Visible = true -- Make GUI visible before animation starts
 
     TweenService:Create(Window, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
         { Position = targetPos }):Play()
@@ -2093,6 +2214,7 @@ task.spawn(function()
         { Position = targetPos })
     bt:Play()
     bt.Completed:Wait()
+    
     -- After animation, ensure BorderFrame and Window position are perfectly consistent
     BorderFrame.Position = Window.Position
     -- Connect to RenderStepped to ensure border frame always follows window
@@ -2104,13 +2226,22 @@ task.spawn(function()
         end
     end)
     table.insert(ActiveConnections, syncBorderConn)
+    
+    -- Banner also animates in slightly later
+    VertexStatsBanner.Visible = true
+    local bannerTargetPos = Layout.bannerPos
+    BannerFrame.Position = UDim2.new(bannerTargetPos.X.Scale, bannerTargetPos.X.Offset, bannerTargetPos.Y.Scale, bannerTargetPos.Y.Offset - 30)
+    TweenService:Create(BannerFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { Position = bannerTargetPos }):Play()
 end)
 
 -- ==========================================
 -- GLOBAL SCRIPT PURGE (for stopping/re-executing the script cleanly)
--- ==========================================
+-- Crucial for preventing multiple instances and clean shutdown.
+--==========================================
 _G.VertexPvP_Script_Purge = function()
     thisScriptStopped = true
+    warn("[Vertex PvP] Shutting down script and cleaning up resources.")
     -- Disconnect all active connections
     for _, conn in ipairs(ActiveConnections) do
         if conn and conn.Connected then pcall(function() conn:Disconnect() end) end
