@@ -1174,7 +1174,8 @@ local function fpRunAllCmds(target)
 end
 
 local function fpBuildRow(plr,order,parent)
-    local row=Instance.new("Frame",parent); row.Name="FPRow_"..plr.Name; row.Size=UDim2.new(1,-6,0,FP_ROW_H); row.BackgroundColor3=T.Card; row.BackgroundTransparency=0.1; row.BorderSizePixel=0; row.LayoutOrder=order; Corner(row,6);Stroke(row,T.Border,1)
+    local row=Instance.new("Frame",parent); row.Name="FPRow_"..plr.Name; row.Size=UDim2.new(1,-6,0,FP_ROW_H); row.BackgroundColor3=T.Card; row.BackgroundTransparency=0.1; row.BorderSizePixel=0; row.LayoutOrder=order; Corner(row,6);
+    Stroke(row,T.Border,1)
 
     -- avatar
     local ava=Instance.new("ImageLabel",row); ava.Size=UDim2.fromOffset(24,24); ava.Position=UDim2.new(0,4,0.5,-12); ava.BackgroundColor3=T.Border; ava.BorderSizePixel=0; Corner(ava,12)
