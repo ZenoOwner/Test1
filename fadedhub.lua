@@ -1,7 +1,3 @@
---  Vertxed Hub  |  Vertex Pvp  |  discord.gg/3JnFzfcYB
---  made by r9qbx
-
--- FPS cap first
 pcall(function() setfpscap(9999) end)
 
 local TweenService        = game:GetService("TweenService")
@@ -24,7 +20,6 @@ local __AG_stealActive   = false
 local __AG_MIN_HOLD_TIME = 1.3
 local __AG_TRIGGER_DELAY = 0.05
 
---  ANTI RAGDOLL
 local AntiRagdoll = { connections = {}, running = false }
 AntiRagdoll.forceBackpack = function()
     if not AntiRagdoll.running then return end
@@ -123,7 +118,6 @@ AntiRagdoll.disable = function()
     AntiRagdoll.connections = {}
 end
 
---  SOLAR AIMBOT (background, no separate GUI)
 local SolarAimbot = { enabled = false, target = nil, remote = nil, range = 350 }
 do
     local function findAimbotRemote()
@@ -187,7 +181,6 @@ do
     end)
 end
 
---  ANTI ADMIN PANEL (runs when AntiAdminEnabled = true)
 do
     local lp = Players.LocalPlayer
     local scaleNames = {"HeadScale","BodyDepthScale","BodyHeightScale",
@@ -226,38 +219,31 @@ do
             local hum = char:FindFirstChildOfClass("Humanoid")
             local hrp = char:FindFirstChild("HumanoidRootPart")
             if hum and hrp then
-            -- destroy ragdoll constraints
             for _, v in ipairs(char:GetDescendants()) do
                 if v:IsA("BallSocketConstraint") or v:IsA("HingeConstraint") or v:IsA("Attachment") then
                     v:Destroy()
                 elseif v:IsA("Motor6D") then v.Enabled = true end
             end
-            -- re-enable controls
             local ctrl = getCtrl()
             if ctrl then pcall(function() ctrl:Enable() end) end
-            -- force running
             local st = hum:GetState()
             if st ~= Enum.HumanoidStateType.Running and st ~= Enum.HumanoidStateType.Jumping
             and st ~= Enum.HumanoidStateType.Freefall then
                 pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
             end
-            -- fix camera
             if workspace.CurrentCamera and workspace.CurrentCamera.CameraSubject ~= hum then
                 workspace.CurrentCamera.CameraSubject = hum
             end
-            -- clear ragdoll attr
             local re = lp:GetAttribute("RagdollEndTime") or 0
             if re > workspace:GetServerTimeNow() then
                 hrp.Velocity = Vector3.zero
                 lp:SetAttribute("RagdollEndTime", 0)
             end
-            -- restore scales (blocks tiny/giant)
             if origHipH and hum.HipHeight ~= origHipH then hum.HipHeight = origHipH end
             for _, n in ipairs(scaleNames) do
                 local sv = hum:FindFirstChild(n)
                 if sv and origScales[n] and sv.Value ~= origScales[n] then sv.Value = origScales[n] end
             end
-            -- destroy admin-added models
             for _, v in ipairs(char:GetChildren()) do
                 if v:IsA("Model") and not v:IsA("BackpackItem") then v:Destroy() end
             end
@@ -266,7 +252,6 @@ do
     end)
 end
 
---  NOX AUTO BALLOON (replaces anti-steal)
 local NoxBalloonEnabled = false
 do
     local lp = Players.LocalPlayer
@@ -387,7 +372,6 @@ do
     Players.PlayerRemoving:Connect(function(p) balloonActive[p.UserId] = nil end)
 end
 
---  HELPERS
 local function drawClickDot(x, y)
     if not Drawing then return end
     local dot = Drawing.new("Circle")
@@ -531,7 +515,6 @@ local function __AG_findPrompt()
     return prompt
 end
 
---  THEME  (dark gray + blue + white neon)
 local T = {
     BG          = Color3.fromRGB(12,  12,  16),
     Header      = Color3.fromRGB(6,   6,   10),
@@ -652,8 +635,8 @@ do
     end
 end
 
-local WIN_W = isMobile and 150 or 320
-local WIN_H = isMobile and 210 or 420
+local WIN_W = isMobile and 260 or 320
+local WIN_H = isMobile and 360 or 400
 
 local Win = Instance.new("Frame")
 Win.Name="Win"; Win.Size=UDim2.new(0,WIN_W,0,WIN_H)
@@ -674,7 +657,7 @@ BorderGrad.Rotation=0; BorderGrad.Parent=WinStroke
 local winScale = Instance.new("UIScale"); winScale.Scale=1; winScale.Parent=Win
 
 local Hdr = Instance.new("Frame")
-Hdr.Size=UDim2.new(1,0,0,42); Hdr.BackgroundColor3=T.Header
+Hdr.Size=UDim2.new(1,0,0,isMobile and 44 or 42); Hdr.BackgroundColor3=T.Header
 Hdr.BackgroundTransparency=0.05; Hdr.BorderSizePixel=0; Hdr.ZIndex=5; Hdr.Parent=Win; Hdr.Active=true
 Corner(Hdr, 12)
 local HdrFill = Instance.new("Frame")
@@ -685,7 +668,6 @@ local HdrLine = Instance.new("Frame")
 HdrLine.Size=UDim2.new(1,0,0,1); HdrLine.Position=UDim2.new(0,0,1,-1)
 HdrLine.BackgroundColor3=T.Border; HdrLine.BorderSizePixel=0; HdrLine.ZIndex=6; HdrLine.Parent=Hdr
 
--- Discord box (super small, top left of header)
 local DiscordBox = Instance.new("Frame")
 DiscordBox.Size=UDim2.new(0,isMobile and 80 or 130,0,isMobile and 14 or 16)
 DiscordBox.Position=UDim2.new(0,8,0,2); DiscordBox.BackgroundColor3=Color3.fromRGB(10,10,20)
@@ -790,13 +772,32 @@ do
         local pad=Instance.new("UIPadding"); pad.PaddingLeft=UDim.new(0,8); pad.PaddingRight=UDim.new(0,8); pad.Parent=btn
         return btn, Stroke(btn, T.Border, 1)
     end
-    local lockBtn, lockStroke = styleBtn("🔓 FREE", 1)
+    local lockBtn, lockStroke = styleBtn("🔓", 1)
     lockBtn.MouseButton1Click:Connect(function()
         _G._FH_GUI_LOCKED = not _G._FH_GUI_LOCKED
         if _G._FH_GUI_LOCKED then
-            lockBtn.Text="🔒 LOCK"; lockBtn.BackgroundColor3=Color3.fromRGB(140,30,30); lockStroke.Color=Color3.fromRGB(200,50,50)
+            lockBtn.Text="🔒"; lockBtn.BackgroundColor3=Color3.fromRGB(140,30,30); lockStroke.Color=Color3.fromRGB(200,50,50)
         else
-            lockBtn.Text="🔓 FREE"; lockBtn.BackgroundColor3=T.Card; lockStroke.Color=T.Border
+            lockBtn.Text="🔓"; lockBtn.BackgroundColor3=T.Card; lockStroke.Color=T.Border
+        end
+    end)
+    local _guiFolded = false
+    local foldBtn, foldStroke = styleBtn("▼", 2)
+    foldBtn.LayoutOrder = 2
+    foldBtn.MouseButton1Click:Connect(function()
+        _guiFolded = not _guiFolded
+        if _guiFolded then
+            foldBtn.Text = "▲"
+            TabBar.Visible = false
+            ContentArea.Visible = false
+            TBLine.Visible = false
+            Win.Size = UDim2.new(0, WIN_W, 0, isMobile and 44 or 42)
+        else
+            foldBtn.Text = "▼"
+            TabBar.Visible = true
+            ContentArea.Visible = true
+            TBLine.Visible = true
+            Win.Size = UDim2.new(0, WIN_W, 0, WIN_H)
         end
     end)
     local hdrBinds = {}
@@ -838,7 +839,7 @@ do
         table.insert(hdrBinds, entry); return entry
     end
 
-    _G._FH_ResetBtnEntry = makeActionBtn("RESET", 2, function()
+    _G._FH_ResetBtnEntry = makeActionBtn("RESET", 3, function()
         local lp = Players.LocalPlayer
         local Net = ReplicatedStorage:WaitForChild("Packages",2) and ReplicatedStorage.Packages:WaitForChild("Net",2)
         if not Net then
@@ -882,7 +883,7 @@ do
         end)
     end)
 
-    _G._FH_FlashBtnEntry = makeActionBtn("FLASH", 3, function()
+    _G._FH_FlashBtnEntry = makeActionBtn("FLASH", 4, function()
         local lp  = Players.LocalPlayer
         local chr = lp and lp.Character
         local hrp = chr and chr:FindFirstChild("HumanoidRootPart")
@@ -970,11 +971,9 @@ do
                 if cn then pcall(function() cn:Disconnect() end) end
             end
 
-            -- Equip Flying Carpet (pull out only, no activate)
             local carpet = findTool("flying carpet") or findTool("carpet")
             if carpet then
                 doEquip(carpet, 1)
-                -- set carpet speed to 214
                 pcall(function()
                     local v = carpet:FindFirstChild("Speed") or carpet:FindFirstChild("WalkSpeed")
                     if v then v.Value = CARPET_SPEED end
@@ -996,7 +995,6 @@ do
                 end)
             end
 
-            -- Tween movement using Heartbeat velocity
             local boostConn
             boostConn = RunService.Heartbeat:Connect(function()
                 if not player.Character then return end
@@ -1093,7 +1091,6 @@ do
                 end
             end
 
-            -- Fix camera
             local cam=workspace.CurrentCamera
             if cam and entry.cam then
                 cam.CameraType=Enum.CameraType.Scriptable; cam.CFrame=entry.cam
@@ -1103,7 +1100,6 @@ do
                 end)
             end
 
-            -- Re-equip carpet after arriving
             local carpetMid = findTool("flying carpet") or findTool("carpet")
             if carpetMid then doEquip(carpetMid, 1.5) end
             task.wait(0.35)
@@ -1116,7 +1112,6 @@ do
             chr2=player.Character; hum2=chr2 and chr2:FindFirstChildOfClass("Humanoid")
             if not (chr2 and hum2) then return end
 
-            -- Find flash tool
             local flashTool
             local bp=player:FindFirstChild("Backpack")
             if bp then for _,t in ipairs(bp:GetChildren()) do if t:IsA("Tool") and t.Name:lower():find("flash") then flashTool=t; break end end end
@@ -1148,7 +1143,6 @@ do
             local bp2=player:FindFirstChild("Backpack")
             if bp2 and flashTool and flashTool.Parent~=bp2 then flashTool.Parent=bp2 end
 
-            -- Ragdoll bypass path
             if RagdollBypassEnabled then
                 task.spawn(function()
                     task.wait(0.10)
@@ -1199,20 +1193,10 @@ do
             local carpetAfter = findTool("flying carpet") or findTool("carpet")
             if carpetAfter then doEquip(carpetAfter, 1) end
         end)
-        pcall(ShowToggleNotification, "Flash → Base "..(((function()
-            local lp=Players.LocalPlayer; local pf=workspace:FindFirstChild("Plots"); local mb
-            if pf then for _,plot in ipairs(pf:GetChildren()) do
-                if plot:IsA("Model") then
-                    local sign=plot:FindFirstChild("PlotSign")
-                    if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled then
-                        local ok2,o=pcall(function() return plot:GetAttribute("Order") end)
-                        if ok2 and o then mb=tonumber(o) end; break
-                    end
-                end
-            end end; return mb and ((mb==1) and 2 or 1) or "?" end)()).." Podium "..((_G._FH_SelectedBrainrot and _G._FH_SelectedBrainrot.slot) or "?"), true)
+        pcall(ShowToggleNotification, "Flash activated", true)
     end)
 
-    _G._FH_BlockBtnEntry = makeActionBtn("BLOCK", 4, function()
+    _G._FH_BlockBtnEntry = makeActionBtn("BLOCK", 5, function()
         local t = getNearestPlayer()
         if t then pcall(blockPlayer,t); pcall(ShowToggleNotification,"Blocked: "..t.Name,true)
         else pcall(ShowToggleNotification,"Block: no players nearby",false) end
@@ -1260,24 +1244,24 @@ do
 end
 
 local TabBar = Instance.new("Frame")
-TabBar.Size=UDim2.new(1,0,0,34); TabBar.Position=UDim2.new(0,0,0,42)
+TabBar.Size=UDim2.new(1,0,0,isMobile and 34 or 34); TabBar.Position=UDim2.new(0,0,0,isMobile and 44 or 42)
 TabBar.BackgroundColor3=Color3.fromRGB(8,8,14); TabBar.BackgroundTransparency=0.1
 TabBar.BorderSizePixel=0; TabBar.ZIndex=4; TabBar.Parent=Win
 local TBLine = Instance.new("Frame")
-TBLine.Size=UDim2.new(1,0,0,1); TBLine.Position=UDim2.new(0,0,0,75)
+TBLine.Size=UDim2.new(1,0,0,1); TBLine.Position=UDim2.new(0,0,0,isMobile and 77 or 75)
 TBLine.BackgroundColor3=T.Border; TBLine.BorderSizePixel=0; TBLine.ZIndex=5; TBLine.Parent=Win
 local TabLayout=Instance.new("UIListLayout"); TabLayout.FillDirection=Enum.FillDirection.Horizontal
 TabLayout.HorizontalAlignment=Enum.HorizontalAlignment.Left; TabLayout.VerticalAlignment=Enum.VerticalAlignment.Center
 TabLayout.Padding=UDim.new(0,0); TabLayout.Parent=TabBar
 local ContentArea=Instance.new("Frame")
-ContentArea.Size=UDim2.new(1,0,1,-76); ContentArea.Position=UDim2.new(0,0,0,76)
+ContentArea.Size=UDim2.new(1,0,1,-(isMobile and 79 or 76)); ContentArea.Position=UDim2.new(0,0,0,isMobile and 79 or 76)
 ContentArea.BackgroundTransparency=1; ContentArea.ClipsDescendants=true; ContentArea.ZIndex=2; ContentArea.Parent=Win
 
 local CreateToggle, CreateSection, CreateButton, MakeScroll
 
 MakeScroll = function(parent)
     local s=Instance.new("ScrollingFrame"); s.Size=UDim2.new(1,0,1,0)
-    s.BackgroundTransparency=1; s.BorderSizePixel=0; s.ScrollBarThickness=3
+    s.BackgroundTransparency=1; s.BorderSizePixel=0; s.ScrollBarThickness=isMobile and 5 or 3
     s.ScrollBarImageColor3=T.Accent; s.CanvasSize=UDim2.new(0,0,0,0)
     s.AutomaticCanvasSize=Enum.AutomaticSize.Y; s.ScrollingDirection=Enum.ScrollingDirection.Y
     s.ZIndex=2; s.Parent=parent
@@ -1300,7 +1284,7 @@ end
 CreateToggle = function(parent, name, desc, cb)
     local state  = (Config.toggles[name]==true)
     local hasDesc = desc and desc~=""
-    local cardH  = hasDesc and 56 or 44
+    local cardH  = hasDesc and 52 or 42
     local card=Instance.new("Frame"); card.Size=UDim2.new(1,-16,0,cardH)
     card.BackgroundColor3=T.Card; card.BackgroundTransparency=0.1
     card.BorderSizePixel=0; card.Parent=parent; Corner(card,8)
@@ -1515,7 +1499,7 @@ local function CreateTab(name)
     local lbl=Label(btn,name,isMobile and 9 or 11,T.TabInact,Enum.Font.GothamBold)
     lbl.Size=UDim2.new(1,-2,1,0); lbl.Position=UDim2.new(0,1,0,0)
     lbl.TextXAlignment=Enum.TextXAlignment.Center; lbl.TextWrapped=true; lbl.ZIndex=6
-    local sc=Instance.new("UITextSizeConstraint"); sc.MaxTextSize=isMobile and 9 or 11; sc.MinTextSize=5; sc.Parent=lbl
+    local sc=Instance.new("UITextSizeConstraint"); sc.MaxTextSize=isMobile and 11 or 11; sc.MinTextSize=5; sc.Parent=lbl
     local ind=Instance.new("Frame"); ind.Size=UDim2.new(0,0,0,2); ind.Position=UDim2.new(0.1,0,1,-2)
     ind.BackgroundColor3=T.Accent; ind.BorderSizePixel=0; ind.ZIndex=7; ind.Parent=btn; Corner(ind,1)
     local page=Instance.new("Frame"); page.Size=UDim2.new(1,0,1,0); page.Position=UDim2.new(0,0,0,0)
@@ -1529,7 +1513,6 @@ end
 local BrainrotsTab = CreateTab("BRAINROTS")
 local SettingsTab  = CreateTab("SETTINGS")
 
---  BRAINROTS TAB  (animal scanner + viewport)
 do
     local RS=game:GetService("ReplicatedStorage")
     local AnimalsData, AnimalsShared, NumberUtils
@@ -1655,7 +1638,7 @@ do
     local builtUIDs, labelUpdaters, onSelectCBs = {},{},{}
     local selectedUID = nil
 
-    local CARD_H = 100
+    local CARD_H = isMobile and 105 or 100
     local function buildCard(rec, index)
         local uid = rec.plotName.."_"..rec.slot
         local card=Instance.new("Frame"); card.Size=UDim2.new(1,0,0,CARD_H)
@@ -1664,7 +1647,6 @@ do
         Corner(card,8)
         local cStroke=Stroke(card,T.Border,1)
 
-        -- mutation color bar on left
         local mutCol = (rec.mutation and MUT_COLS[tostring(rec.mutation)]) or T.Accent
         local mutBar=Instance.new("Frame"); mutBar.Size=UDim2.new(0,3,1,-12)
         mutBar.Position=UDim2.new(0,0,0,6); mutBar.BackgroundColor3=mutCol
@@ -1787,9 +1769,7 @@ do
             task.wait(4.95)
         end
     end)
-end
 
---  SETTINGS TAB
 CreateSection(SettingsTab.scroll, "AUTO RESET")
 do
     local _arbConns={}
@@ -1943,7 +1923,6 @@ CreateSection(SettingsTab.scroll, "FLASH")
 CreateToggle(SettingsTab.scroll, "Auto Flash", "Auto uses flash on balloon trigger", function(v)
     AutoFlashEnabled=v
     if v then
-        -- wire balloon detection to auto flash
         local _afLast=0; local _afPending=false
         local function tryAF()
             if not AutoFlashEnabled then return end
@@ -2156,14 +2135,12 @@ do
         local row=Instance.new("Frame"); row.Name="FPRow_"..plr.Name
         row.Size=UDim2.new(1,-6,0,FP_ROW_H); row.BackgroundColor3=T.Card; row.BackgroundTransparency=0.1
         row.BorderSizePixel=0; row.LayoutOrder=order; row.ZIndex=32; row.Parent=FP.scroll; Corner(row,6); Stroke(row,T.Border,1)
-        -- avatar
         local af=Instance.new("Frame"); af.Size=UDim2.new(0,FP_AVT,0,FP_AVT)
         af.Position=UDim2.new(0,5,0.5,-FP_AVT/2); af.BackgroundColor3=T.BG; af.BackgroundTransparency=0.4
         af.BorderSizePixel=0; af.ZIndex=33; af.Parent=row; Corner(af,math.floor(FP_AVT/2))
         local ai=Instance.new("ImageLabel"); ai.Size=UDim2.new(1,0,1,0); ai.BackgroundTransparency=1
         ai.Image=("https://www.roblox.com/headshot-thumbnail/image?userId=%d&width=48&height=48&format=png"):format(plr.UserId)
         ai.ScaleType=Enum.ScaleType.Crop; ai.ZIndex=34; ai.Parent=af; Corner(ai,math.floor(FP_AVT/2))
-        -- name
         local dText=plr.DisplayName~=plr.Name and plr.DisplayName.." (@"..plr.Name..")" or plr.DisplayName
         local nl4=Label(row,dText,isMobile and 11 or 13,T.White,Enum.Font.GothamBold)
         local BTN_BLOCK=5*FP_BTN+4*FP_GAP
@@ -2172,7 +2149,6 @@ do
         nl4.TextTruncate=Enum.TextTruncate.AtEnd; nl4.TextXAlignment=Enum.TextXAlignment.Left; nl4.ZIndex=33
         row.MouseEnter:Connect(function() Tween(row,F,{BackgroundColor3=T.CardHover}) end)
         row.MouseLeave:Connect(function() Tween(row,F,{BackgroundColor3=T.Card}) end)
-        -- cmd buttons
         for i,cmd in ipairs(FP_CMDS) do
             local xPos=BTNS_X+(i-1)*(FP_BTN+FP_GAP)
             local btn3=Instance.new("TextButton"); btn3.Name="FPCmd_"..cmd.name
@@ -2228,9 +2204,8 @@ CreateButton(SettingsTab.scroll, "Save Config", "Save all toggle states to file"
     pcall(FH_Save); pcall(ShowToggleNotification,"Config Saved",true)
 end)
 
---  BANNER (FPS / PING / Discord / Toggle)
 local BANNER_W = WIN_W
-local BANNER_H = isMobile and 30 or 44
+local BANNER_H = isMobile and 32 or 44
 local BW_SEQ = ColorSequence.new({
     ColorSequenceKeypoint.new(0,   Color3.fromRGB(30,  60, 160)),
     ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120,180, 255)),
@@ -2246,7 +2221,6 @@ local BanStroke=Instance.new("UIStroke"); BanStroke.Thickness=1.4; BanStroke.App
 BanStroke.Color=T.AccentBright; BanStroke.Parent=Banner
 local BanGrad=Instance.new("UIGradient"); BanGrad.Color=BW_SEQ; BanGrad.Rotation=90; BanGrad.Parent=BanStroke
 
--- logo / toggle button
 local LogoBox=Instance.new("Frame")
 LogoBox.Size=UDim2.new(0,isMobile and 20 or 28,0,isMobile and 20 or 28)
 LogoBox.Position=UDim2.new(0,isMobile and 5 or 8,0.5,-(isMobile and 10 or 14))
@@ -2268,7 +2242,6 @@ if isMobile then
     end)
 end
 
--- dividers
 local oD1=isMobile and 30 or 44
 local oD2=isMobile and 94 or 160
 local oD3=isMobile and 154 or 266
@@ -2299,7 +2272,6 @@ Corner(StatBadge,6); Stroke(StatBadge,T.Accent,1)
 local StatL=Label(StatBadge,"● LIVE",isMobile and 8 or 10,T.AccentBright,Enum.Font.GothamBold)
 StatL.Size=UDim2.new(1,0,1,0); StatL.TextXAlignment=Enum.TextXAlignment.Center; StatL.TextYAlignment=Enum.TextYAlignment.Center; StatL.ZIndex=11
 
--- mobile quick bar
 if isMobile then
     local MB_H=34; local MB_GAP=5; local MB_PAD=8
     local MBar=Instance.new("Frame"); MBar.Name="VertxMobileBar"
@@ -2317,7 +2289,7 @@ if isMobile then
         local btn4=Instance.new("TextButton"); btn4.Name="MB_"..text
         btn4.LayoutOrder=order; btn4.Size=UDim2.new(0,0,0,24); btn4.AutomaticSize=Enum.AutomaticSize.X
         btn4.BackgroundColor3=Color3.fromRGB(14,14,22); btn4.BorderSizePixel=0; btn4.AutoButtonColor=false
-        btn4.Text=text; btn4.TextSize=10; btn4.Font=Enum.Font.GothamBold; btn4.TextColor3=T.White
+        btn4.Text=text; btn4.TextSize=11; btn4.Font=Enum.Font.GothamBold; btn4.TextColor3=T.White
         btn4.ZIndex=10; btn4.Active=true; btn4.Parent=MBar; Corner(btn4,7)
         local pad2=Instance.new("UIPadding"); pad2.PaddingLeft=UDim.new(0,10); pad2.PaddingRight=UDim.new(0,10); pad2.Parent=btn4
         local st2=Stroke(btn4,accentCol or T.Border,1)
@@ -2385,7 +2357,6 @@ end)
 
 ActivateTab(BrainrotsTab)
 
--- Apply saved keybinds
 for name, kcName in pairs(Config.keybinds) do
     if configRegistry[name] and configRegistry[name].setKeyCode then
         local ok2,kc=pcall(function() return Enum.KeyCode[kcName] end)
