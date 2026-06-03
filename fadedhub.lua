@@ -184,6 +184,7 @@ AntiRagdoll.enable()
 do
 	local scaleNames={"HeadScale","BodyDepthScale","BodyHeightScale","BodyProportionScale","BodyTypeScale","BodyWidthScale"}
 	local origScales={}; local origHipH=nil
+	local antiGummyRespawnGraceUntil=0
 	local function captureOriginals()
 		local char=lp.Character; if not char then return end
 		local hum=char:FindFirstChildOfClass("Humanoid"); if not hum then return end
@@ -192,7 +193,11 @@ do
 			local sv=hum:FindFirstChild(n); if sv then origScales[n]=sv.Value end
 		end
 	end
-	lp.CharacterAdded:Connect(function() task.wait(0.1); captureOriginals() end)
+	lp.CharacterAdded:Connect(function(char)
+		local hum=char:WaitForChild("Humanoid",5)
+		if hum then antiGummyRespawnGraceUntil=tick()+1.5 end
+		task.wait(0.1); captureOriginals()
+	end)
 	task.spawn(captureOriginals)
 	local _ctrlCache
 	local function getCtrl()
@@ -203,43 +208,65 @@ do
 		local ok2,c=pcall(function() return m:GetControls() end)
 		if ok2 and c then _ctrlCache=c end; return _ctrlCache
 	end
+	lp.CharacterAdded:Connect(function() _ctrlCache=nil end)
+	local _charController,_jumpscareMod
+	local function tryCharController()
+		if _charController~=nil then return _charController end
+		local ok,mod=pcall(function()
+			return require(ReplicatedStorage:WaitForChild("Controllers"):WaitForChild("CharacterController"))
+		end)
+		_charController=ok and mod or false; return _charController
+	end
+	local function tryJumpscare()
+		if _jumpscareMod~=nil then return _jumpscareMod end
+		local ok,mod=pcall(function()
+			return require(ReplicatedStorage:WaitForChild("Datas"):WaitForChild("AdminCommands"):WaitForChild("jumpscare"))
+		end)
+		_jumpscareMod=ok and mod or false; return _jumpscareMod
+	end
 	task.spawn(function()
 		while task.wait(0.1) do
-			if AntiAdminEnabled then
-				local char=lp.Character
-				if char then
-					local hum=char:FindFirstChildOfClass("Humanoid")
-					local hrp=char:FindFirstChild("HumanoidRootPart")
-					if hum and hrp then
-						for _,v in ipairs(char:GetDescendants()) do
-							if v:IsA("BallSocketConstraint") or v:IsA("HingeConstraint") or v:IsA("Attachment") then
-								v:Destroy()
-							elseif v:IsA("Motor6D") then v.Enabled=true end
-						end
-						local ctrl=getCtrl()
-						if ctrl then pcall(function() ctrl:Enable() end) end
-						local st=hum:GetState()
-						if st~=Enum.HumanoidStateType.Running and st~=Enum.HumanoidStateType.Jumping
-						and st~=Enum.HumanoidStateType.Freefall then
-							pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
-						end
-						if workspace.CurrentCamera and workspace.CurrentCamera.CameraSubject~=hum then
-							workspace.CurrentCamera.CameraSubject=hum
-						end
-						local re=lp:GetAttribute("RagdollEndTime") or 0
-						if re>workspace:GetServerTimeNow() then
-							hrp.Velocity=Vector3.zero; lp:SetAttribute("RagdollEndTime",0)
-						end
-						if origHipH and hum.HipHeight~=origHipH then hum.HipHeight=origHipH end
-						for _,n in ipairs(scaleNames) do
-							local sv=hum:FindFirstChild(n)
-							if sv and origScales[n] and sv.Value~=origScales[n] then sv.Value=origScales[n] end
-						end
-						for _,v in ipairs(char:GetChildren()) do
-							if v:IsA("Model") and not v:IsA("BackpackItem") then v:Destroy() end
-						end
-					end
+			if not AntiAdminEnabled then continue end
+			local char=lp.Character; if not char then continue end
+			local hum=char:FindFirstChildOfClass("Humanoid")
+			local hrp=char:FindFirstChild("HumanoidRootPart")
+			if not hum or not hrp then continue end
+			for _,v in ipairs(char:GetDescendants()) do
+				if v:IsA("BallSocketConstraint") or v:IsA("HingeConstraint") or v:IsA("Attachment") then
+					v:Destroy()
+				elseif v:IsA("Motor6D") then v.Enabled=true end
+			end
+			local ctrl=getCtrl()
+			if ctrl then pcall(function() ctrl:Enable() end) end
+			local st=hum:GetState()
+			if st~=Enum.HumanoidStateType.Running and st~=Enum.HumanoidStateType.Jumping
+			and st~=Enum.HumanoidStateType.Freefall then
+				pcall(function() hum:ChangeState(Enum.HumanoidStateType.Running) end)
+			end
+			if workspace.CurrentCamera and workspace.CurrentCamera.CameraSubject~=hum then
+				workspace.CurrentCamera.CameraSubject=hum
+			end
+			local re=lp:GetAttribute("RagdollEndTime") or 0
+			if re>workspace:GetServerTimeNow() then
+				hrp.Velocity=Vector3.zero; lp:SetAttribute("RagdollEndTime",0)
+			end
+			local cc=tryCharController()
+			if cc and ctrl then
+				ctrl.moveFunction=function(p,x,z) cc:RequestMove(p,x,z) end
+			end
+			local jm=tryJumpscare()
+			if jm and jm.effects and jm.effects.Victim then
+				jm.effects.Victim=function() end
+			end
+			if tick()>antiGummyRespawnGraceUntil then
+				if origHipH and hum.HipHeight~=origHipH then hum.HipHeight=origHipH end
+				for _,n in ipairs(scaleNames) do
+					local sv=hum:FindFirstChild(n)
+					if sv and origScales[n] and sv.Value~=origScales[n] then sv.Value=origScales[n] end
 				end
+			end
+			for _,v in ipairs(char:GetChildren()) do
+				if v:IsA("Model") and not v:IsA("BackpackItem") then v:Destroy() end
 			end
 		end
 	end)
@@ -603,15 +630,15 @@ if not pcall(function() GUI.Parent=game.CoreGui end) then
 	GUI.Parent=lp:WaitForChild("PlayerGui")
 end
 
-local WIN_W=isMobile and 240 or 270
-local WIN_H=isMobile and 330 or 350
-local HDR_H=isMobile and 56 or 62
-local BIG_BTN_H=30
-local BIG_BTN_TOP=HDR_H+8
-local TOTAL_TOP=HDR_H+BIG_BTN_H+16
-local TAB_H=28
+local WIN_W=isMobile and 220 or 248
+local WIN_H=isMobile and 310 or 330
+local HDR_H=isMobile and 50 or 56
+local BIG_BTN_H=28
+local BIG_BTN_TOP=HDR_H+7
+local TOTAL_TOP=HDR_H+BIG_BTN_H+14
+local TAB_H=26
 local FULL_H=WIN_H
-local FOLD_H=HDR_H+BIG_BTN_H+18
+local FOLD_H=HDR_H+BIG_BTN_H+16
 
 local Win=Instance.new("Frame")
 Win.Name="Win"; Win.Size=UDim2.new(0,WIN_W,0,FULL_H)
@@ -682,10 +709,12 @@ local _guiLocked=false
 lockBtn.MouseButton1Click:Connect(function()
 	_guiLocked=not _guiLocked
 	if _guiLocked then
-		lockBtn.Text="🔓"; lockBtn.BackgroundColor3=Color3.fromRGB(120,30,30)
+		lockBtn.Text="🔓"
+		Tween(lockBtn,F,{BackgroundColor3=Color3.fromRGB(120,30,30)})
 		Tween(lockStroke,F,{Color=Color3.fromRGB(200,50,50)})
 	else
-		lockBtn.Text="🔒"; lockBtn.BackgroundColor3=T.Card
+		lockBtn.Text="🔒"
+		Tween(lockBtn,F,{BackgroundColor3=T.Card})
 		Tween(lockStroke,F,{Color=T.Border})
 	end
 end)
@@ -763,33 +792,36 @@ ContentArea.BackgroundTransparency=1; ContentArea.ClipsDescendants=true
 ContentArea.ZIndex=2; ContentArea.Parent=Win
 
 do
-	local dragging,dragStart,winStart,_moved
-	local function startDrag(inp)
+	local dragging=false; local dragStart=nil; local winStart=nil; local _moved=false
+	local function onInputBegan(inp)
 		if _guiLocked then return end
-		dragging=true; _moved=false; dragStart=inp.Position; winStart=Win.Position
-	end
-	local function endDrag()
-		dragging=false; _moved=false
-	end
-	Win.InputBegan:Connect(function(inp)
 		if inp.UserInputType==Enum.UserInputType.MouseButton1
 		or inp.UserInputType==Enum.UserInputType.Touch then
-			startDrag(inp)
+			dragging=true; _moved=false; dragStart=inp.Position; winStart=Win.Position
 		end
-	end)
-	Win.InputEnded:Connect(function(inp)
+	end
+	local function onInputEnded(inp)
 		if inp.UserInputType==Enum.UserInputType.MouseButton1
-		or inp.UserInputType==Enum.UserInputType.Touch then endDrag() end
-	end)
+		or inp.UserInputType==Enum.UserInputType.Touch then
+			dragging=false; _moved=false
+		end
+	end
+	Win.InputBegan:Connect(onInputBegan)
+	Win.InputEnded:Connect(onInputEnded)
+	Hdr.InputBegan:Connect(onInputBegan)
+	Hdr.InputEnded:Connect(onInputEnded)
 	UserInputService.InputChanged:Connect(function(inp)
-		if dragging and (inp.UserInputType==Enum.UserInputType.MouseMovement
-		or inp.UserInputType==Enum.UserInputType.Touch) then
+		if not dragging then return end
+		if inp.UserInputType==Enum.UserInputType.MouseMovement
+		or inp.UserInputType==Enum.UserInputType.Touch then
+			if not dragStart or not winStart then return end
 			local d=inp.Position-dragStart
-			if not _moved and d.Magnitude<6 then return end
+			if not _moved and d.Magnitude<4 then return end
 			_moved=true
 			Win.Position=UDim2.new(winStart.X.Scale,winStart.X.Offset+d.X,winStart.Y.Scale,winStart.Y.Offset+d.Y)
 		end
 	end)
+	UserInputService.InputEnded:Connect(onInputEnded)
 end
 
 local FOLD_OUT=TweenInfo.new(0.28,Enum.EasingStyle.Quart,Enum.EasingDirection.Out)
@@ -1082,24 +1114,29 @@ task.spawn(function()
 				if not e or not e.bb.Parent then
 					if e then pcall(function() e.bb:Destroy() end) end
 					local bb=Instance.new("BillboardGui")
-					bb.Size=UDim2.fromOffset(60,16); bb.StudsOffset=Vector3.new(0,8,0)
+					bb.Size=UDim2.fromOffset(70,20); bb.StudsOffset=Vector3.new(0,9,0)
 					bb.AlwaysOnTop=true; bb.Adornee=mp; bb.MaxDistance=1200; bb.Parent=plot
-					local bgT=Instance.new("Frame",bb)
-					bgT.Size=UDim2.new(1,0,1,0); bgT.BackgroundColor3=T.BG
-					bgT.BackgroundTransparency=0.2; bgT.BorderSizePixel=0; Corner(bgT,4)
-					local stk=Instance.new("UIStroke",bgT); stk.Color=ECOL_Y; stk.Thickness=0.8; stk.Transparency=0.3
-					local tl=Instance.new("TextLabel",bgT)
-					tl.Size=UDim2.new(1,0,1,0); tl.BackgroundTransparency=1
-					tl.Font=Enum.Font.GothamBold; tl.TextSize=9; tl.TextColor3=ECOL_Y
-					tl.TextStrokeTransparency=0.5; tl.TextStrokeColor3=Color3.new(0,0,0)
-					timerESPs[plot.Name]={bb=bb,lbl=tl,stk=stk}; e=timerESPs[plot.Name]
+					local outer=Instance.new("Frame",bb)
+					outer.Size=UDim2.new(1,0,1,0); outer.BackgroundColor3=T.BG
+					outer.BackgroundTransparency=0.1; outer.BorderSizePixel=0; Corner(outer,6)
+					local innerBar=Instance.new("Frame",outer)
+					innerBar.Size=UDim2.new(1,-4,0,2); innerBar.Position=UDim2.new(0,2,1,-3)
+					innerBar.BackgroundColor3=ECOL_Y; innerBar.BorderSizePixel=0; Corner(innerBar,1)
+					local dot=Instance.new("Frame",outer)
+					dot.Size=UDim2.new(0,5,0,5); dot.Position=UDim2.new(0,4,0.5,-3)
+					dot.BackgroundColor3=ECOL_Y; dot.BorderSizePixel=0; Corner(dot,3)
+					local tl=Instance.new("TextLabel",outer)
+					tl.Size=UDim2.new(1,-14,1,-4); tl.Position=UDim2.new(0,11,0,0)
+					tl.BackgroundTransparency=1; tl.Font=Enum.Font.GothamBold
+					tl.TextSize=9; tl.TextColor3=ECOL_Y; tl.TextXAlignment=Enum.TextXAlignment.Left
+					timerESPs[plot.Name]={bb=bb,lbl=tl,bar=innerBar,dot=dot,outer=outer}; e=timerESPs[plot.Name]
 				end
 				e.lbl.Text=tl2.Text
 				local m2,s2=tl2.Text:match("(%d+):(%d+)")
 				if m2 and s2 then
 					local tot=tonumber(m2)*60+tonumber(s2)
 					local col=tot<=30 and ECOL_R or tot<=60 and ECOL_Y or ECOL_G
-					e.lbl.TextColor3=col; e.stk.Color=col
+					e.lbl.TextColor3=col; e.bar.BackgroundColor3=col; e.dot.BackgroundColor3=col
 				end
 			else
 				local e=timerESPs[plot.Name]
@@ -1983,11 +2020,6 @@ do
 	CreateToggle(SettingsTab.scroll,"Auto Select Best","auto picks the highest gen brainrot",function(v)
 		AutoSelectBestBrainrot=v; Config.toggles["Auto Select Best"]=v; pcall(FH_Save)
 		if v and _G._FH_LastAnimalScan and #_G._FH_LastAnimalScan>0 then pcall(_G._FH_AutoSelectBest) end
-	end)
-
-	CreateSection(SettingsTab.scroll,"AIMBOT")
-	CreateToggle(SettingsTab.scroll,"Solar Aimbot","aimbot on nearest player when u attack",function(v)
-		AimbotEnabled=v
 	end)
 
 	CreateSection(SettingsTab.scroll,"ADMIN PANEL")
