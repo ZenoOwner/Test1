@@ -523,6 +523,7 @@ local function triggerAutoBlock()
 	if not AutoBlockEnabled then return end
 	task.spawn(function()
 		task.wait(getBlockDelay())
+		if not AutoBlockEnabled then return end
 		local target=getPlotOwnerPlayer() or getNearestPlayer()
 		if target then pcall(blockPlayer,target) end
 	end)
@@ -1150,23 +1151,55 @@ local ESPTAG="VxE_"..tostring(math.random(1000,9999))
 local function mkESP(plr)
 	if plr==lp then return end
 	local char=plr.Character; if not char then return end
-	local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp or char:FindFirstChild(ESPTAG) then return end
+	local hrp=char:FindFirstChild("HumanoidRootPart")
+	local head=char:FindFirstChild("Head")
+	if not hrp or char:FindFirstChild(ESPTAG) then return end
 	local box=Instance.new("BoxHandleAdornment",char)
 	box.Name=ESPTAG; box.Adornee=hrp; box.Size=Vector3.new(4,6,2)
-	box.Color3=T.Accent; box.Transparency=0.5; box.ZIndex=10; box.AlwaysOnTop=true
+	box.Color3=T.Accent; box.Transparency=0.55; box.ZIndex=10; box.AlwaysOnTop=true
 	local bb=Instance.new("BillboardGui",char)
-	bb.Name=ESPTAG.."N"; bb.Adornee=char:FindFirstChild("Head") or hrp
-	bb.Size=UDim2.fromOffset(110,22); bb.StudsOffset=Vector3.new(0,3,0); bb.AlwaysOnTop=true
+	bb.Name=ESPTAG.."N"; bb.Adornee=head or hrp
+	bb.Size=UDim2.fromOffset(100,32); bb.StudsOffset=Vector3.new(0,3.4,0); bb.AlwaysOnTop=true
 	local bgE=Instance.new("Frame",bb)
 	bgE.Size=UDim2.new(1,0,1,0); bgE.BackgroundColor3=T.BG
-	bgE.BackgroundTransparency=0.22; bgE.BorderSizePixel=0; Corner(bgE,4); Stroke(bgE,T.Accent,0.8)
-	local nl=Instance.new("TextLabel",bgE); nl.Size=UDim2.new(1,0,0.58,0)
+	bgE.BackgroundTransparency=0.18; bgE.BorderSizePixel=0; Corner(bgE,5)
+	local leftBar=Instance.new("Frame",bgE)
+	leftBar.Size=UDim2.new(0,2,0.8,0); leftBar.Position=UDim2.new(0,2,0.1,0)
+	leftBar.BackgroundColor3=T.Accent; leftBar.BorderSizePixel=0; Corner(leftBar,1)
+	local nl=Instance.new("TextLabel",bgE); nl.Size=UDim2.new(1,-6,0.58,0)
+	nl.Position=UDim2.new(0,6,0,1)
 	nl.BackgroundTransparency=1; nl.Text=plr.DisplayName
 	nl.Font=Enum.Font.GothamBold; nl.TextSize=9; nl.TextColor3=T.White
-	nl.TextStrokeTransparency=0.5; nl.TextStrokeColor3=Color3.new(0,0,0)
-	local sl=Instance.new("TextLabel",bgE); sl.Size=UDim2.new(1,0,0.42,0)
-	sl.Position=UDim2.new(0,0,0.58,0); sl.BackgroundTransparency=1
-	sl.Text="@"..plr.Name; sl.Font=Enum.Font.Gotham; sl.TextSize=7; sl.TextColor3=T.Dim
+	nl.TextTruncate=Enum.TextTruncate.AtEnd; nl.TextXAlignment=Enum.TextXAlignment.Left
+	nl.TextStrokeTransparency=0.6; nl.TextStrokeColor3=Color3.new(0,0,0)
+	local sl=Instance.new("TextLabel",bgE); sl.Size=UDim2.new(1,-6,0.36,0)
+	sl.Position=UDim2.new(0,6,0.58,0)
+	sl.BackgroundTransparency=1; sl.Text="@"..plr.Name
+	sl.Font=Enum.Font.Gotham; sl.TextSize=7; sl.TextColor3=T.Dim
+	sl.TextXAlignment=Enum.TextXAlignment.Left; sl.TextTruncate=Enum.TextTruncate.AtEnd
+	local apBB=Instance.new("BillboardGui",char)
+	apBB.Name=ESPTAG.."AP"; apBB.Adornee=head or hrp
+	apBB.Size=UDim2.fromOffset(36,14); apBB.StudsOffset=Vector3.new(0,5.2,0); apBB.AlwaysOnTop=true
+	local apFrame=Instance.new("Frame",apBB)
+	apFrame.Size=UDim2.new(1,0,1,0); apFrame.BackgroundColor3=Color3.fromRGB(18,18,26)
+	apFrame.BackgroundTransparency=0.15; apFrame.BorderSizePixel=0; Corner(apFrame,4)
+	local apLbl=Instance.new("TextLabel",apFrame)
+	apLbl.Size=UDim2.new(1,0,1,0); apLbl.BackgroundTransparency=1
+	apLbl.Text="AP"; apLbl.Font=Enum.Font.GothamBold; apLbl.TextSize=8
+	apLbl.TextColor3=T.Dim; apLbl.TextXAlignment=Enum.TextXAlignment.Center
+	task.spawn(function()
+		task.wait(0.5)
+		local hasAP=checkPlayerHasAP(plr)
+		if hasAP then
+			apFrame.BackgroundColor3=Color3.fromRGB(6,22,10)
+			Stroke(apFrame,T.Green,0.8)
+			apLbl.TextColor3=T.Green; apLbl.Text="AP ✓"
+		else
+			apFrame.BackgroundColor3=Color3.fromRGB(22,6,6)
+			Stroke(apFrame,T.Red,0.8)
+			apLbl.TextColor3=T.Red; apLbl.Text="AP ✗"
+		end
+	end)
 end
 for _,p in ipairs(Players:GetPlayers()) do if p~=lp then task.defer(function() mkESP(p) end) end end
 Players.PlayerAdded:Connect(function(p) p.CharacterAdded:Connect(function() task.wait(0.5); mkESP(p) end) end)
@@ -1238,33 +1271,33 @@ local function doFlash()
 	local PODIUM_CFRAMES={
 		[1]={[1]={hrp=CFrame.new(Vector3.new(-347.6983,-7.5033,-4.5494)),cam=CFrame.new(-357.0927,0.0048,-0.272)*CFrame.Angles(-0.954463,-0.903625,-0.837019)}},
 		[2]={
-			[1]={hrp=CFrame.new(Vector3.new(-349.9259,-7.3841,-1.578)),cam=CFrame.new(-361.8253,1.3324,5.126)*CFrame.Angles(-0.824269,-0.878251,-0.693896)},
-			[2]={hrp=CFrame.new(Vector3.new(-348.4448,-7.1043,3.3442)),cam=CFrame.new(-358.5857,-0.0841,9.5148)*CFrame.Angles(-0.732523,-0.884924,-0.608084)},
-			[3]={hrp=CFrame.new(-346.1821,-7.2885,-1.609)*CFrame.Angles(0,-1.247212,0),cam=CFrame.new(-360.1625,0.6353,3.1776)*CFrame.Angles(-0.932656,-1.049154,-0.86316)},
-			[4]={hrp=CFrame.new(-343.6695,-7.0385,10.3377)*CFrame.Angles(0,-0.982332,0),cam=CFrame.new(-356.477,-0.7795,18.8846)*CFrame.Angles(-0.510736,-0.917793,-0.418726)},
-			[5]={hrp=CFrame.new(-343.7608,-7.4124,-9.7994)*CFrame.Angles(0,-1.544676,0),cam=CFrame.new(-359.4998,-2.4726,-9.2893)*CFrame.Angles(-1.424811,-1.351549,-1.421283)},
-			[6]={hrpWalk=CFrame.new(-348.2407,-7.5033,74.3719),hrp=CFrame.new(-325.655,-7.5033,54.5488)*CFrame.Angles(0,-0.69115,0),cam=CFrame.new(-338.7595,-4.0265,70.3894)*CFrame.Angles(-0.126016,-0.687243,-0.080199)},
-			[7]={hrpWalk=CFrame.new(-348.2407,-7.5033,74.3719),hrp=CFrame.new(-344.4383,-7.5033,41.8672)*CFrame.Angles(0,-1.108982,0),cam=CFrame.new(-362.8094,-4.325,51.1551)*CFrame.Angles(-0.181885,-1.095968,-0.162135)},
-			[8]={hrpWalk=CFrame.new(-348.2407,-7.5033,74.3719),hrp=CFrame.new(-348.5228,-7.5033,48.1022)*CFrame.Angles(0,-0.939336,0),cam=CFrame.new(-363.5051,-2.5713,59.0596)*CFrame.Angles(-0.30602,-0.916511,-0.245634)},
-			[9]={hrp=CFrame.new(-339.6349,-7.5033,60.4164)*CFrame.Angles(0,-0.405266,0),cam=CFrame.new(-346.7646,-3.7365,77.0351)*CFrame.Angles(-0.137335,-0.401849,-0.054002)},
-			[10]={hrp=CFrame.new(-339.4453,-7.5033,61.9429)*CFrame.Angles(0,-0.29845,0),cam=CFrame.new(-342.5024,-5.2211,71.8802)*CFrame.Angles(-0.081543,-0.297517,-0.023953)},
-			[11]={hrpWalk=CFrame.new(-351.5396,-7.5033,-41.797),hrp=CFrame.new(-331.5262,-7.5033,-47.3607)*CFrame.Angles(0,0.003141,0),cam=CFrame.new(-331.4885,-9.6045,-59.3396)*CFrame.Angles(2.851853,-0.097011,-3.140695),fwdOffset=Vector3.new(0,0,-3)},
-			[12]={hrpWalk=CFrame.new(-351.5396,-7.5033,-41.797),hrp=CFrame.new(-338.729,-7.5033,-43.4714)*CFrame.Angles(0,-1.420208,0),cam=CFrame.new(-345.1804,-9.9578,-56.8524)*CFrame.Angles(2.856299,-0.433315,3.01906),fwdOffset=Vector3.new(0,0,-3)},
-			[13]={hrpWalk=CFrame.new(-351.5396,-7.5033,-41.797),hrp=CFrame.new(-334.5183,-7.5033,-41.6819)*CFrame.Angles(0,-0.543495,0),cam=CFrame.new(-341.912,-9.959,-53.9192)*CFrame.Angles(2.831168,-0.52207,2.982964),fwdOffset=Vector3.new(0,0,-3)},
-			[14]={hrpWalk=CFrame.new(-351.5396,-7.5033,-41.797),hrp=CFrame.new(-319.8298,-7.5033,-45.1476)*CFrame.Angles(0,-0.323585,0),cam=CFrame.new(-323.983,-9.9618,-57.5315)*CFrame.Angles(2.834406,-0.309406,3.045298),fwdOffset=Vector3.new(0,0,-3)},
-			[15]={hrpWalk=CFrame.new(-351.5396,-7.5033,-41.797),hrp=CFrame.new(-317.917,-7.5033,-41.9999)*CFrame.Angles(0,-0.565487,0),cam=CFrame.new(-325.8,-9.9581,-54.4216)*CFrame.Angles(2.835549,-0.544183,2.979445),fwdOffset=Vector3.new(0,0,-3)},
-			[16]={hrp=CFrame.new(-338.285,-7.5033,57.204)*CFrame.Angles(0,-0.207346,0),cam=CFrame.new(-340.4345,-9.5916,67.4219)*CFrame.Angles(0.335111,-0.196113,0.067755)},
-			[17]={hrp=CFrame.new(-337.9285,-7.5033,55.1757)*CFrame.Angles(0,-0.430398,0),cam=CFrame.new(-341.7441,-8.9535,63.4867)*CFrame.Angles(0.337895,-0.408747,0.138758)},
-			[18]={hrp=CFrame.new(-332.1088,-7.5033,53.1675)*CFrame.Angles(0,-0.49323,0),cam=CFrame.new(-336.3932,-9.2396,61.1377)*CFrame.Angles(0.382481,-0.462609,0.177644)},
-			[19]={hrpWalk=CFrame.new(-351.5396,-7.5033,-41.797),hrp=CFrame.new(-328.579,-3.1209,-35.0857)*CFrame.Angles(0,0.021988,0),cam=CFrame.new(-328.5137,-10.011,-45.4753)*CFrame.Angles(2.387391,-0.004579,3.137291),fwdOffset=Vector3.new(0,0,-3)},
-			[20]={hrpWalk=CFrame.new(-351.5396,-7.5033,-41.797),hrp=CFrame.new(-321.5783,-7.5033,-33.5778)*CFrame.Angles(0,0.006284,0),cam=CFrame.new(-321.5535,-10.0218,-37.5259)*CFrame.Angles(2.387391,-0.004579,3.137291),fwdOffset=Vector3.new(0,0,-3)},
-			[21]={hrpWalk=CFrame.new(-351.5396,-7.5033,-41.797),hrp=CFrame.new(-314.088,-7.5033,-32.1806)*CFrame.Angles(0,-0.006282,0),cam=CFrame.new(-314.1147,-10.0174,-36.4214)*CFrame.Angles(2.387391,-0.004579,3.137291),fwdOffset=Vector3.new(0,0,-3)},
-			[22]={hrpWalk=CFrame.new(-351.5396,-7.5033,-41.797),hrp=CFrame.new(-306.8919,-7.5033,-33.9124)*CFrame.Angles(0,-0.006284,0),cam=CFrame.new(-306.923,-10.008,-38.86)*CFrame.Angles(2.4648,-0.004898,3.137657),fwdOffset=Vector3.new(0,0,-3)},
-			[23]={hrpWalk=CFrame.new(-351.5396,-7.5033,-41.797),hrp=CFrame.new(-300.2759,-7.5033,-32.7047)*CFrame.Angles(0,-0.031416,0),cam=CFrame.new(-300.4669,-10.016,-37.044)*CFrame.Angles(2.399014,-0.032413,3.111857),fwdOffset=Vector3.new(0,0,-3)},
-			[24]={hrpWalk=CFrame.new(-348.2407,-7.5033,74.3719),hrp=CFrame.new(-330.0484,-7.5033,48.183)*CFrame.Angles(0,-0.006377,0),cam=CFrame.new(-330.1124,-10.0063,53.2779)*CFrame.Angles(0.662308,-0.00991,0.007727)},
-			[25]={hrpWalk=CFrame.new(-348.2407,-7.5033,74.3719),hrp=CFrame.new(-325.4576,-7.5033,46.8182)*CFrame.Angles(0,-0.125663,0),cam=CFrame.new(-326.0541,-10.0104,51.5397)*CFrame.Angles(0.700033,-0.09632,0.080833)},
-			[26]={hrpWalk=CFrame.new(-348.2407,-7.5033,74.3719),hrp=CFrame.new(-324.6721,-7.5033,47.2033)*CFrame.Angles(0,-0.40212,0),cam=CFrame.new(-326.6859,-10.0057,51.9385)*CFrame.Angles(0.698024,-0.314979,0.254268)},
-			[27]={hrpWalk=CFrame.new(-348.2407,-7.5033,74.3719),hrp=CFrame.new(-320.4196,-7.5033,44.1)*CFrame.Angles(0,-0.571769,0),cam=CFrame.new(-322.9213,-10.0122,49.5157)*CFrame.Angles(0.876985,-0.422603,0.397417)},
+			[1]={hrp=CFrame.new(Vector3.new(-347.8,-7.3,30.9)),cam=CFrame.lookAt(Vector3.new(-362.618,5.041,69.248),Vector3.new(-362.268,4.784,68.347))},
+			[2]={hrp=CFrame.new(Vector3.new(-345.1,-7.3,25.7)),cam=CFrame.lookAt(Vector3.new(-354.620,0.536,42.219),Vector3.new(-354.147,0.216,41.399))},
+			[3]={hrp=CFrame.new(Vector3.new(-343.5,-7.3,19.4)),cam=CFrame.lookAt(Vector3.new(-356.079,0.311,33.802),Vector3.new(-355.455,0.002,33.084))},
+			[4]={hrp=CFrame.new(Vector3.new(-345.2,-7.3,-12.2)),cam=CFrame.lookAt(Vector3.new(-363.864,2.027,-10.458),Vector3.new(-362.943,1.635,-10.459))},
+			[5]={hrpWalk=CFrame.new(Vector3.new(-353.7,-7.3,88.4)),hrp=CFrame.new(Vector3.new(-298.9,-7.3,33.0)),cam=CFrame.lookAt(Vector3.new(-297.222,-2.262,52.903),Vector3.new(-297.217,-2.441,51.920))},
+			[6]={hrpWalk=CFrame.new(Vector3.new(-347.8,-7.3,86.7)),hrp=CFrame.new(Vector3.new(-301.3,-7.3,65.2)),cam=CFrame.lookAt(Vector3.new(-299.990,0.029,84.914),Vector3.new(-299.970,-0.259,83.956))},
+			[7]={hrp=CFrame.new(Vector3.new(-342.8,-6.8,25.6)),cam=CFrame.lookAt(Vector3.new(-361.553,3.228,27.267),Vector3.new(-360.645,2.809,27.271))},
+			[8]={hrp=CFrame.new(Vector3.new(-342.8,-6.8,28.0)),cam=CFrame.lookAt(Vector3.new(-361.042,4.173,28.237),Vector3.new(-360.156,3.709,28.227))},
+			[9]={hrp=CFrame.new(Vector3.new(-343.8,-7.2,26.4)),cam=CFrame.lookAt(Vector3.new(-361.460,4.701,26.126),Vector3.new(-360.600,4.191,26.139))},
+			[10]={hrp=CFrame.new(Vector3.new(-341.0,-7.3,57.9)),cam=CFrame.lookAt(Vector3.new(-345.372,-1.632,77.674),Vector3.new(-345.081,-1.839,76.741))},
+			[11]={hrp=CFrame.new(Vector3.new(-364.4,-7.3,14.7)),cam=CFrame.lookAt(Vector3.new(-373.094,-9.963,24.755),Vector3.new(-372.378,-9.668,24.123))},
+			[12]={hrpWalk=CFrame.new(Vector3.new(-345.6,-7.3,66.8)),hrp=CFrame.new(Vector3.new(-323.5,12.6,32.4)),cam=CFrame.lookAt(Vector3.new(-321.478,19.273,55.924),Vector3.new(-321.490,19.054,54.949)),needsUp=true},
+			[13]={hrpWalk=CFrame.new(Vector3.new(-343.7,-7.3,57.1)),hrp=CFrame.new(Vector3.new(-315.8,12.6,32.9)),cam=CFrame.lookAt(Vector3.new(-314.035,17.240,46.261),Vector3.new(-314.039,17.004,45.289)),needsUp=true},
+			[14]={hrpWalk=CFrame.new(Vector3.new(-341.1,-7.3,53.1)),hrp=CFrame.new(Vector3.new(-316.5,12.6,32.0)),cam=CFrame.lookAt(Vector3.new(-312.041,18.021,8.263),Vector3.new(-311.862,17.784,7.308)),needsUp=true},
+			[15]={hrpWalk=CFrame.new(Vector3.new(-350.3,-7.3,72.9)),hrp=CFrame.new(Vector3.new(-302.4,12.6,37.5)),cam=CFrame.lookAt(Vector3.new(-302.900,16.971,51.885),Vector3.new(-302.867,16.769,50.907)),needsUp=true},
+			[16]={hrp=CFrame.new(Vector3.new(-344.2,-7.3,56.2)),cam=CFrame.lookAt(Vector3.new(-347.798,-9.981,63.674),Vector3.new(-347.409,-9.542,62.864))},
+			[17]={hrp=CFrame.new(Vector3.new(-344.0,-7.3,50.6)),cam=CFrame.lookAt(Vector3.new(-348.644,-9.976,58.966),Vector3.new(-348.060,-9.578,58.258))},
+			[18]={hrp=CFrame.new(Vector3.new(-342.9,-7.3,46.1)),cam=CFrame.lookAt(Vector3.new(-353.382,-9.964,53.219),Vector3.new(-352.594,-9.658,52.685))},
+			[19]={hrp=CFrame.new(Vector3.new(-354.9,-7.3,-7.7)),cam=CFrame.lookAt(Vector3.new(-358.551,-10.029,-5.962),Vector3.new(-357.894,-9.276,-5.955)),needsJump=true},
+			[20]={hrpWalk=CFrame.new(Vector3.new(-343.6,-7.3,61.4)),hrp=CFrame.new(Vector3.new(-321.4,29.6,32.3)),cam=CFrame.lookAt(Vector3.new(-319.560,40.296,58.067),Vector3.new(-319.564,39.956,57.127)),needsJump=true,needsUp=true},
+			[21]={hrpWalk=CFrame.new(Vector3.new(-343.6,-7.3,61.4)),hrp=CFrame.new(Vector3.new(-313.6,29.6,31.9)),cam=CFrame.lookAt(Vector3.new(-311.768,40.891,57.387),Vector3.new(-311.773,40.529,56.455)),needsJump=true,needsUp=true},
+			[22]={hrpWalk=CFrame.new(Vector3.new(-343.6,-7.3,61.4)),hrp=CFrame.new(Vector3.new(-306.7,29.6,31.4)),cam=CFrame.lookAt(Vector3.new(-304.948,40.098,57.213),Vector3.new(-304.948,39.766,56.270)),needsJump=true,needsUp=true},
+			[23]={hrpWalk=CFrame.new(Vector3.new(-343.6,-7.3,61.4)),hrp=CFrame.new(Vector3.new(-299.4,29.6,31.8)),cam=CFrame.lookAt(Vector3.new(-297.648,34.472,43.789),Vector3.new(-297.651,34.194,42.829)),needsJump=true,needsUp=true},
+			[24]={hrp=CFrame.new(Vector3.new(-356.8,-7.3,24.0)),cam=CFrame.lookAt(Vector3.new(-361.745,-10.009,25.908),Vector3.new(-360.972,-9.375,25.891)),needsJump=true},
+			[25]={hrpWalk=CFrame.new(Vector3.new(-344.5,-7.3,76.2)),hrp=CFrame.new(Vector3.new(-321.2,-7.3,45.1)),cam=CFrame.lookAt(Vector3.new(-319.622,-10.022,49.196),Vector3.new(-319.600,-9.310,48.494)),needsJump=true},
+			[26]={hrpWalk=CFrame.new(Vector3.new(-343.8,-7.3,56.2)),hrp=CFrame.new(Vector3.new(-327.7,29.6,32.9)),cam=CFrame.lookAt(Vector3.new(-341.160,45.553,42.831),Vector3.new(-340.510,44.896,42.450)),needsUp=true},
+			[27]={hrpWalk=CFrame.new(Vector3.new(-343.8,-7.3,60.0)),hrp=CFrame.new(Vector3.new(-323.5,29.6,33.7)),cam=CFrame.lookAt(Vector3.new(-338.597,43.578,44.008),Vector3.new(-337.876,43.010,43.612)),needsUp=true},
 		},
 	}
 
@@ -1291,7 +1324,7 @@ local function doFlash()
 	if not entry or not entry.cam then return end
 
 	task.spawn(function()
-		local CARPET_SPEED=220
+		local CARPET_SPEED=177
 		local ARRIVE_DIST=3.5
 		local TIMEOUT=8
 		local player=Players.LocalPlayer
@@ -1792,15 +1825,8 @@ do
 		local topRow=Instance.new("Frame"); topRow.Size=UDim2.new(1,0,0,16)
 		topRow.Position=UDim2.new(0,0,0,6); topRow.BackgroundTransparency=1; topRow.ZIndex=3; topRow.Parent=infoFrame
 		local nl3=Label(topRow,rec.name,isMobile and 10 or 12,T.White,Enum.Font.GothamBold)
-		nl3.Size=UDim2.new(1,-54,1,0); nl3.Position=UDim2.new(0,0,0,0)
+		nl3.Size=UDim2.new(1,0,1,0); nl3.Position=UDim2.new(0,0,0,0)
 		nl3.TextTruncate=Enum.TextTruncate.AtEnd; nl3.ZIndex=3
-
-		local apBadge=Instance.new("TextLabel"); apBadge.Size=UDim2.new(0,42,0,14)
-		apBadge.Position=UDim2.new(1,-44,0,1); apBadge.BackgroundColor3=T.Card
-		apBadge.BorderSizePixel=0; apBadge.Text="AP --"; apBadge.TextSize=8
-		apBadge.Font=Enum.Font.GothamBold; apBadge.TextColor3=T.Dim
-		apBadge.TextXAlignment=Enum.TextXAlignment.Center
-		apBadge.ZIndex=4; apBadge.Parent=topRow; Corner(apBadge,4); Stroke(apBadge,T.Border,0.8)
 
 		local mutTxt=(rec.mutation and tostring(rec.mutation)~="None") and tostring(rec.mutation) or "No Mutation"
 		local mutLbl2=Label(infoFrame,mutTxt,isMobile and 8 or 10,mutCol,Enum.Font.GothamMedium)
@@ -1820,27 +1846,6 @@ do
 		selBtn2.Font=Enum.Font.GothamBold; selBtn2.TextColor3=T.Dim; selBtn2.ZIndex=4
 		selBtn2.AutoButtonColor=false; selBtn2.Parent=card; Corner(selBtn2,5)
 		local selStroke2=Stroke(selBtn2,T.Border,1)
-
-		task.spawn(function()
-			local ownerPlr=nil
-			for _,p in ipairs(Players:GetPlayers()) do
-				if p~=lp and (p.Name==rec.ownerName or p.DisplayName==rec.ownerName) then
-					ownerPlr=p; break
-				end
-			end
-			if ownerPlr then
-				local hasAP=checkPlayerHasAP(ownerPlr)
-				if hasAP then
-					apBadge.Text="AP Yes"; apBadge.TextColor3=T.Green
-					TweenService:Create(apBadge,F,{BackgroundColor3=Color3.fromRGB(8,24,12)}):Play()
-					pcall(function() apBadge:FindFirstChildOfClass("UIStroke").Color=T.Green end)
-				else
-					apBadge.Text="AP No"; apBadge.TextColor3=T.Red
-					TweenService:Create(apBadge,F,{BackgroundColor3=Color3.fromRGB(24,8,8)}):Play()
-					pcall(function() apBadge:FindFirstChildOfClass("UIStroke").Color=T.Red end)
-				end
-			end
-		end)
 
 		local isSelected=false
 		local function applySelV(v)
@@ -2025,13 +2030,13 @@ do
 	CreateSection(SettingsTab.scroll,"ADMIN PANEL")
 	do
 		local FP={win=nil,visible=false,minimized=false}
-		local FP_W=isMobile and 320 or 400
-		local FP_ROW_H=isMobile and 36 or 44
-		local FP_AVT=isMobile and 26 or 32
-		local FP_BTN=isMobile and 24 or 28
+		local FP_W=isMobile and 280 or 340
+		local FP_ROW_H=isMobile and 34 or 40
+		local FP_AVT=isMobile and 24 or 30
+		local FP_BTN=isMobile and 22 or 26
 		local FP_GAP=4
-		local FP_HDR_H=34
-		local FP_CMDS={{name="tiny",emoji="🤏"},{name="jail",emoji="🔒"},{name="rocket",emoji="🚀"},{name="ragdoll",emoji="🏃"},{name="balloon",emoji="🎈"}}
+		local FP_HDR_H=32
+		local FP_CMDS={{name="tiny",emoji="🐜"},{name="jail",emoji="🔓"},{name="rocket",emoji="🚀"},{name="ragdoll",emoji="🏃"},{name="balloon",emoji="🎈"}}
 		local fpCoolBtns={}; for _,c in ipairs(FP_CMDS) do fpCoolBtns[c.name]={} end
 		local fpCoolRunning=false
 
@@ -2056,7 +2061,7 @@ do
 									btn2.Text=cdTxt; btn2.TextSize=10
 									btn2.TextColor3=T.Red; btn2.BackgroundTransparency=0.55
 								else
-									btn2.Text=emoji; btn2.TextSize=isMobile and 14 or 17
+									btn2.Text=emoji; btn2.TextSize=isMobile and 13 or 15
 									btn2.TextColor3=T.White; btn2.BackgroundTransparency=0.28
 								end
 							end
@@ -2099,17 +2104,17 @@ do
 			}); wg.Rotation=45; wg.Parent=ws
 			local hdr2=Instance.new("Frame"); hdr2.Size=UDim2.new(1,0,0,FP_HDR_H)
 			hdr2.BackgroundColor3=T.Header; hdr2.BorderSizePixel=0; hdr2.ZIndex=31; hdr2.Parent=win; Corner(hdr2,10)
-			local hf2=Instance.new("Frame"); hf2.Size=UDim2.new(1,0,0,10); hf2.Position=UDim2.new(0,0,1,-10)
+			local hf2=Instance.new("Frame"); hf2.Size=UDim2.new(1,0,0,8); hf2.Position=UDim2.new(0,0,1,-8)
 			hf2.BackgroundColor3=T.Header; hf2.BorderSizePixel=0; hf2.ZIndex=31; hf2.Parent=hdr2
-			local tl2=Label(hdr2,"⚡ Quick Panel",isMobile and 11 or 13,T.White,Enum.Font.GothamBold)
+			local tl2=Label(hdr2,"⚡ Fast Panel",isMobile and 10 or 12,T.White,Enum.Font.GothamBold)
 			tl2.Size=UDim2.new(1,-50,1,0); tl2.Position=UDim2.new(0,10,0,0); tl2.ZIndex=32
-			local mb2=Instance.new("TextButton"); mb2.Size=UDim2.new(0,20,0,16)
-			mb2.AnchorPoint=Vector2.new(1,0.5); mb2.Position=UDim2.new(1,-8,0.5,0)
+			local mb2=Instance.new("TextButton"); mb2.Size=UDim2.new(0,20,0,15)
+			mb2.AnchorPoint=Vector2.new(1,0.5); mb2.Position=UDim2.new(1,-7,0.5,0)
 			mb2.BackgroundColor3=T.Card; mb2.BorderSizePixel=0; mb2.AutoButtonColor=false
 			mb2.Text="—"; mb2.TextSize=9; mb2.Font=Enum.Font.GothamBold
 			mb2.TextColor3=T.Dim; mb2.ZIndex=33; mb2.Parent=hdr2; Corner(mb2,4); Stroke(mb2,T.Border,1)
 			local scroll2=Instance.new("ScrollingFrame"); scroll2.Name="FPScroll"
-			scroll2.Size=UDim2.new(1,-10,1,-(FP_HDR_H+6)); scroll2.Position=UDim2.new(0,5,0,FP_HDR_H+4)
+			scroll2.Size=UDim2.new(1,-8,1,-(FP_HDR_H+5)); scroll2.Position=UDim2.new(0,4,0,FP_HDR_H+4)
 			scroll2.BackgroundTransparency=1; scroll2.BorderSizePixel=0; scroll2.ScrollBarThickness=0
 			scroll2.ScrollBarImageColor3=T.Dim; scroll2.CanvasSize=UDim2.new(0,0,0,0); scroll2.ZIndex=31; scroll2.Parent=win
 			local ll2=Instance.new("UIListLayout"); ll2.Padding=UDim.new(0,3)
@@ -2118,7 +2123,7 @@ do
 				scroll2.CanvasSize=UDim2.new(0,0,0,ll2.AbsoluteContentSize.Y+8)
 			end)
 			local ntl=Label(win,"No other players",isMobile and 8 or 10,T.Dim,Enum.Font.GothamMedium)
-			ntl.Size=UDim2.new(1,-20,0,22); ntl.Position=UDim2.new(0,10,0,FP_HDR_H+8)
+			ntl.Size=UDim2.new(1,-20,0,20); ntl.Position=UDim2.new(0,10,0,FP_HDR_H+8)
 			ntl.TextXAlignment=Enum.TextXAlignment.Center; ntl.Visible=false; ntl.ZIndex=31
 			FP.win=win; FP.scroll=scroll2; FP.listLayout=ll2; FP.noTargetLbl=ntl; FP.hdr=hdr2
 			mb2.MouseButton1Click:Connect(function()
@@ -2129,17 +2134,39 @@ do
 				else scroll2.Visible=true; fpRefreshPlayers() end
 			end)
 			do
-				local _d=false; local _ds=nil; local _ws=nil
+				local _fpDrag=false; local _fpDragStart=nil; local _fpWinStart=nil; local _fpMoved=false
+				local function fpDragBegin(inp)
+					_fpDrag=true; _fpMoved=false; _fpDragStart=inp.Position; _fpWinStart=win.Position
+				end
+				local function fpDragEnd()
+					_fpDrag=false; _fpMoved=false
+				end
+				win.InputBegan:Connect(function(inp)
+					if inp.UserInputType==Enum.UserInputType.MouseButton1
+					or inp.UserInputType==Enum.UserInputType.Touch then fpDragBegin(inp) end
+				end)
+				win.InputEnded:Connect(function(inp)
+					if inp.UserInputType==Enum.UserInputType.MouseButton1
+					or inp.UserInputType==Enum.UserInputType.Touch then fpDragEnd() end
+				end)
 				hdr2.InputBegan:Connect(function(inp)
-					if inp.UserInputType==Enum.UserInputType.MouseButton1 then _d=true; _ds=inp.Position; _ws=win.Position end
+					if inp.UserInputType==Enum.UserInputType.MouseButton1
+					or inp.UserInputType==Enum.UserInputType.Touch then fpDragBegin(inp) end
 				end)
 				UserInputService.InputChanged:Connect(function(inp)
-					if _d and inp.UserInputType==Enum.UserInputType.MouseMovement then
-						local d=inp.Position-_ds; win.Position=UDim2.new(_ws.X.Scale,_ws.X.Offset+d.X,_ws.Y.Scale,_ws.Y.Offset+d.Y)
+					if not _fpDrag then return end
+					if inp.UserInputType==Enum.UserInputType.MouseMovement
+					or inp.UserInputType==Enum.UserInputType.Touch then
+						if not _fpDragStart or not _fpWinStart then return end
+						local d=inp.Position-_fpDragStart
+						if not _fpMoved and d.Magnitude<4 then return end
+						_fpMoved=true
+						win.Position=UDim2.new(_fpWinStart.X.Scale,_fpWinStart.X.Offset+d.X,_fpWinStart.Y.Scale,_fpWinStart.Y.Offset+d.Y)
 					end
 				end)
 				UserInputService.InputEnded:Connect(function(inp)
-					if inp.UserInputType==Enum.UserInputType.MouseButton1 then _d=false end
+					if inp.UserInputType==Enum.UserInputType.MouseButton1
+					or inp.UserInputType==Enum.UserInputType.Touch then fpDragEnd() end
 				end)
 			end
 		end
