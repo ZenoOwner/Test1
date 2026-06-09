@@ -16,7 +16,7 @@ local lp = Players.LocalPlayer
 if not lp.Character then lp.CharacterAdded:Wait() end
 
 local AutoBlockEnabled        = true
-local AutoFlashEnabled        = true
+local AutoTPEnabled           = false
 local RagdollBypassEnabled    = true
 local AutoSelectBestBrainrot  = false
 local AntiAdminEnabled        = true
@@ -340,6 +340,59 @@ do
 			end
 		end
 		AimbotTarget=nearest
+	end)
+end
+
+do
+	local SENTRY_DETECT_DIST=200
+	local sentryFirstSeen={}
+	local sentryTarget=nil
+	local function findSentryTarget()
+		local chr=lp.Character; if not chr then return nil end
+		local hrp=chr:FindFirstChild("HumanoidRootPart"); if not hrp then return nil end
+		local rootPos=hrp.Position; local now=tick()
+		for obj in pairs(sentryFirstSeen) do if not obj.Parent then sentryFirstSeen[obj]=nil end end
+		for _,obj in pairs(workspace:GetChildren()) do
+			if obj.Name:find("Sentry") and not obj.Name:lower():find("bullet") then
+				local ownerId=obj.Name:match("Sentry_(%d+)")
+				if ownerId and tonumber(ownerId)==lp.UserId then continue end
+				local part=obj:IsA("BasePart") and obj or (obj:IsA("Model") and (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")))
+				if part and (rootPos-part.Position).Magnitude<=SENTRY_DETECT_DIST then
+					if not sentryFirstSeen[obj] then sentryFirstSeen[obj]=now end
+					if now-sentryFirstSeen[obj]>=3.5 then
+						pcall(function()
+							if obj:IsA("Model") then
+								for _,p2 in ipairs(obj:GetDescendants()) do if p2:IsA("BasePart") then p2.CanCollide=false end end
+							elseif obj:IsA("BasePart") then obj.CanCollide=false end
+							obj:Destroy()
+						end)
+						sentryFirstSeen[obj]=nil
+					end
+				end
+			end
+		end
+	end
+	task.spawn(function()
+		task.wait(1)
+		for _,obj in pairs(workspace:GetChildren()) do
+			if obj.Name:find("Sentry") and not obj.Name:lower():find("bullet") then
+				local ownerId=obj.Name:match("Sentry_(%d+)")
+				if not (ownerId and tonumber(ownerId)==lp.UserId) then
+					sentryFirstSeen[obj]=tick()-3.5
+				end
+			end
+		end
+	end)
+	workspace.DescendantAdded:Connect(function(obj)
+		if obj.Name:find("Sentry") and not obj.Name:lower():find("bullet") then
+			local ownerId=obj.Name:match("Sentry_(%d+)")
+			if not (ownerId and tonumber(ownerId)==lp.UserId) then
+				if not sentryFirstSeen[obj] then sentryFirstSeen[obj]=tick() end
+			end
+		end
+	end)
+	RunService.Heartbeat:Connect(function()
+		findSentryTarget()
 	end)
 end
 
@@ -718,15 +771,18 @@ local function makeHdrIconBtn(txt,order)
 end
 
 local lockBtn,lockStroke=makeHdrIconBtn("🔒",1)
-local _guiLocked=false
+local _guiLocked=true
+lockBtn.Text="🔒"
+lockBtn.BackgroundColor3=Color3.fromRGB(120,30,30)
+lockStroke.Color=Color3.fromRGB(200,50,50)
 lockBtn.MouseButton1Click:Connect(function()
 	_guiLocked=not _guiLocked
 	if _guiLocked then
-		lockBtn.Text="🔓"
+		lockBtn.Text="🔒"
 		Tween(lockBtn,F,{BackgroundColor3=Color3.fromRGB(120,30,30)})
 		Tween(lockStroke,F,{Color=Color3.fromRGB(200,50,50)})
 	else
-		lockBtn.Text="🔒"
+		lockBtn.Text="🔓"
 		Tween(lockBtn,F,{BackgroundColor3=T.Card})
 		Tween(lockStroke,F,{Color=T.Border})
 	end
@@ -1186,21 +1242,20 @@ local function mkESP(plr)
 	sl.Font=Enum.Font.Gotham; sl.TextSize=7; sl.TextColor3=T.Dim
 	sl.TextXAlignment=Enum.TextXAlignment.Left; sl.TextTruncate=Enum.TextTruncate.AtEnd
 	local apBB=Instance.new("BillboardGui",char)
-	apBB.Name=ESPTAG.."AP"; apBB.Adornee=head or hrp
-	apBB.Size=UDim2.fromOffset(30,11); apBB.StudsOffset=Vector3.new(0,5,0); apBB.AlwaysOnTop=true
+	apBB.Name=ESPTAG.."AP"; apBB.Adornee=hrp
+	apBB.Size=UDim2.fromOffset(28,10); apBB.StudsOffset=Vector3.new(0,-3.8,0); apBB.AlwaysOnTop=true
 	local apF=Instance.new("Frame",apBB)
 	apF.Size=UDim2.new(1,0,1,0); apF.BackgroundColor3=T.Card
 	apF.BackgroundTransparency=0.15; apF.BorderSizePixel=0; Corner(apF,3)
 	local apL=Instance.new("TextLabel",apF)
 	apL.Size=UDim2.new(1,0,1,0); apL.BackgroundTransparency=1
-	apL.Text="AP?"; apL.Font=Enum.Font.GothamBold; apL.TextSize=7
+	apL.Text="AP?"; apL.Font=Enum.Font.GothamBold; apL.TextSize=6
 	apL.TextColor3=T.Dim; apL.TextXAlignment=Enum.TextXAlignment.Center
 	task.spawn(function()
 		task.wait(0.8)
 		local hasAP=false
 		pcall(function()
-			local pg=lp:FindFirstChild("PlayerGui")
-			if not pg then return end
+			local pg=lp:FindFirstChild("PlayerGui"); if not pg then return end
 			local ap=pg:FindFirstChild("AdminPanel"); if not ap then return end
 			local plist=ap:FindFirstChild("Profiles",true)
 			if plist and plist:FindFirstChild(plr.Name) then hasAP=true end
@@ -1257,17 +1312,17 @@ local function ensureProgressBar()
 		progressBarGui.Parent=lp:WaitForChild("PlayerGui")
 	end
 	progressContainer=Instance.new("Frame")
-	progressContainer.Size=UDim2.fromOffset(220,18)
-	progressContainer.Position=UDim2.new(0.5,-110,0,33)
+	progressContainer.Size=UDim2.fromOffset(190,14)
+	progressContainer.Position=UDim2.new(0.5,-95,1,-33)
 	progressContainer.BackgroundColor3=Color3.fromRGB(8,8,14)
-	progressContainer.BackgroundTransparency=0.15
-	progressContainer.BorderSizePixel=0; Corner(progressContainer,6)
+	progressContainer.BackgroundTransparency=0.12
+	progressContainer.BorderSizePixel=0; Corner(progressContainer,5)
 	progressContainer.Visible=false; progressContainer.Parent=progressBarGui
-	Stroke(progressContainer,T.AccentBright,1)
+	Stroke(progressContainer,T.AccentBright,0.9)
 	progressFill=Instance.new("Frame")
 	progressFill.Size=UDim2.new(0,0,1,0)
 	progressFill.BackgroundColor3=T.Accent
-	progressFill.BorderSizePixel=0; Corner(progressFill,5)
+	progressFill.BorderSizePixel=0; Corner(progressFill,4)
 	progressFill.Parent=progressContainer
 	local fillGrad=Instance.new("UIGradient")
 	fillGrad.Color=ColorSequence.new({
@@ -1278,7 +1333,7 @@ local function ensureProgressBar()
 	percentLabel.Size=UDim2.new(1,0,1,0)
 	percentLabel.BackgroundTransparency=1
 	percentLabel.Font=Enum.Font.GothamBold
-	percentLabel.TextSize=9
+	percentLabel.TextSize=8
 	percentLabel.TextColor3=T.White
 	percentLabel.Text="0%"
 	percentLabel.TextXAlignment=Enum.TextXAlignment.Center
@@ -1289,12 +1344,19 @@ ensureProgressBar()
 local function updateProgressBar(p)
 	if not progressFill or not percentLabel or not progressContainer then return end
 	progressContainer.Visible=true
-	TweenService:Create(progressFill,TweenInfo.new(0.05),{Size=UDim2.new(p,0,1,0)}):Play()
+	TweenService:Create(progressFill,TweenInfo.new(0.04),{Size=UDim2.new(p,0,1,0)}):Play()
 	percentLabel.Text=math.floor(p*100).."%"
+	if p>=0.999 then
+		progressFill.BackgroundColor3=T.Green
+	elseif p>=0.95 then
+		progressFill.BackgroundColor3=Color3.fromRGB(80,200,120)
+	else
+		progressFill.BackgroundColor3=T.Accent
+	end
 end
 local function hideProgressBar()
 	if progressContainer then progressContainer.Visible=false end
-	if progressFill then progressFill.Size=UDim2.new(0,0,1,0) end
+	if progressFill then progressFill.Size=UDim2.new(0,0,1,0); progressFill.BackgroundColor3=T.Accent end
 	if percentLabel then percentLabel.Text="0%" end
 end
 
@@ -1348,32 +1410,47 @@ local function executeSteal(prompt)
 	if not StealData[prompt] then
 		StealData[prompt]={hold={},trigger={},ready=true}
 		if getconnections then
-			for _,c in ipairs(getconnections(prompt.PromptButtonHoldBegan)) do
-				if c.Function then table.insert(StealData[prompt].hold,c.Function) end
-			end
-			for _,c in ipairs(getconnections(prompt.Triggered)) do
-				if c.Function then table.insert(StealData[prompt].trigger,c.Function) end
-			end
+			pcall(function()
+				for _,c in ipairs(getconnections(prompt.PromptButtonHoldBegan)) do
+					if c.Function then table.insert(StealData[prompt].hold,c.Function) end
+				end
+			end)
+			pcall(function()
+				for _,c in ipairs(getconnections(prompt.Triggered)) do
+					if c.Function then table.insert(StealData[prompt].trigger,c.Function) end
+				end
+			end)
 		end
 	end
 	local data=StealData[prompt]
 	if not data.ready then return end
 	data.ready=false; isStealing=true
 	local startTime=tick()
+	local CLOSE_DIST=6
 	task.spawn(function()
 		for _,f in ipairs(data.hold) do pcall(f) end
 		while tick()-startTime<STEAL_DURATION do
 			local elapsed=tick()-startTime
-			local p=math.clamp(elapsed/STEAL_DURATION,0,1)
-			updateProgressBar(p)
+			local raw=math.clamp(elapsed/STEAL_DURATION,0,1)
+			local capped=raw*0.95
+			local hrp2=getHRP()
+			local promptPart=prompt.Parent
+			local promptPos=promptPart and promptPart:IsA("BasePart") and promptPart.Position
+				or (promptPart and promptPart.Parent and promptPart.Parent:IsA("BasePart") and promptPart.Parent.Position)
+			local dist=hrp2 and promptPos and (hrp2.Position-promptPos).Magnitude or math.huge
+			if dist<=CLOSE_DIST then
+				capped=raw
+			end
+			updateProgressBar(capped)
 			task.wait()
 		end
 		updateProgressBar(1)
 		for _,f in ipairs(data.trigger) do pcall(f) end
 		task.wait(0.05)
+		triggerAutoBlock()
+		task.wait(0.15)
 		hideProgressBar()
 		data.ready=true; isStealing=false
-		triggerAutoBlock()
 	end)
 end
 
@@ -1502,14 +1579,92 @@ local function buildSABGui()
 	if not pcall(function() SABAllowGui.Parent=game.CoreGui end) then
 		SABAllowGui.Parent=lp:WaitForChild("PlayerGui")
 	end
+	local onCooldown=false; local COOLDOWN=1.8
+	local function findMyPrompt()
+		local plots=workspace:FindFirstChild("Plots"); if not plots then return nil end
+		for _,plot in ipairs(plots:GetChildren()) do
+			for _,v in ipairs(plot:GetDescendants()) do
+				if (v.ClassName=="StringValue" or v.ClassName=="ObjectValue" or v.ClassName=="IntValue") then
+					if tostring(v.Value)==lp.Name or tostring(v.Value)==tostring(lp.UserId)
+					or (v.ClassName=="ObjectValue" and v.Value==lp) then
+						for _,desc in ipairs(plot:GetDescendants()) do
+							if desc:IsA("ProximityPrompt") and
+							(desc.ObjectText=="Allow Friends" or desc.ObjectText=="Disallow Friends") then
+								return desc
+							end
+						end
+					end
+				end
+			end
+		end
+		local hrp=lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			local best,bestDist=nil,math.huge
+			for _,plot in ipairs(plots:GetChildren()) do
+				for _,desc in ipairs(plot:GetDescendants()) do
+					if desc:IsA("ProximityPrompt") and
+					(desc.ObjectText=="Allow Friends" or desc.ObjectText=="Disallow Friends") then
+						local part=desc.Parent
+						if part:IsA("BasePart") then
+							local d=(hrp.Position-part.Position).Magnitude
+							if d<bestDist then bestDist=d; best=desc end
+						end
+					end
+				end
+			end
+			return best
+		end
+		return nil
+	end
+	local function firePrompt(prompt)
+		local ok=pcall(function() fireprompt(prompt) end)
+		if not ok then
+			local ok2,conns=pcall(getconnections,prompt.Triggered)
+			if ok2 and conns then
+				for _,c in ipairs(conns) do
+					local fnOk,fn=pcall(function() return c.Function end)
+					if fnOk and fn~=nil then pcall(function() c:Fire() end); break end
+				end
+			end
+		end
+	end
 	local f=Instance.new("Frame")
-	f.Size=UDim2.fromOffset(160,28); f.Position=UDim2.new(0.5,-80,0,85)
+	f.Size=UDim2.fromOffset(200,68); f.Position=UDim2.new(0.5,-100,0,10)
 	f.BackgroundColor3=T.BG; f.BackgroundTransparency=0.08; f.BorderSizePixel=0; f.Parent=SABAllowGui
-	Corner(f,8); Stroke(f,T.AccentBright,1.2)
-	local lbl=Instance.new("TextLabel",f)
-	lbl.Size=UDim2.new(1,0,1,0); lbl.BackgroundTransparency=1
-	lbl.Text="SAB Allow: ON"; lbl.Font=Enum.Font.GothamBold
-	lbl.TextSize=11; lbl.TextColor3=T.Green; lbl.TextXAlignment=Enum.TextXAlignment.Center
+	Corner(f,10); Stroke(f,T.AccentBright,1.2)
+	local statusLbl=Instance.new("TextLabel",f)
+	statusLbl.Size=UDim2.new(1,0,0,26); statusLbl.Position=UDim2.new(0,0,0,4)
+	statusLbl.BackgroundTransparency=1; statusLbl.TextScaled=true
+	statusLbl.Font=Enum.Font.GothamBold; statusLbl.ZIndex=2
+	local actionBtn=Instance.new("TextButton",f)
+	actionBtn.Size=UDim2.new(0.88,0,0,26); actionBtn.Position=UDim2.new(0.06,0,0,36)
+	actionBtn.TextColor3=T.White; actionBtn.TextScaled=true
+	actionBtn.Font=Enum.Font.GothamBold; actionBtn.BorderSizePixel=0; actionBtn.ZIndex=2
+	actionBtn.AutoButtonColor=false; Corner(actionBtn,7)
+	local function updateUI()
+		local prompt=findMyPrompt()
+		if prompt then
+			if prompt.ObjectText=="Disallow Friends" then
+				statusLbl.Text="✅ Base: OPEN"; statusLbl.TextColor3=T.Green
+				actionBtn.Text="Disallow Friends"; actionBtn.BackgroundColor3=Color3.fromRGB(180,40,40)
+			else
+				statusLbl.Text="⛔ Base: LOCKED"; statusLbl.TextColor3=T.Red
+				actionBtn.Text="Allow Friends"; actionBtn.BackgroundColor3=Color3.fromRGB(40,180,60)
+			end
+		else
+			statusLbl.Text="❌ No Prompt"; statusLbl.TextColor3=Color3.fromRGB(255,200,0)
+			actionBtn.Text="Retry"; actionBtn.BackgroundColor3=T.Card
+		end
+	end
+	actionBtn.MouseButton1Click:Connect(function()
+		if onCooldown then return end
+		local prompt=findMyPrompt()
+		if prompt then firePrompt(prompt) end
+		onCooldown=true; actionBtn.Text="Wait..."
+		actionBtn.BackgroundColor3=T.Card
+		task.delay(COOLDOWN,function() onCooldown=false; updateUI() end)
+	end)
+	updateUI()
 end
 
 local function doFlash()
@@ -2155,16 +2310,38 @@ do
 	CreateSection(SettingsTab.scroll,"AUTO RESET")
 	do
 		local _arbConns2={}; local _arbBound2={}; local _arbConn2; local _arbLast2=0
+		local _atpPending=false
+		local function tryAutoTP()
+			if not AutoTPEnabled then return end
+			if not _G._FH_SelectedBrainrot then return end
+			if _atpPending then return end; _atpPending=true
+			task.spawn(function()
+				pcall(doReset)
+				local dl=tick()+10
+				while (not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart")) and tick()<dl do task.wait(0.1) end
+				if not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then _atpPending=false; return end
+				task.wait(0.15)
+				if not AutoTPEnabled then _atpPending=false; return end
+				pcall(doFlash)
+				task.wait(4); _atpPending=false
+			end)
+		end
 		local function bindRemote2(obj)
 			if not obj:IsA("RemoteEvent") then return end
 			if _arbBound2[obj] then return end
 			local ok,conn=pcall(function()
 				return obj.OnClientEvent:Connect(function(...)
-					if not AutoResetBalloonEnabled then return end
+					if not AutoResetBalloonEnabled and not AutoTPEnabled then return end
 					for i=1,select("#",...) do
 						local a=select(i,...)
 						if type(a)=="string" and a:lower():find("jump higher",1,true) then
-							local now=tick(); if now-_arbLast2<3 then return end; _arbLast2=now; doReset(); return
+							local now=tick(); if now-_arbLast2<3 then return end; _arbLast2=now
+							if AutoTPEnabled then
+								tryAutoTP()
+							elseif AutoResetBalloonEnabled then
+								doReset()
+							end
+							return
 						end
 					end
 				end)
@@ -2175,13 +2352,9 @@ do
 			for _,c in ipairs(_arbConns2) do pcall(function() c:Disconnect() end) end
 			_arbConns2={}; _arbBound2={}
 			if _arbConn2 then pcall(function() _arbConn2:Disconnect() end); _arbConn2=nil end
-			_arbConn2=ReplicatedStorage.DescendantAdded:Connect(function(obj)
-				if AutoResetBalloonEnabled then bindRemote2(obj) end
-			end)
+			_arbConn2=ReplicatedStorage.DescendantAdded:Connect(function(obj) bindRemote2(obj) end)
 			task.spawn(function()
-				for _,obj in ipairs(ReplicatedStorage:GetDescendants()) do
-					if not AutoResetBalloonEnabled then break end; bindRemote2(obj)
-				end
+				for _,obj in ipairs(ReplicatedStorage:GetDescendants()) do bindRemote2(obj) end
 			end)
 		end
 		local function stopARB2()
@@ -2189,9 +2362,13 @@ do
 			_arbConns2={}; _arbBound2={}
 			if _arbConn2 then pcall(function() _arbConn2:Disconnect() end); _arbConn2=nil end
 		end
-		CreateToggle(SettingsTab.scroll,"Reset on balloon","auto resets if someone balloons u",function(v)
+		CreateToggle(SettingsTab.scroll,"Reset on balloon","resets when u get ballooned",function(v)
 			AutoResetBalloonEnabled=v
-			if v then startARB2() else stopARB2() end
+			if v then startARB2() elseif not AutoTPEnabled then stopARB2() end
+		end)
+		CreateToggle(SettingsTab.scroll,"Auto TP after reset","resets then auto tweens + flashes",function(v)
+			AutoTPEnabled=v
+			if v then startARB2() elseif not AutoResetBalloonEnabled then stopARB2() end
 		end)
 	end
 
@@ -2200,50 +2377,12 @@ do
 		AutoGrabEnabled=v
 		if not v then hideProgressBar(); isStealing=false end
 	end)
-	CreateToggle(SettingsTab.scroll,"Auto Block","blocks the plot owner right after u grab",function(v) AutoBlockEnabled=v end)
+	CreateToggle(SettingsTab.scroll,"Auto Block","blocks plot owner after grab",function(v) AutoBlockEnabled=v end)
 
 	CreateSection(SettingsTab.scroll,"FLASH")
-	CreateToggle(SettingsTab.scroll,"Auto Flash","auto flashes when ballooned then grabs",function(v)
-		AutoFlashEnabled=v
-		if v then
-			local _afLast=0; local _afPending=false
-			local function tryAF()
-				if not AutoFlashEnabled then return end
-				if not _G._FH_SelectedBrainrot then return end
-				if _afPending then return end; _afPending=true
-				task.spawn(function()
-					if _G._FH_DoSelectedReset then pcall(_G._FH_DoSelectedReset) end
-					local dl=tick()+8
-					while (not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart")) and tick()<dl do task.wait(0.1) end
-					if not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then _afPending=false; return end
-					task.wait(0.12)
-					if not AutoFlashEnabled then _afPending=false; return end
-					pcall(doFlash)
-					task.wait(3); _afPending=false
-				end)
-			end
-			for _,obj in ipairs(ReplicatedStorage:GetDescendants()) do
-				if obj:IsA("RemoteEvent") then
-					pcall(function()
-						obj.OnClientEvent:Connect(function(...)
-							if not AutoFlashEnabled then return end
-							for i=1,select("#",...) do
-								local a=select(i,...)
-								if type(a)=="string" and a:lower():find("jump higher",1,true) then
-									local now=tick(); if now-_afLast<3 then return end; _afLast=now; tryAF(); return
-								end
-							end
-						end)
-					end)
-				end
-			end
-		end
-	end)
-
 	CreateToggle(SettingsTab.scroll,"Ragdoll Bypass","uses potion + ragdoll self to bypass",function(v)
 		RagdollBypassEnabled=v
 	end)
-
 	CreateToggle(SettingsTab.scroll,"Anti Ragdoll","stops ragdoll from working on u",function(v)
 		if v then AntiRagdoll.enable() else AntiRagdoll.disable() end
 	end)
@@ -2252,15 +2391,15 @@ do
 	CreateToggle(SettingsTab.scroll,"Anti Admin Panel","blocks tiny jail ragdoll giant inverse bee",function(v)
 		AntiAdminEnabled=v
 	end)
-	CreateToggle(SettingsTab.scroll,"NOX Auto Balloon","balloons thieves entering ur base zones",function(v)
+	CreateToggle(SettingsTab.scroll,"Auto Balloon","balloons thieves entering ur base zones",function(v)
 		NoxBalloonEnabled=v
 	end)
 
 	CreateSection(SettingsTab.scroll,"MISC")
-	CreateToggle(SettingsTab.scroll,"Solar Aimbot","aimbot fires when u attack nearest player",function(v)
+	CreateToggle(SettingsTab.scroll,"Aimbot","aimbot fires when u attack nearest player",function(v)
 		AimbotEnabled=v
 	end,true)
-	CreateToggle(SettingsTab.scroll,"SAB Allow GUI","shows allow panel for SAB at top",function(v)
+	CreateToggle(SettingsTab.scroll,"Allow / Disallow","allow or disallow friends from ur base",function(v)
 		SABAllowEnabled=v
 		if v then buildSABGui()
 		else
@@ -2277,12 +2416,12 @@ do
 	CreateSection(SettingsTab.scroll,"FAST PANEL")
 	do
 		local FP={win=nil,visible=false,minimized=false}
-		local FP_W=isMobile and 290 or 360
-		local FP_ROW_H=isMobile and 32 or 38
-		local FP_AVT=isMobile and 22 or 28
-		local FP_BTN=isMobile and 20 or 24
+		local FP_W=isMobile and 260 or 320
+		local FP_ROW_H=isMobile and 30 or 36
+		local FP_AVT=isMobile and 20 or 26
+		local FP_BTN=isMobile and 18 or 22
 		local FP_GAP=3
-		local FP_HDR_H=30
+		local FP_HDR_H=28
 		local FP_CMDS={{name="tiny",emoji="🐜"},{name="jail",emoji="🔓"},{name="rocket",emoji="🚀"},{name="ragdoll",emoji="🏃"},{name="balloon",emoji="🎈"}}
 		local fpCoolBtns={}; for _,c in ipairs(FP_CMDS) do fpCoolBtns[c.name]={} end
 		local fpCoolRunning=false
@@ -2305,10 +2444,10 @@ do
 							local btn2,emoji=e[1],e[2]
 							if btn2 and btn2.Parent then
 								if onCD and cdTxt then
-									btn2.Text=cdTxt; btn2.TextSize=9
+									btn2.Text=cdTxt; btn2.TextSize=8
 									btn2.TextColor3=T.Red; btn2.BackgroundTransparency=0.55
 								else
-									btn2.Text=emoji; btn2.TextSize=isMobile and 12 or 14
+									btn2.Text=emoji; btn2.TextSize=isMobile and 11 or 13
 									btn2.TextColor3=T.White; btn2.BackgroundTransparency=0.28
 								end
 							end
@@ -2322,12 +2461,12 @@ do
 		local FP_MAX_ROWS=5
 		local function fpH(rows)
 			local r=math.min(rows,FP_MAX_ROWS)
-			return FP_HDR_H+4+r*FP_ROW_H+math.max(0,r-1)*3+8
+			return FP_HDR_H+4+r*FP_ROW_H+math.max(0,r-1)*3+6
 		end
 		local function fpResize(rows,anim)
 			if not FP.win or FP.minimized then return end
 			local h=fpH(rows)
-			if anim then Tween(FP.win,TweenInfo.new(0.18,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=UDim2.new(0,FP_W,0,h)})
+			if anim then Tween(FP.win,TweenInfo.new(0.16,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Size=UDim2.new(0,FP_W,0,h)})
 			else FP.win.Size=UDim2.new(0,FP_W,0,h) end
 			FP.scroll.ScrollBarThickness=rows>FP_MAX_ROWS and 3 or 0
 		end
@@ -2351,26 +2490,26 @@ do
 			}); wg.Rotation=45; wg.Parent=ws
 			local hdr2=Instance.new("Frame"); hdr2.Size=UDim2.new(1,0,0,FP_HDR_H)
 			hdr2.BackgroundColor3=T.Header; hdr2.BorderSizePixel=0; hdr2.ZIndex=31; hdr2.Parent=win; Corner(hdr2,9)
-			local hf2=Instance.new("Frame"); hf2.Size=UDim2.new(1,0,0,8); hf2.Position=UDim2.new(0,0,1,-8)
+			local hf2=Instance.new("Frame"); hf2.Size=UDim2.new(1,0,0,7); hf2.Position=UDim2.new(0,0,1,-7)
 			hf2.BackgroundColor3=T.Header; hf2.BorderSizePixel=0; hf2.ZIndex=31; hf2.Parent=hdr2
-			local tl2=Label(hdr2,"⚡ Fast Panel",isMobile and 10 or 11,T.White,Enum.Font.GothamBold)
-			tl2.Size=UDim2.new(1,-44,1,0); tl2.Position=UDim2.new(0,8,0,0); tl2.ZIndex=32
-			local mb2=Instance.new("TextButton"); mb2.Size=UDim2.new(0,18,0,14)
-			mb2.AnchorPoint=Vector2.new(1,0.5); mb2.Position=UDim2.new(1,-6,0.5,0)
+			local tl2=Label(hdr2,"⚡ Fast Panel",isMobile and 9 or 10,T.White,Enum.Font.GothamBold)
+			tl2.Size=UDim2.new(1,-40,1,0); tl2.Position=UDim2.new(0,8,0,0); tl2.ZIndex=32
+			local mb2=Instance.new("TextButton"); mb2.Size=UDim2.new(0,16,0,13)
+			mb2.AnchorPoint=Vector2.new(1,0.5); mb2.Position=UDim2.new(1,-5,0.5,0)
 			mb2.BackgroundColor3=T.Card; mb2.BorderSizePixel=0; mb2.AutoButtonColor=false
 			mb2.Text="—"; mb2.TextSize=8; mb2.Font=Enum.Font.GothamBold
 			mb2.TextColor3=T.Dim; mb2.ZIndex=33; mb2.Parent=hdr2; Corner(mb2,4); Stroke(mb2,T.Border,1)
 			local scroll2=Instance.new("ScrollingFrame"); scroll2.Name="FPScroll"
-			scroll2.Size=UDim2.new(1,-8,1,-(FP_HDR_H+5)); scroll2.Position=UDim2.new(0,4,0,FP_HDR_H+4)
+			scroll2.Size=UDim2.new(1,-6,1,-(FP_HDR_H+4)); scroll2.Position=UDim2.new(0,3,0,FP_HDR_H+3)
 			scroll2.BackgroundTransparency=1; scroll2.BorderSizePixel=0; scroll2.ScrollBarThickness=0
 			scroll2.ScrollBarImageColor3=T.Dim; scroll2.CanvasSize=UDim2.new(0,0,0,0); scroll2.ZIndex=31; scroll2.Parent=win
 			local ll2=Instance.new("UIListLayout"); ll2.Padding=UDim.new(0,3)
 			ll2.SortOrder=Enum.SortOrder.LayoutOrder; ll2.HorizontalAlignment=Enum.HorizontalAlignment.Center; ll2.Parent=scroll2
 			ll2:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-				scroll2.CanvasSize=UDim2.new(0,0,0,ll2.AbsoluteContentSize.Y+8)
+				scroll2.CanvasSize=UDim2.new(0,0,0,ll2.AbsoluteContentSize.Y+6)
 			end)
 			local ntl=Label(win,"No other players",isMobile and 8 or 9,T.Dim,Enum.Font.GothamMedium)
-			ntl.Size=UDim2.new(1,-20,0,18); ntl.Position=UDim2.new(0,10,0,FP_HDR_H+8)
+			ntl.Size=UDim2.new(1,-16,0,16); ntl.Position=UDim2.new(0,8,0,FP_HDR_H+6)
 			ntl.TextXAlignment=Enum.TextXAlignment.Center; ntl.Visible=false; ntl.ZIndex=31
 			FP.win=win; FP.scroll=scroll2; FP.listLayout=ll2; FP.noTargetLbl=ntl; FP.hdr=hdr2
 			mb2.MouseButton1Click:Connect(function()
@@ -2382,26 +2521,20 @@ do
 			end)
 			do
 				local _fpDrag=false; local _fpDS=nil; local _fpWS=nil; local _fpMoved=false
-				local function fpDB(inp)
-					_fpDrag=true; _fpMoved=false; _fpDS=inp.Position; _fpWS=win.Position
-				end
+				local function fpDB(inp) _fpDrag=true; _fpMoved=false; _fpDS=inp.Position; _fpWS=win.Position end
 				local function fpDE() _fpDrag=false; _fpMoved=false end
 				win.InputBegan:Connect(function(inp)
-					if inp.UserInputType==Enum.UserInputType.MouseButton1
-					or inp.UserInputType==Enum.UserInputType.Touch then fpDB(inp) end
+					if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then fpDB(inp) end
 				end)
 				win.InputEnded:Connect(function(inp)
-					if inp.UserInputType==Enum.UserInputType.MouseButton1
-					or inp.UserInputType==Enum.UserInputType.Touch then fpDE() end
+					if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then fpDE() end
 				end)
 				hdr2.InputBegan:Connect(function(inp)
-					if inp.UserInputType==Enum.UserInputType.MouseButton1
-					or inp.UserInputType==Enum.UserInputType.Touch then fpDB(inp) end
+					if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then fpDB(inp) end
 				end)
 				UserInputService.InputChanged:Connect(function(inp)
 					if not _fpDrag then return end
-					if inp.UserInputType==Enum.UserInputType.MouseMovement
-					or inp.UserInputType==Enum.UserInputType.Touch then
+					if inp.UserInputType==Enum.UserInputType.MouseMovement or inp.UserInputType==Enum.UserInputType.Touch then
 						if not _fpDS or not _fpWS then return end
 						local d=inp.Position-_fpDS
 						if not _fpMoved and d.Magnitude<4 then return end
@@ -2410,15 +2543,14 @@ do
 					end
 				end)
 				UserInputService.InputEnded:Connect(function(inp)
-					if inp.UserInputType==Enum.UserInputType.MouseButton1
-					or inp.UserInputType==Enum.UserInputType.Touch then fpDE() end
+					if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then fpDE() end
 				end)
 			end
 		end
 
 		local function fpMakeRow(plr,order)
 			local row=Instance.new("Frame"); row.Name="FPRow_"..plr.Name
-			row.Size=UDim2.new(1,-6,0,FP_ROW_H); row.BackgroundColor3=T.Card; row.BackgroundTransparency=0.1
+			row.Size=UDim2.new(1,-4,0,FP_ROW_H); row.BackgroundColor3=T.Card; row.BackgroundTransparency=0.1
 			row.BorderSizePixel=0; row.LayoutOrder=order; row.ZIndex=32; row.Parent=FP.scroll
 			Corner(row,5); Stroke(row,T.Border,1)
 			local af=Instance.new("Frame"); af.Size=UDim2.new(0,FP_AVT,0,FP_AVT)
@@ -2430,16 +2562,16 @@ do
 
 			local BTN_BLOCK=5*FP_BTN+4*FP_GAP
 			local NAME_X=4+FP_AVT+4
-			local BTNS_X=FP_W-6-BTN_BLOCK
+			local BTNS_X=FP_W-4-BTN_BLOCK
 
-			local nl4=Label(row,plr.DisplayName,isMobile and 9 or 11,T.White,Enum.Font.GothamBold)
+			local nl4=Label(row,plr.DisplayName,isMobile and 9 or 10,T.White,Enum.Font.GothamBold)
 			nl4.Size=UDim2.new(0,BTNS_X-NAME_X-4,0,FP_ROW_H*0.52)
 			nl4.Position=UDim2.new(0,NAME_X,0,2)
 			nl4.TextTruncate=Enum.TextTruncate.AtEnd; nl4.TextXAlignment=Enum.TextXAlignment.Left; nl4.ZIndex=33
 
-			local apRowBadge=Instance.new("TextLabel"); apRowBadge.Size=UDim2.new(0,36,0,11)
+			local apRowBadge=Instance.new("TextLabel"); apRowBadge.Size=UDim2.new(0,34,0,10)
 			apRowBadge.Position=UDim2.new(0,NAME_X,0.5,1); apRowBadge.BackgroundColor3=T.Card
-			apRowBadge.BorderSizePixel=0; apRowBadge.Text="AP--"; apRowBadge.TextSize=7
+			apRowBadge.BorderSizePixel=0; apRowBadge.Text="AP?"; apRowBadge.TextSize=7
 			apRowBadge.Font=Enum.Font.GothamBold; apRowBadge.TextColor3=T.Dim
 			apRowBadge.TextXAlignment=Enum.TextXAlignment.Center
 			apRowBadge.ZIndex=34; apRowBadge.Parent=row; Corner(apRowBadge,3); Stroke(apRowBadge,T.Border,0.7)
@@ -2469,7 +2601,7 @@ do
 				local btn3=Instance.new("TextButton"); btn3.Name="FPCmd_"..cmd.name
 				btn3.Size=UDim2.new(0,FP_BTN,0,FP_BTN); btn3.Position=UDim2.new(0,xPos,0.5,-FP_BTN/2)
 				btn3.BackgroundColor3=T.Card; btn3.BackgroundTransparency=0.28
-				btn3.Text=cmd.emoji; btn3.TextSize=isMobile and 12 or 14
+				btn3.Text=cmd.emoji; btn3.TextSize=isMobile and 11 or 13
 				btn3.Font=Enum.Font.SourceSans; btn3.AutoButtonColor=false; btn3.ZIndex=33; btn3.Parent=row
 				Corner(btn3,4); Stroke(btn3,T.Border,1)
 				table.insert(fpCoolBtns[cmd.name],{btn3,cmd.emoji})
@@ -2479,7 +2611,7 @@ do
 					if fpIsCD(cmd.name) then return end
 					task.spawn(function() fpFireCmd(plr,cmd.name) end)
 					Tween(btn3,TweenInfo.new(0.08,Enum.EasingStyle.Quad),{BackgroundColor3=T.AccentBright,BackgroundTransparency=0})
-					task.delay(0.2,function() Tween(btn3,F,{BackgroundColor3=T.Card,BackgroundTransparency=0.28}) end)
+					task.delay(0.18,function() Tween(btn3,F,{BackgroundColor3=T.Card,BackgroundTransparency=0.28}) end)
 				end
 				btn3.MouseButton1Click:Connect(fireCmd)
 				btn3.InputBegan:Connect(function(inp) if inp.UserInputType==Enum.UserInputType.Touch then fireCmd() end end)
