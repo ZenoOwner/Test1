@@ -25,11 +25,9 @@ local AimbotEnabled           = true
 local AimbotRange             = 350
 local AimbotTarget            = nil
 local AimbotRemote            = nil
-local NoxBalloonEnabled       = false
 local AutoGrabEnabled         = false
 local SABAllowEnabled         = false
 local isStealing              = false
-
 local __AG_stealCbCache  = {}
 local __AG_stealActive   = false
 local __AG_MIN_HOLD_TIME = 1.3
@@ -1425,30 +1423,64 @@ local function executeSteal(prompt)
 	local data=StealData[prompt]
 	if not data.ready then return end
 	data.ready=false; isStealing=true
-	local startTime=tick()
+
 	local CLOSE_DIST=6
+	local HOLD_CAP=0.90
+	local GRAB_TIMEOUT=8
+
+	local function getPromptPos()
+		local part=prompt.Parent
+		if part and part:IsA("BasePart") then return part.Position end
+		if part and part.Parent and part.Parent:IsA("BasePart") then return part.Parent.Position end
+		local att=part and part:IsA("Attachment") and part.WorldPosition
+		return att or nil
+	end
+
 	task.spawn(function()
+		-- Phase 1: fire hold callbacks, fill bar to 90%
 		for _,f in ipairs(data.hold) do pcall(f) end
-		while tick()-startTime<STEAL_DURATION do
+
+		local startTime=tick()
+		local reached90=false
+		while not reached90 do
 			local elapsed=tick()-startTime
 			local raw=math.clamp(elapsed/STEAL_DURATION,0,1)
-			local capped=raw*0.95
-			local hrp2=getHRP()
-			local promptPart=prompt.Parent
-			local promptPos=promptPart and promptPart:IsA("BasePart") and promptPart.Position
-				or (promptPart and promptPart.Parent and promptPart.Parent:IsA("BasePart") and promptPart.Parent.Position)
-			local dist=hrp2 and promptPos and (hrp2.Position-promptPos).Magnitude or math.huge
-			if dist<=CLOSE_DIST then
-				capped=raw
-			end
-			updateProgressBar(capped)
+			local disp=raw*HOLD_CAP
+			updateProgressBar(disp)
+			if disp>=HOLD_CAP then reached90=true end
 			task.wait()
 		end
+		updateProgressBar(HOLD_CAP)
+
+		-- Phase 2: wait until within 6 studs OR timeout 8s
+		local waitStart=tick()
+		local triggered=false
+		while not triggered do
+			if not prompt or not prompt.Parent then
+				-- prompt gone, just fire anyway
+				triggered=true; break
+			end
+			local hrp2=getHRP()
+			local pos=getPromptPos()
+			local dist=hrp2 and pos and (hrp2.Position-pos).Magnitude or math.huge
+			if dist<=CLOSE_DIST then
+				triggered=true
+			elseif tick()-waitStart>=GRAB_TIMEOUT then
+				triggered=true
+			end
+			if not triggered then
+				local t=math.clamp((tick()-waitStart)/GRAB_TIMEOUT,0,1)
+				updateProgressBar(HOLD_CAP+t*(1-HOLD_CAP)*0.5)
+				task.wait(0.05)
+			end
+		end
+
+		-- Phase 3: fire trigger, complete bar
 		updateProgressBar(1)
 		for _,f in ipairs(data.trigger) do pcall(f) end
 		task.wait(0.05)
-		triggerAutoBlock()
-		task.wait(0.15)
+		if AutoBlockEnabled then triggerAutoBlock() end
+		task.wait(0.2)
 		hideProgressBar()
 		data.ready=true; isStealing=false
 	end)
@@ -1469,107 +1501,7 @@ task.spawn(function()
 	end
 end)
 
-do
-	local NoxZones={
-		{Shape='Line',Center=Vector3.new(-345.35,-6.55,39.19),Size=6,Rotation=0},
-		{Shape='Line',Center=Vector3.new(-350.53,-6.55,38.67),Size=22,Rotation=0},
-		{Shape='Line',Center=Vector3.new(-364.01,-6.55,38.94),Size=22,Rotation=0},
-		{Shape='Line',Center=Vector3.new(-337.34,-6.55,39.18),Size=22,Rotation=0},
-		{Shape='Square',Center=Vector3.new(-365.29,-6.95,-10.40),Size=22,Rotation=0},
-		{Shape='Square',Center=Vector3.new(-354.68,-6.95,6.22),Size=22,Rotation=0},
-		{Shape='Square',Center=Vector3.new(-343.15,-6.53,-13.20),Size=22,Rotation=0},
-		{Shape='Square',Center=Vector3.new(-344.93,-6.95,25.73),Size=22,Rotation=0},
-		{Shape='Square',Center=Vector3.new(-343.76,-6.95,-10.27),Size=22,Rotation=0},
-		{Shape='Square',Center=Vector3.new(-354.42,-6.95,6.51),Size=22,Rotation=0},
-		{Shape='Square',Center=Vector3.new(-340.48,-5.32,28.10),Size=22,Rotation=0},
-		{Shape='Square',Center=Vector3.new(-361.10,-6.95,29.42),Size=22,Rotation=0},
-		{Shape='Line',Center=Vector3.new(-354.83,27.19,31.22),Size=22,Rotation=0},
-	}
-	local function inNoxZone(pos)
-		for _,z in ipairs(NoxZones) do
-			local half=z.Size/2
-			local dx=math.abs(pos.X-z.Center.X)
-			local dz=math.abs(pos.Z-z.Center.Z)
-			if z.Shape=='Line' then
-				if dx<=half and dz<=2 then return true end
-			elseif z.Shape=='Square' then
-				if dx<=half and dz<=half then return true end
-			end
-		end
-		return false
-	end
-	local function hasStealMsg()
-		local pg=lp:FindFirstChild("PlayerGui"); if not pg then return false end
-		for _,d in ipairs(pg:GetDescendants()) do
-			if (d:IsA("TextLabel") or d:IsA("TextButton")) and d.Text
-			and d.Text:find("Someone is stealing your") then return true end
-		end
-		return false
-	end
-	local function findAdminPanel() return lp:FindFirstChild("PlayerGui") and lp.PlayerGui:FindFirstChild("AdminPanel") end
-	local function clickBtn(btn)
-		pcall(function() btn.MouseButton1Click:Fire() end)
-		pcall(function() btn.Activated:Fire() end)
-		if getconnections then
-			pcall(function()
-				for _,cx in ipairs(getconnections(btn.MouseButton1Click)) do cx:Fire() end
-				for _,cx in ipairs(getconnections(btn.Activated)) do cx:Fire() end
-			end)
-		end
-	end
-	local function findPlayerBtn(target)
-		local ap=findAdminPanel(); if not ap then return nil end
-		for _,d in ipairs(ap:GetDescendants()) do
-			if d:IsA("TextButton") or d:IsA("ImageButton") then
-				local t=d:IsA("TextButton") and d.Text or ""
-				if t=="" then local lbl=d:FindFirstChildWhichIsA("TextLabel",true); if lbl then t=lbl.Text end end
-				if t==target.DisplayName or t==target.Name
-				or t:find(target.DisplayName,1,true) or t:find(target.Name,1,true) then return d end
-			end
-		end
-		return nil
-	end
-	local function getBalloonBtn()
-		local ap=findAdminPanel(); if not ap then return nil end
-		for _,d in ipairs(ap:GetDescendants()) do
-			if d:IsA("TextButton") or d:IsA("ImageButton") then
-				local t=d:IsA("TextButton") and d.Text or ""
-				local tl=string.lower(t:match("^%s*(.-)%s*$") or t)
-				if tl=="balloon" or tl==":balloon" or tl==";balloon" then return d end
-			end
-		end
-		return nil
-	end
-	local function triggerNoxBalloon(target)
-		if not target or not target.Parent then return end
-		local bb=getBalloonBtn(); if not bb then return end
-		clickBtn(bb); task.wait(0.02)
-		local pb=findPlayerBtn(target); if pb then clickBtn(pb) end
-	end
-	local noxBalloonActive={}
-	local lastNoxCheck=0
-	RunService.Heartbeat:Connect(function()
-		if not NoxBalloonEnabled then return end
-		local now=tick(); if now-lastNoxCheck<0.08 then return end; lastNoxCheck=now
-		local msg=hasStealMsg()
-		for _,p in ipairs(Players:GetPlayers()) do
-			if p~=lp then
-				local chr=p.Character; if not chr then continue end
-				local hrp=chr:FindFirstChild("HumanoidRootPart") or chr:FindFirstChild("Torso")
-				if hrp then
-					local key=p.UserId
-					local iz=inNoxZone(hrp.Position)
-					if iz and msg and not noxBalloonActive[key] then
-						noxBalloonActive[key]=true; task.spawn(function() triggerNoxBalloon(p) end)
-					elseif (not iz or not msg) and noxBalloonActive[key] then
-						noxBalloonActive[key]=nil
-					end
-				end
-			end
-		end
-	end)
-	Players.PlayerRemoving:Connect(function(p) noxBalloonActive[p.UserId]=nil end)
-end
+-- auto balloon removed
 
 local SABAllowGui=nil
 local function buildSABGui()
@@ -1582,77 +1514,63 @@ local function buildSABGui()
 	local onCooldown=false; local COOLDOWN=1.8
 	local function findMyPrompt()
 		local plots=workspace:FindFirstChild("Plots"); if not plots then return nil end
-		for _,plot in ipairs(plots:GetChildren()) do
-			for _,v in ipairs(plot:GetDescendants()) do
-				if (v.ClassName=="StringValue" or v.ClassName=="ObjectValue" or v.ClassName=="IntValue") then
-					if tostring(v.Value)==lp.Name or tostring(v.Value)==tostring(lp.UserId)
-					or (v.ClassName=="ObjectValue" and v.Value==lp) then
-						for _,desc in ipairs(plot:GetDescendants()) do
-							if desc:IsA("ProximityPrompt") and
-							(desc.ObjectText=="Allow Friends" or desc.ObjectText=="Disallow Friends") then
-								return desc
-							end
-						end
-					end
-				end
-			end
-		end
 		local hrp=lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			local best,bestDist=nil,math.huge
-			for _,plot in ipairs(plots:GetChildren()) do
-				for _,desc in ipairs(plot:GetDescendants()) do
-					if desc:IsA("ProximityPrompt") and
-					(desc.ObjectText=="Allow Friends" or desc.ObjectText=="Disallow Friends") then
+		local best,bestDist=nil,math.huge
+		for _,plot in ipairs(plots:GetChildren()) do
+			for _,desc in ipairs(plot:GetDescendants()) do
+				if desc:IsA("ProximityPrompt") and
+				(desc.ObjectText=="Allow Friends" or desc.ObjectText=="Disallow Friends"
+				or desc.ActionText:lower():find("allow")) then
+					if hrp then
 						local part=desc.Parent
 						if part:IsA("BasePart") then
 							local d=(hrp.Position-part.Position).Magnitude
 							if d<bestDist then bestDist=d; best=desc end
 						end
-					end
+					else best=desc end
 				end
 			end
-			return best
 		end
-		return nil
+		return best
 	end
 	local function firePrompt(prompt)
-		local ok=pcall(function() fireprompt(prompt) end)
-		if not ok then
-			local ok2,conns=pcall(getconnections,prompt.Triggered)
-			if ok2 and conns then
-				for _,c in ipairs(conns) do
-					local fnOk,fn=pcall(function() return c.Function end)
-					if fnOk and fn~=nil then pcall(function() c:Fire() end); break end
+		if not pcall(function() fireprompt(prompt) end) then
+			pcall(function()
+				local ok,conns=pcall(getconnections,prompt.Triggered)
+				if ok and conns then
+					for _,c in ipairs(conns) do pcall(function() c:Fire() end) end
 				end
-			end
+			end)
 		end
 	end
 	local f=Instance.new("Frame")
-	f.Size=UDim2.fromOffset(200,68); f.Position=UDim2.new(0.5,-100,0,10)
+	f.Size=UDim2.fromOffset(148,42); f.Position=UDim2.new(0.5,-74,0,6)
 	f.BackgroundColor3=T.BG; f.BackgroundTransparency=0.08; f.BorderSizePixel=0; f.Parent=SABAllowGui
-	Corner(f,10); Stroke(f,T.AccentBright,1.2)
+	Corner(f,8); Stroke(f,T.AccentBright,1)
 	local statusLbl=Instance.new("TextLabel",f)
-	statusLbl.Size=UDim2.new(1,0,0,26); statusLbl.Position=UDim2.new(0,0,0,4)
-	statusLbl.BackgroundTransparency=1; statusLbl.TextScaled=true
-	statusLbl.Font=Enum.Font.GothamBold; statusLbl.ZIndex=2
+	statusLbl.Size=UDim2.new(1,-8,0,16); statusLbl.Position=UDim2.new(0,4,0,3)
+	statusLbl.BackgroundTransparency=1; statusLbl.Text="Base: --"
+	statusLbl.Font=Enum.Font.GothamBold; statusLbl.TextSize=9; statusLbl.ZIndex=2
+	statusLbl.TextColor3=T.Dim; statusLbl.TextXAlignment=Enum.TextXAlignment.Center
 	local actionBtn=Instance.new("TextButton",f)
-	actionBtn.Size=UDim2.new(0.88,0,0,26); actionBtn.Position=UDim2.new(0.06,0,0,36)
-	actionBtn.TextColor3=T.White; actionBtn.TextScaled=true
+	actionBtn.Size=UDim2.new(1,-8,0,18); actionBtn.Position=UDim2.new(0,4,0,22)
+	actionBtn.TextColor3=T.White; actionBtn.TextSize=9
 	actionBtn.Font=Enum.Font.GothamBold; actionBtn.BorderSizePixel=0; actionBtn.ZIndex=2
-	actionBtn.AutoButtonColor=false; Corner(actionBtn,7)
+	actionBtn.AutoButtonColor=false; Corner(actionBtn,5)
+	actionBtn.BackgroundColor3=T.Card; actionBtn.Text="Allow"
+	Stroke(actionBtn,T.Border,1)
 	local function updateUI()
 		local prompt=findMyPrompt()
 		if prompt then
-			if prompt.ObjectText=="Disallow Friends" then
-				statusLbl.Text="✅ Base: OPEN"; statusLbl.TextColor3=T.Green
-				actionBtn.Text="Disallow Friends"; actionBtn.BackgroundColor3=Color3.fromRGB(180,40,40)
+			if prompt.ObjectText=="Disallow Friends" or (prompt.ActionText and prompt.ActionText:lower():find("disallow")) then
+				statusLbl.Text="✅ OPEN"; statusLbl.TextColor3=T.Green
+				actionBtn.Text="Disallow"; actionBtn.BackgroundColor3=Color3.fromRGB(160,30,30)
 			else
-				statusLbl.Text="⛔ Base: LOCKED"; statusLbl.TextColor3=T.Red
-				actionBtn.Text="Allow Friends"; actionBtn.BackgroundColor3=Color3.fromRGB(40,180,60)
+				statusLbl.Text="⛔ LOCKED"; statusLbl.TextColor3=T.Red
+				actionBtn.Text="Allow"; actionBtn.BackgroundColor3=Color3.fromRGB(30,140,50)
 			end
 		else
-			statusLbl.Text="❌ No Prompt"; statusLbl.TextColor3=Color3.fromRGB(255,200,0)
+			statusLbl.Text="No Prompt"; statusLbl.TextColor3=T.Dim
 			actionBtn.Text="Retry"; actionBtn.BackgroundColor3=T.Card
 		end
 	end
@@ -1660,11 +1578,15 @@ local function buildSABGui()
 		if onCooldown then return end
 		local prompt=findMyPrompt()
 		if prompt then firePrompt(prompt) end
-		onCooldown=true; actionBtn.Text="Wait..."
-		actionBtn.BackgroundColor3=T.Card
+		onCooldown=true; actionBtn.Text="..."; actionBtn.BackgroundColor3=T.Card
 		task.delay(COOLDOWN,function() onCooldown=false; updateUI() end)
 	end)
 	updateUI()
+	task.spawn(function()
+		while SABAllowGui and SABAllowGui.Parent do
+			updateUI(); task.wait(2)
+		end
+	end)
 end
 
 local function doFlash()
@@ -2391,9 +2313,6 @@ do
 	CreateToggle(SettingsTab.scroll,"Anti Admin Panel","blocks tiny jail ragdoll giant inverse bee",function(v)
 		AntiAdminEnabled=v
 	end)
-	CreateToggle(SettingsTab.scroll,"Auto Balloon","balloons thieves entering ur base zones",function(v)
-		NoxBalloonEnabled=v
-	end)
 
 	CreateSection(SettingsTab.scroll,"MISC")
 	CreateToggle(SettingsTab.scroll,"Aimbot","aimbot fires when u attack nearest player",function(v)
@@ -2416,12 +2335,12 @@ do
 	CreateSection(SettingsTab.scroll,"FAST PANEL")
 	do
 		local FP={win=nil,visible=false,minimized=false}
-		local FP_W=isMobile and 260 or 320
-		local FP_ROW_H=isMobile and 30 or 36
-		local FP_AVT=isMobile and 20 or 26
-		local FP_BTN=isMobile and 18 or 22
+		local FP_W=isMobile and 220 or 272
+		local FP_ROW_H=isMobile and 28 or 32
+		local FP_AVT=isMobile and 18 or 22
+		local FP_BTN=isMobile and 17 or 20
 		local FP_GAP=3
-		local FP_HDR_H=28
+		local FP_HDR_H=24
 		local FP_CMDS={{name="tiny",emoji="🐜"},{name="jail",emoji="🔓"},{name="rocket",emoji="🚀"},{name="ragdoll",emoji="🏃"},{name="balloon",emoji="🎈"}}
 		local fpCoolBtns={}; for _,c in ipairs(FP_CMDS) do fpCoolBtns[c.name]={} end
 		local fpCoolRunning=false
@@ -2492,7 +2411,7 @@ do
 			hdr2.BackgroundColor3=T.Header; hdr2.BorderSizePixel=0; hdr2.ZIndex=31; hdr2.Parent=win; Corner(hdr2,9)
 			local hf2=Instance.new("Frame"); hf2.Size=UDim2.new(1,0,0,7); hf2.Position=UDim2.new(0,0,1,-7)
 			hf2.BackgroundColor3=T.Header; hf2.BorderSizePixel=0; hf2.ZIndex=31; hf2.Parent=hdr2
-			local tl2=Label(hdr2,"⚡ Fast Panel",isMobile and 9 or 10,T.White,Enum.Font.GothamBold)
+			local tl2=Label(hdr2,"Fast Panel",isMobile and 9 or 10,T.White,Enum.Font.GothamBold)
 			tl2.Size=UDim2.new(1,-40,1,0); tl2.Position=UDim2.new(0,8,0,0); tl2.ZIndex=32
 			local mb2=Instance.new("TextButton"); mb2.Size=UDim2.new(0,16,0,13)
 			mb2.AnchorPoint=Vector2.new(1,0.5); mb2.Position=UDim2.new(1,-5,0.5,0)
