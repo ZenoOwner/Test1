@@ -1424,58 +1424,53 @@ local function executeSteal(prompt)
 	if not data.ready then return end
 	data.ready=false; isStealing=true
 
-	local CLOSE_DIST=6
-	local HOLD_CAP=0.90
-	local GRAB_TIMEOUT=8
+	local CLOSE_DIST=5
+	local HOLD_CAP=0.95
 
 	local function getPromptPos()
-		local part=prompt.Parent
-		if part and part:IsA("BasePart") then return part.Position end
-		if part and part.Parent and part.Parent:IsA("BasePart") then return part.Parent.Position end
-		local att=part and part:IsA("Attachment") and part.WorldPosition
-		return att or nil
+		-- walk up the tree to find any BasePart ancestor or sibling
+		local obj=prompt.Parent
+		while obj do
+			if obj:IsA("BasePart") then return obj.Position end
+			obj=obj.Parent
+		end
+		-- fallback: search nearby for a BasePart with a Spawn name
+		local hrp2=getHRP()
+		if hrp2 then return hrp2.Position end
+		return nil
 	end
 
 	task.spawn(function()
-		-- Phase 1: fire hold callbacks, fill bar to 90%
+		-- Phase 1: fire hold callbacks, fill bar up to 95% over STEAL_DURATION
 		for _,f in ipairs(data.hold) do pcall(f) end
 
 		local startTime=tick()
-		local reached90=false
-		while not reached90 do
+		while true do
 			local elapsed=tick()-startTime
 			local raw=math.clamp(elapsed/STEAL_DURATION,0,1)
-			local disp=raw*HOLD_CAP
+			local disp=math.min(raw,HOLD_CAP)
 			updateProgressBar(disp)
-			if disp>=HOLD_CAP then reached90=true end
+			if disp>=HOLD_CAP then break end
 			task.wait()
 		end
+		-- lock bar at 95% - don't creep up
 		updateProgressBar(HOLD_CAP)
 
-		-- Phase 2: wait until within 6 studs OR timeout 8s
-		local waitStart=tick()
+		-- Phase 2: sit at 95%, poll every 0.05s for proximity
 		local triggered=false
 		while not triggered do
-			if not prompt or not prompt.Parent then
-				-- prompt gone, just fire anyway
-				triggered=true; break
-			end
+			if not prompt or not prompt.Parent then triggered=true; break end
 			local hrp2=getHRP()
 			local pos=getPromptPos()
-			local dist=hrp2 and pos and (hrp2.Position-pos).Magnitude or math.huge
-			if dist<=CLOSE_DIST then
-				triggered=true
-			elseif tick()-waitStart>=GRAB_TIMEOUT then
-				triggered=true
-			end
+			local dist=(hrp2 and pos) and (hrp2.Position-pos).Magnitude or math.huge
+			if dist<=CLOSE_DIST then triggered=true end
 			if not triggered then
-				local t=math.clamp((tick()-waitStart)/GRAB_TIMEOUT,0,1)
-				updateProgressBar(HOLD_CAP+t*(1-HOLD_CAP)*0.5)
+				updateProgressBar(HOLD_CAP) -- stays exactly 95%, no creep
 				task.wait(0.05)
 			end
 		end
 
-		-- Phase 3: fire trigger, complete bar
+		-- Phase 3: fire trigger, snap to 100%
 		updateProgressBar(1)
 		for _,f in ipairs(data.trigger) do pcall(f) end
 		task.wait(0.05)
@@ -1518,73 +1513,75 @@ local function buildSABGui()
 		local best,bestDist=nil,math.huge
 		for _,plot in ipairs(plots:GetChildren()) do
 			for _,desc in ipairs(plot:GetDescendants()) do
-				if desc:IsA("ProximityPrompt") and
-				(desc.ObjectText=="Allow Friends" or desc.ObjectText=="Disallow Friends"
-				or desc.ActionText:lower():find("allow")) then
-					if hrp then
-						local part=desc.Parent
-						if part:IsA("BasePart") then
-							local d=(hrp.Position-part.Position).Magnitude
-							if d<bestDist then bestDist=d; best=desc end
-						end
-					else best=desc end
+				if desc:IsA("ProximityPrompt") then
+					local at=(desc.ActionText or ""):lower()
+					local ot=(desc.ObjectText or ""):lower()
+					if at:find("allow") or ot:find("allow") then
+						if hrp then
+							local part=desc.Parent
+							if part and part:IsA("BasePart") then
+								local d=(hrp.Position-part.Position).Magnitude
+								if d<bestDist then bestDist=d; best=desc end
+							end
+						else best=desc; break end
+					end
 				end
 			end
 		end
 		return best
 	end
-	local function firePrompt(prompt)
-		if not pcall(function() fireprompt(prompt) end) then
+	local function firePrompt(p2)
+		if not pcall(function() fireprompt(p2) end) then
 			pcall(function()
-				local ok,conns=pcall(getconnections,prompt.Triggered)
-				if ok and conns then
-					for _,c in ipairs(conns) do pcall(function() c:Fire() end) end
-				end
+				local ok,conns=pcall(getconnections,p2.Triggered)
+				if ok and conns then for _,c in ipairs(conns) do pcall(function() c:Fire() end) end end
 			end)
 		end
 	end
-	local f=Instance.new("Frame")
-	f.Size=UDim2.fromOffset(148,42); f.Position=UDim2.new(0.5,-74,0,6)
-	f.BackgroundColor3=T.BG; f.BackgroundTransparency=0.08; f.BorderSizePixel=0; f.Parent=SABAllowGui
-	Corner(f,8); Stroke(f,T.AccentBright,1)
-	local statusLbl=Instance.new("TextLabel",f)
-	statusLbl.Size=UDim2.new(1,-8,0,16); statusLbl.Position=UDim2.new(0,4,0,3)
-	statusLbl.BackgroundTransparency=1; statusLbl.Text="Base: --"
-	statusLbl.Font=Enum.Font.GothamBold; statusLbl.TextSize=9; statusLbl.ZIndex=2
-	statusLbl.TextColor3=T.Dim; statusLbl.TextXAlignment=Enum.TextXAlignment.Center
-	local actionBtn=Instance.new("TextButton",f)
-	actionBtn.Size=UDim2.new(1,-8,0,18); actionBtn.Position=UDim2.new(0,4,0,22)
-	actionBtn.TextColor3=T.White; actionBtn.TextSize=9
-	actionBtn.Font=Enum.Font.GothamBold; actionBtn.BorderSizePixel=0; actionBtn.ZIndex=2
-	actionBtn.AutoButtonColor=false; Corner(actionBtn,5)
-	actionBtn.BackgroundColor3=T.Card; actionBtn.Text="Allow"
-	Stroke(actionBtn,T.Border,1)
-	local function updateUI()
-		local prompt=findMyPrompt()
-		if prompt then
-			if prompt.ObjectText=="Disallow Friends" or (prompt.ActionText and prompt.ActionText:lower():find("disallow")) then
-				statusLbl.Text="✅ OPEN"; statusLbl.TextColor3=T.Green
-				actionBtn.Text="Disallow"; actionBtn.BackgroundColor3=Color3.fromRGB(160,30,30)
+	-- tiny 18x18 colored box, no text
+	local box=Instance.new("TextButton")
+	box.Size=UDim2.fromOffset(18,18)
+	box.Position=UDim2.new(0,6,0,6)
+	box.BackgroundColor3=T.Dim
+	box.BorderSizePixel=0; box.Text=""; box.AutoButtonColor=false
+	box.ZIndex=50; box.Parent=SABAllowGui
+	Corner(box,4); Stroke(box,T.Border,1)
+	local function updateBox()
+		if onCooldown then return end
+		local p2=findMyPrompt()
+		if p2 then
+			local at=(p2.ActionText or ""):lower()
+			local ot=(p2.ObjectText or ""):lower()
+			local isOpen=(at:find("disallow") or ot:find("disallow"))
+			if isOpen then
+				box.BackgroundColor3=T.Green
 			else
-				statusLbl.Text="⛔ LOCKED"; statusLbl.TextColor3=T.Red
-				actionBtn.Text="Allow"; actionBtn.BackgroundColor3=Color3.fromRGB(30,140,50)
+				box.BackgroundColor3=T.Red
 			end
 		else
-			statusLbl.Text="No Prompt"; statusLbl.TextColor3=T.Dim
-			actionBtn.Text="Retry"; actionBtn.BackgroundColor3=T.Card
+			box.BackgroundColor3=T.Dim
 		end
 	end
-	actionBtn.MouseButton1Click:Connect(function()
+	box.MouseButton1Click:Connect(function()
 		if onCooldown then return end
-		local prompt=findMyPrompt()
-		if prompt then firePrompt(prompt) end
-		onCooldown=true; actionBtn.Text="..."; actionBtn.BackgroundColor3=T.Card
-		task.delay(COOLDOWN,function() onCooldown=false; updateUI() end)
+		local p2=findMyPrompt()
+		if p2 then firePrompt(p2) end
+		onCooldown=true; box.BackgroundColor3=T.Dim
+		task.delay(COOLDOWN,function() onCooldown=false; updateBox() end)
 	end)
-	updateUI()
+	box.InputBegan:Connect(function(inp)
+		if inp.UserInputType==Enum.UserInputType.Touch then
+			if onCooldown then return end
+			local p2=findMyPrompt()
+			if p2 then firePrompt(p2) end
+			onCooldown=true; box.BackgroundColor3=T.Dim
+			task.delay(COOLDOWN,function() onCooldown=false; updateBox() end)
+		end
+	end)
+	updateBox()
 	task.spawn(function()
 		while SABAllowGui and SABAllowGui.Parent do
-			updateUI(); task.wait(2)
+			task.wait(1.5); updateBox()
 		end
 	end)
 end
