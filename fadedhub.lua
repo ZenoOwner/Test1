@@ -33,7 +33,7 @@ local __AG_stealActive   = false
 local __AG_MIN_HOLD_TIME = 1.3
 local __AG_TRIGGER_DELAY = 0.04
 
-local CONFIG_PATH = "GammaHub_config.json"
+local CONFIG_PATH = "VertxedHub_config.json"
 local Config = {toggles={}, keybinds={}}
 
 local function FH_Serialize()
@@ -638,53 +638,66 @@ local function __AG_findPrompt()
 	return prompt
 end
 
-local _AccentH=280; local _AccentS=0.75; local _AccentV=0.95
+-- ── HSV helpers + theme system ──────────────────────────────────────────
+local _AccentH=285; local _AccentS=0.80; local _AccentV=0.92
+local _AccentH2=330
 local function hsvToRgb(h,s,v)
-	local r,g,b
+	h=h%1; if h<0 then h=h+1 end
 	local i=math.floor(h*6); local f=h*6-i
 	local p=v*(1-s); local q=v*(1-f*s); local t2=v*(1-(1-f)*s)
 	local m=i%6
+	local r,g,b
 	if m==0 then r,g,b=v,t2,p
 	elseif m==1 then r,g,b=q,v,p
 	elseif m==2 then r,g,b=p,v,t2
 	elseif m==3 then r,g,b=p,q,v
 	elseif m==4 then r,g,b=t2,p,v
 	else r,g,b=v,p,q end
-	return Color3.new(r,g,b)
+	return Color3.new(math.clamp(r,0,1),math.clamp(g,0,1),math.clamp(b,0,1))
 end
-local function getAccent() return hsvToRgb(_AccentH/360,_AccentS,_AccentV) end
-local function getAccentBright() return hsvToRgb(_AccentH/360,_AccentS*0.7,1) end
+local function getAccent()       return hsvToRgb(_AccentH/360,_AccentS,_AccentV) end
+local function getAccentBright()  return hsvToRgb(_AccentH/360,_AccentS*0.5,1) end
+local function getAccentDim()     return hsvToRgb(_AccentH/360,_AccentS*0.4,0.55) end
+local function getAccent2()       return hsvToRgb(_AccentH2/360,_AccentS*0.88,_AccentV) end
+local function mixC(a,b,t) return Color3.new(a.R+(b.R-a.R)*t,a.G+(b.G-a.G)*t,a.B+(b.B-a.B)*t) end
 
 local T={
-	BG          = Color3.fromRGB(9,   7,   12),
-	Header      = Color3.fromRGB(6,   5,   10),
-	Card        = Color3.fromRGB(20,  15,  28),
-	CardHover   = Color3.fromRGB(30,  22,  42),
-	Border      = Color3.fromRGB(55,  35,  75),
-	BorderHover = Color3.fromRGB(140, 60,  180),
-	White       = Color3.fromRGB(235, 225, 255),
-	Dim         = Color3.fromRGB(110, 85,  140),
-	Accent      = Color3.fromRGB(180, 60,  255),
-	AccentBright= Color3.fromRGB(220, 120, 255),
-	TabActive   = Color3.fromRGB(235, 225, 255),
-	TabInact    = Color3.fromRGB(70,  50,  95),
-	TrackOn     = Color3.fromRGB(180, 60,  255),
-	TrackOff    = Color3.fromRGB(35,  25,  50),
-	KnobOn      = Color3.fromRGB(240, 200, 255),
-	KnobOff     = Color3.fromRGB(90,  65,  120),
+	BG          = Color3.fromRGB(8,   5,   12),
+	Header      = Color3.fromRGB(5,   3,   9),
+	Card        = Color3.fromRGB(15,  11,  22),
+	CardHover   = Color3.fromRGB(24,  17,  36),
+	Border      = Color3.fromRGB(52,  30,  74),
+	BorderHover = Color3.fromRGB(140, 55,  185),
+	White       = Color3.fromRGB(238, 228, 255),
+	Dim         = Color3.fromRGB(108, 80,  140),
+	Accent      = Color3.fromRGB(185, 55,  255),
+	AccentBright= Color3.fromRGB(222, 130, 255),
+	AccentDim   = Color3.fromRGB(95,  38,  132),
+	Accent2     = Color3.fromRGB(255, 70,  175),
+	TabActive   = Color3.fromRGB(238, 228, 255),
+	TabInact    = Color3.fromRGB(62,  43,  88),
+	TrackOn     = Color3.fromRGB(185, 55,  255),
+	TrackOff    = Color3.fromRGB(28,  18,  44),
+	KnobOn      = Color3.fromRGB(240, 195, 255),
+	KnobOff     = Color3.fromRGB(78,  56,  105),
 	Green       = Color3.fromRGB(52,  218, 88),
 	Red         = Color3.fromRGB(255, 65,  65),
-	Blue        = Color3.fromRGB(180, 60,  255),
-	Pink        = Color3.fromRGB(255, 80,  180),
+	Pink        = Color3.fromRGB(255, 70,  175),
 }
 
 local _themeListeners={}
 local function onThemeChange(fn) table.insert(_themeListeners,fn) end
 local function applyTheme()
 	T.Accent=getAccent(); T.AccentBright=getAccentBright()
-	T.TrackOn=T.Accent; T.Blue=T.Accent
+	T.AccentDim=getAccentDim(); T.Accent2=getAccent2(); T.Pink=T.Accent2
+	T.TrackOn=T.Accent; T.KnobOn=T.AccentBright
+	T.Border=mixC(Color3.fromRGB(30,18,46),T.Accent,0.30)
+	T.BorderHover=mixC(T.Accent,Color3.new(1,1,1),0.22)
+	T.Dim=mixC(Color3.fromRGB(55,36,72),T.AccentBright,0.30)
+	T.TabInact=mixC(Color3.fromRGB(38,26,56),T.AccentDim,0.45)
 	for _,fn in ipairs(_themeListeners) do pcall(fn) end
 end
+
 local F=TweenInfo.new(0.15,Enum.EasingStyle.Quad,Enum.EasingDirection.Out)
 local M=TweenInfo.new(0.22,Enum.EasingStyle.Quad,Enum.EasingDirection.Out)
 local function Tween(o,i,p) TweenService:Create(o,i,p):Play() end
@@ -710,7 +723,9 @@ end
 local isMobile=UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 pcall(function()
-	if game.CoreGui:FindFirstChild("GammaHub") then game.CoreGui.GammaHub:Destroy() end
+	for _,g in ipairs(game.CoreGui:GetChildren()) do
+		if g.Name=="GammaHub" or g.Name=="VertxedHub" then g:Destroy() end
+	end
 end)
 
 local GUI=Instance.new("ScreenGui")
@@ -733,42 +748,67 @@ local FOLD_H=HDR_H+BIG_BTN_H+14
 local Win=Instance.new("Frame")
 Win.Name="Win"; Win.Size=UDim2.new(0,WIN_W,0,FULL_H)
 Win.AnchorPoint=Vector2.new(0.5,0.5); Win.Position=UDim2.new(0.5,0,0.5,0)
-Win.BackgroundColor3=T.BG; Win.BackgroundTransparency=0.06
+Win.BackgroundColor3=T.BG; Win.BackgroundTransparency=0.03
 Win.BorderSizePixel=0; Win.ZIndex=2; Win.Parent=GUI
-Corner(Win,10)
+Corner(Win,12)
 local WinStroke=Instance.new("UIStroke")
-WinStroke.Thickness=1.4; WinStroke.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
+WinStroke.Thickness=1.5; WinStroke.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
 WinStroke.Color=T.AccentBright; WinStroke.Parent=Win
 local BorderGrad=Instance.new("UIGradient")
-BorderGrad.Color=ColorSequence.new({
-	ColorSequenceKeypoint.new(0,   Color3.fromRGB(120,30,180)),
-	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,80,180)),
-	ColorSequenceKeypoint.new(1.0, Color3.fromRGB(120,30,180)),
-})
 BorderGrad.Rotation=0; BorderGrad.Parent=WinStroke
+local function refreshBorderGrad()
+	BorderGrad.Color=ColorSequence.new({
+		ColorSequenceKeypoint.new(0,   T.Accent),
+		ColorSequenceKeypoint.new(0.5, T.Accent2),
+		ColorSequenceKeypoint.new(1.0, T.Accent),
+	})
+end
+refreshBorderGrad()
+onThemeChange(refreshBorderGrad)
+-- left accent bar (unique visual touch)
+local LeftBar=Instance.new("Frame"); LeftBar.Size=UDim2.new(0,2,1,-20)
+LeftBar.Position=UDim2.new(0,0,0,10); LeftBar.BackgroundColor3=T.Accent
+LeftBar.BorderSizePixel=0; LeftBar.ZIndex=3; LeftBar.Parent=Win; Corner(LeftBar,2)
+local LBGrad=Instance.new("UIGradient"); LBGrad.Rotation=90; LBGrad.Parent=LeftBar
+local function refreshLeftBar()
+	LBGrad.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,T.Accent),ColorSequenceKeypoint.new(0.5,T.Accent2),ColorSequenceKeypoint.new(1,T.Accent)})
+	LeftBar.BackgroundColor3=T.Accent
+end
+refreshLeftBar(); onThemeChange(refreshLeftBar)
 local winScale=Instance.new("UIScale"); winScale.Scale=1; winScale.Parent=Win
 
 local Hdr=Instance.new("Frame")
 Hdr.Name="Hdr"; Hdr.Size=UDim2.new(1,0,0,HDR_H)
-Hdr.BackgroundColor3=T.Header; Hdr.BackgroundTransparency=0.05
+Hdr.BackgroundColor3=T.Header; Hdr.BackgroundTransparency=0.02
 Hdr.BorderSizePixel=0; Hdr.ZIndex=5; Hdr.Parent=Win; Hdr.Active=true
-Corner(Hdr,10)
+Corner(Hdr,12)
 local HdrFill=Instance.new("Frame")
-HdrFill.Size=UDim2.new(1,0,0,10); HdrFill.Position=UDim2.new(0,0,1,-10)
-HdrFill.BackgroundColor3=T.Header; HdrFill.BackgroundTransparency=0.05
+HdrFill.Size=UDim2.new(1,0,0,12); HdrFill.Position=UDim2.new(0,0,1,-12)
+HdrFill.BackgroundColor3=T.Header; HdrFill.BackgroundTransparency=0.02
 HdrFill.BorderSizePixel=0; HdrFill.ZIndex=5; HdrFill.Parent=Hdr
-local HdrLine=Instance.new("Frame")
-HdrLine.Size=UDim2.new(1,0,0,1); HdrLine.Position=UDim2.new(0,0,1,-1)
-HdrLine.BackgroundColor3=T.Border; HdrLine.BorderSizePixel=0; HdrLine.ZIndex=6; HdrLine.Parent=Hdr
+-- glow line under header
+local HdrGlow=Instance.new("Frame"); HdrGlow.Size=UDim2.new(0.65,0,0,1)
+HdrGlow.Position=UDim2.new(0.175,0,1,-1); HdrGlow.BackgroundColor3=T.Accent
+HdrGlow.BorderSizePixel=0; HdrGlow.ZIndex=6; HdrGlow.Parent=Hdr; Corner(HdrGlow,1)
+local HGGrad=Instance.new("UIGradient"); HGGrad.Parent=HdrGlow
+HGGrad.Color=ColorSequence.new({ColorSequenceKeypoint.new(0,Color3.new(0,0,0)),ColorSequenceKeypoint.new(0.5,Color3.new(1,1,1)),ColorSequenceKeypoint.new(1,Color3.new(0,0,0))})
+onThemeChange(function() HdrGlow.BackgroundColor3=T.Accent end)
 
-local TitleLbl=Label(Hdr,"",14,T.White,Enum.Font.GothamBold)
-TitleLbl.RichText=true
-TitleLbl.Text='<font color="rgb(220,120,255)">Gamma</font> <font color="rgb(255,80,180)">Pvp</font>'
-TitleLbl.Size=UDim2.new(1,-70,0,16); TitleLbl.Position=UDim2.new(0,10,0,5); TitleLbl.ZIndex=6
+local TitleLbl=Label(Hdr,"",15,T.White,Enum.Font.GothamBold)
+TitleLbl.RichText=true; TitleLbl.Size=UDim2.new(1,-72,0,18)
+TitleLbl.Position=UDim2.new(0,12,0,5); TitleLbl.ZIndex=6
+local function refreshTitle()
+	local a=T.Accent; local b=T.Accent2
+	TitleLbl.Text=('  <font color="rgb(%d,%d,%d)">Gamma</font><font color="rgb(%d,%d,%d)">Pvp</font>'):format(
+		math.floor(a.R*255),math.floor(a.G*255),math.floor(a.B*255),
+		math.floor(b.R*255),math.floor(b.G*255),math.floor(b.B*255))
+end
+refreshTitle(); onThemeChange(refreshTitle)
 
 local DiscordLbl=Label(Hdr,".gg/gammahub",isMobile and 7 or 8,T.Dim,Enum.Font.Gotham)
-DiscordLbl.Size=UDim2.new(1,-70,0,11); DiscordLbl.Position=UDim2.new(0,10,0,24)
+DiscordLbl.Size=UDim2.new(1,-72,0,11); DiscordLbl.Position=UDim2.new(0,12,0,26)
 DiscordLbl.ZIndex=6; DiscordLbl.TextTruncate=Enum.TextTruncate.AtEnd
+onThemeChange(function() DiscordLbl.TextColor3=T.Dim end)
 
 local HdrBtnRow=Instance.new("Frame")
 HdrBtnRow.Size=UDim2.new(0,0,0,17); HdrBtnRow.Position=UDim2.new(1,-8,0,5)
@@ -789,6 +829,7 @@ local function makeHdrIconBtn(txt,order)
 	btn.TextColor3=T.Dim; btn.ZIndex=8; btn.Active=true; btn.Parent=HdrBtnRow
 	Corner(btn,5)
 	local s=Stroke(btn,T.Border,1)
+	onThemeChange(function() if btn.BackgroundColor3==T.Card or btn.BackgroundColor3==T.CardHover then s.Color=T.Border end end)
 	btn.MouseEnter:Connect(function() Tween(btn,F,{BackgroundColor3=T.CardHover}) end)
 	btn.MouseLeave:Connect(function() Tween(btn,F,{BackgroundColor3=T.Card}) end)
 	return btn,s
@@ -829,7 +870,7 @@ BigBtnLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
 BigBtnLayout.SortOrder=Enum.SortOrder.LayoutOrder
 BigBtnLayout.Padding=UDim.new(0,5); BigBtnLayout.Parent=BigBtnRow
 
-local function makeBigBtn(txt,order,accentCol)
+local function makeBigBtn(txt,order,getColFn)
 	local btn=Instance.new("TextButton")
 	btn.Name="BigBtn_"..txt
 	btn.Size=UDim2.new(0,0,0,BIG_BTN_H); btn.AutomaticSize=Enum.AutomaticSize.X
@@ -839,20 +880,24 @@ local function makeBigBtn(txt,order,accentCol)
 	btn.TextColor3=T.White; btn.ZIndex=6; btn.Active=true; btn.Parent=BigBtnRow
 	Corner(btn,6)
 	local pad=Instance.new("UIPadding"); pad.PaddingLeft=UDim.new(0,12); pad.PaddingRight=UDim.new(0,12); pad.Parent=btn
-	local s=Stroke(btn,accentCol or T.Border,1)
+	local s=Stroke(btn,getColFn and getColFn() or T.Accent,1)
+	if getColFn then onThemeChange(function() if not btn.Active then return end; s.Color=getColFn() end) end
 	local _busy=false
 	btn.MouseEnter:Connect(function()
 		if _busy then return end
-		Tween(btn,F,{BackgroundColor3=T.CardHover}); Tween(s,F,{Color=accentCol or T.BorderHover})
+		local c=getColFn and getColFn() or T.AccentBright
+		Tween(btn,F,{BackgroundColor3=T.CardHover}); Tween(s,F,{Color=c})
 	end)
 	btn.MouseLeave:Connect(function()
 		if _busy then return end
-		Tween(btn,F,{BackgroundColor3=T.Card}); Tween(s,F,{Color=accentCol or T.Border})
+		local c=getColFn and getColFn() or T.Border
+		Tween(btn,F,{BackgroundColor3=T.Card}); Tween(s,F,{Color=c})
 	end)
 	local function flash()
 		_busy=true
-		Tween(btn,F,{BackgroundColor3=accentCol or T.AccentBright})
-		btn.TextColor3=Color3.fromRGB(10,10,20)
+		local c=getColFn and getColFn() or T.AccentBright
+		Tween(btn,F,{BackgroundColor3=c})
+		btn.TextColor3=Color3.fromRGB(8,5,14)
 		task.delay(0.18,function()
 			Tween(btn,M,{BackgroundColor3=T.Card})
 			btn.TextColor3=T.White; _busy=false
@@ -861,9 +906,9 @@ local function makeBigBtn(txt,order,accentCol)
 	return btn,s,flash
 end
 
-local flashBtn,flashBtnStroke,flashBtnFlash=makeBigBtn("FLASH",1,T.AccentBright)
-local blockBtn,blockBtnStroke,blockBtnFlash=makeBigBtn("BLOCK",2,T.Pink)
-local resetBtn,resetBtnStroke,resetBtnFlash=makeBigBtn("RESET",3,Color3.fromRGB(120,60,160))
+local flashBtn,flashBtnStroke,flashBtnFlash=makeBigBtn("FLASH",1,getAccent)
+local blockBtn,blockBtnStroke,blockBtnFlash=makeBigBtn("BLOCK",2,getAccent2)
+local resetBtn,resetBtnStroke,resetBtnFlash=makeBigBtn("RESET",3,getAccentDim)
 
 local TabBar=Instance.new("Frame")
 TabBar.Size=UDim2.new(1,0,0,TAB_H); TabBar.Position=UDim2.new(0,0,0,TOTAL_TOP)
@@ -1004,6 +1049,7 @@ CreateToggle=function(parent,name,desc,cb,startState)
 	card.BackgroundColor3=T.Card; card.BackgroundTransparency=0.1
 	card.BorderSizePixel=0; card.Parent=parent; Corner(card,7)
 	local cStroke=Stroke(card,T.Border,1)
+	onThemeChange(function() if not state then cStroke.Color=T.Border end end)
 	local bar=Instance.new("Frame"); bar.Size=UDim2.new(0,2,0,cardH-14)
 	bar.Position=UDim2.new(0,0,0,7); bar.BackgroundColor3=T.TrackOff
 	bar.BorderSizePixel=0; bar.ZIndex=2; bar.Parent=card; Corner(bar,2)
@@ -1015,6 +1061,7 @@ CreateToggle=function(parent,name,desc,cb,startState)
 		local dl=Label(card,desc,isMobile and 8 or 9,T.Dim,Enum.Font.Gotham)
 		dl.Size=UDim2.new(1,-54,0,11); dl.Position=UDim2.new(0,10,0,nameY+15)
 		dl.ZIndex=2; dl.TextTruncate=Enum.TextTruncate.AtEnd
+		onThemeChange(function() dl.TextColor3=T.Dim end)
 	end
 	local track=Instance.new("Frame"); track.Size=UDim2.new(0,34,0,18)
 	track.Position=UDim2.new(1,-42,0.5,-9); track.BackgroundColor3=T.TrackOff
@@ -1024,19 +1071,30 @@ CreateToggle=function(parent,name,desc,cb,startState)
 	knob.Position=UDim2.new(0,3,0.5,-6); knob.BackgroundColor3=T.KnobOff
 	knob.BorderSizePixel=0; knob.ZIndex=3; knob.Parent=track; Corner(knob,6)
 	card.MouseEnter:Connect(function() Tween(card,F,{BackgroundColor3=T.CardHover}); Tween(cStroke,F,{Color=T.BorderHover}) end)
-	card.MouseLeave:Connect(function() Tween(card,F,{BackgroundColor3=T.Card}); Tween(cStroke,F,{Color=T.Border}) end)
+	card.MouseLeave:Connect(function() Tween(card,F,{BackgroundColor3=T.Card}); Tween(cStroke,F,{Color=state and T.Accent or T.Border}) end)
 	local btn=Instance.new("Frame"); btn.Size=UDim2.new(1,0,1,0)
 	btn.BackgroundTransparency=1; btn.ZIndex=4; btn.Active=true; btn.Parent=card
 	local keybindEntry={keyCode=nil}
 	local function applyV(s)
 		if s then
 			knob.Position=UDim2.new(0,19,0.5,-6); knob.BackgroundColor3=T.KnobOn
-			track.BackgroundColor3=T.TrackOn; tStroke.Color=T.TrackOn; bar.BackgroundColor3=T.Accent
+			track.BackgroundColor3=T.TrackOn; tStroke.Color=T.TrackOn
+			bar.BackgroundColor3=T.Accent; cStroke.Color=T.Accent
 		else
 			knob.Position=UDim2.new(0,3,0.5,-6); knob.BackgroundColor3=T.KnobOff
-			track.BackgroundColor3=T.TrackOff; tStroke.Color=T.Border; bar.BackgroundColor3=T.TrackOff
+			track.BackgroundColor3=T.TrackOff; tStroke.Color=T.Border
+			bar.BackgroundColor3=T.TrackOff; cStroke.Color=T.Border
 		end
 	end
+	onThemeChange(function()
+		if state then
+			track.BackgroundColor3=T.TrackOn; tStroke.Color=T.TrackOn
+			bar.BackgroundColor3=T.Accent; cStroke.Color=T.Accent; knob.BackgroundColor3=T.KnobOn
+		else
+			track.BackgroundColor3=T.TrackOff; tStroke.Color=T.Border
+			bar.BackgroundColor3=T.TrackOff; cStroke.Color=T.Border; knob.BackgroundColor3=T.KnobOff
+		end
+	end)
 	local function doToggle()
 		state=not state
 		if state then
@@ -1045,6 +1103,7 @@ CreateToggle=function(parent,name,desc,cb,startState)
 				Tween(knob,M,{Size=UDim2.new(0,12,0,12),Position=UDim2.new(0,19,0.5,-6)})
 				Tween(knob,M,{BackgroundColor3=T.KnobOn}); Tween(track,M,{BackgroundColor3=T.TrackOn})
 				Tween(tStroke,M,{Color=T.TrackOn}); Tween(bar,M,{BackgroundColor3=T.Accent})
+				Tween(cStroke,M,{Color=T.Accent})
 			end)
 		else
 			Tween(knob,TweenInfo.new(0.06),{Size=UDim2.new(0,10,0,10),Position=UDim2.new(0,18,0.5,-5)})
@@ -1052,6 +1111,7 @@ CreateToggle=function(parent,name,desc,cb,startState)
 				Tween(knob,M,{Size=UDim2.new(0,12,0,12),Position=UDim2.new(0,3,0.5,-6)})
 				Tween(knob,M,{BackgroundColor3=T.KnobOff}); Tween(track,M,{BackgroundColor3=T.TrackOff})
 				Tween(tStroke,M,{Color=T.Border}); Tween(bar,M,{BackgroundColor3=T.TrackOff})
+				Tween(cStroke,M,{Color=T.Border})
 			end)
 		end
 		if cb then pcall(cb,state) end
@@ -2610,113 +2670,126 @@ do
 
 	CreateSection(SettingsTab.scroll,"THEME")
 	do
-		local cpCard=Instance.new("Frame"); cpCard.Size=UDim2.new(1,-12,0,110)
+		local cpCard=Instance.new("Frame"); cpCard.Size=UDim2.new(1,-12,0,168)
 		cpCard.BackgroundColor3=T.Card; cpCard.BackgroundTransparency=0.1
-		cpCard.BorderSizePixel=0; cpCard.Parent=SettingsTab.scroll; Corner(cpCard,7)
-		Stroke(cpCard,T.Border,1)
+		cpCard.BorderSizePixel=0; cpCard.Parent=SettingsTab.scroll; Corner(cpCard,8)
+		local cpStroke=Stroke(cpCard,T.Border,1)
+		onThemeChange(function() cpStroke.Color=T.Border end)
 
-		local previewBar=Instance.new("Frame"); previewBar.Size=UDim2.new(1,-12,0,10)
-		previewBar.Position=UDim2.new(0,6,0,6); previewBar.BackgroundColor3=T.Accent
-		previewBar.BorderSizePixel=0; previewBar.Parent=cpCard; Corner(previewBar,4)
-		local prevGrad=Instance.new("UIGradient"); prevGrad.Parent=previewBar
-		local function updatePreview()
-			prevGrad.Color=ColorSequence.new({
-				ColorSequenceKeypoint.new(0, hsvToRgb(_AccentH/360,1,1)),
-				ColorSequenceKeypoint.new(1, hsvToRgb((_AccentH+60)/360,1,1)),
+		local previewStrip=Instance.new("Frame"); previewStrip.Size=UDim2.new(1,-12,0,10)
+		previewStrip.Position=UDim2.new(0,6,0,5); previewStrip.BackgroundColor3=T.Accent
+		previewStrip.BorderSizePixel=0; previewStrip.Parent=cpCard; Corner(previewStrip,4)
+		local pvGrad=Instance.new("UIGradient"); pvGrad.Parent=previewStrip
+		local function refreshPreview()
+			pvGrad.Color=ColorSequence.new({
+				ColorSequenceKeypoint.new(0,   T.Accent),
+				ColorSequenceKeypoint.new(0.5, T.Accent2),
+				ColorSequenceKeypoint.new(1.0, T.AccentBright),
 			})
 		end
-		updatePreview()
-
-		local function makeSliderRow(parent,labelTxt,yPos,minV,maxV,initVal,onChange)
-			local row=Instance.new("Frame"); row.Size=UDim2.new(1,-12,0,22)
-			row.Position=UDim2.new(0,6,0,yPos); row.BackgroundTransparency=1; row.Parent=parent
-			local lbl=Label(row,labelTxt,9,T.Dim,Enum.Font.GothamBold)
-			lbl.Size=UDim2.new(0,26,1,0); lbl.Position=UDim2.new(0,0,0,0)
-			lbl.TextXAlignment=Enum.TextXAlignment.Left
-			local valLbl=Label(row,tostring(initVal),9,T.White,Enum.Font.GothamBold)
-			valLbl.Size=UDim2.new(0,26,1,0); valLbl.Position=UDim2.new(1,-26,0,0)
-			valLbl.TextXAlignment=Enum.TextXAlignment.Right
-			local trackBg=Instance.new("Frame"); trackBg.Size=UDim2.new(1,-56,0,6)
-			trackBg.Position=UDim2.new(0,30,0.5,-3); trackBg.BackgroundColor3=T.TrackOff
-			trackBg.BorderSizePixel=0; trackBg.Parent=row; Corner(trackBg,3)
-			local fill=Instance.new("Frame"); fill.Size=UDim2.new((initVal-minV)/(maxV-minV),0,1,0)
-			fill.BackgroundColor3=T.Accent; fill.BorderSizePixel=0; fill.Parent=trackBg; Corner(fill,3)
-			local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(10,10)
-			knob.AnchorPoint=Vector2.new(0.5,0.5)
-			knob.Position=UDim2.new((initVal-minV)/(maxV-minV),0,0.5,0)
-			knob.BackgroundColor3=T.White; knob.BorderSizePixel=0; knob.Parent=trackBg; Corner(knob,5)
-			local dragging=false
-			local function setVal(pct)
-				pct=math.clamp(pct,0,1)
-				local v=math.floor(minV+pct*(maxV-minV))
-				fill.Size=UDim2.new(pct,0,1,0)
-				knob.Position=UDim2.new(pct,0,0.5,0)
-				valLbl.Text=tostring(v)
-				fill.BackgroundColor3=T.Accent; knob.BackgroundColor3=T.AccentBright
-				onChange(v)
-			end
-			trackBg.InputBegan:Connect(function(inp)
-				if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then
-					dragging=true
-					setVal((inp.Position.X-trackBg.AbsolutePosition.X)/trackBg.AbsoluteSize.X)
-				end
-			end)
-			UserInputService.InputChanged:Connect(function(inp)
-				if dragging and (inp.UserInputType==Enum.UserInputType.MouseMovement or inp.UserInputType==Enum.UserInputType.Touch) then
-					setVal((inp.Position.X-trackBg.AbsolutePosition.X)/trackBg.AbsoluteSize.X)
-				end
-			end)
-			UserInputService.InputEnded:Connect(function(inp)
-				if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then
-					dragging=false
-				end
-			end)
-			onThemeChange(function()
-				fill.BackgroundColor3=T.Accent; knob.BackgroundColor3=T.AccentBright
-			end)
-			return row
-		end
+		refreshPreview(); onThemeChange(refreshPreview)
 
 		local PRESETS={
-			{name="Purple/Pink",h=280,s=75,v=95},
-			{name="Blue",h=220,s=80,v=100},
-			{name="Red",h=0,s=85,v=95},
-			{name="Green",h=130,s=70,v=90},
-			{name="Cyan",h=185,s=75,v=95},
-			{name="Orange",h=28,s=90,v=100},
+			{n="Purple",  h=285,h2=325,s=80,v=92},
+			{n="Pink",    h=320,h2=350,s=85,v=95},
+			{n="Red",     h=0,  h2=20, s=88,v=95},
+			{n="Orange",  h=26, h2=46, s=90,v=100},
+			{n="Yellow",  h=50, h2=65, s=85,v=100},
+			{n="Green",   h=130,h2=155,s=72,v=88},
+			{n="Teal",    h=172,h2=192,s=78,v=88},
+			{n="Cyan",    h=190,h2=210,s=80,v=95},
+			{n="Blue",    h=218,h2=240,s=82,v=100},
+			{n="Indigo",  h=248,h2=270,s=78,v=95},
+			{n="Gold",    h=42, h2=60, s=88,v=100},
+			{n="White",   h=0,  h2=0,  s=0, v=100},
 		}
-		local presetRow=Instance.new("Frame"); presetRow.Size=UDim2.new(1,-12,0,18)
-		presetRow.Position=UDim2.new(0,6,0,20); presetRow.BackgroundTransparency=1; presetRow.Parent=cpCard
-		local presetLayout=Instance.new("UIListLayout"); presetLayout.FillDirection=Enum.FillDirection.Horizontal
-		presetLayout.VerticalAlignment=Enum.VerticalAlignment.Center; presetLayout.Padding=UDim.new(0,3)
-		presetLayout.Parent=presetRow
+
+		local psScroll=Instance.new("ScrollingFrame",cpCard)
+		psScroll.Size=UDim2.new(1,-12,0,34); psScroll.Position=UDim2.new(0,6,0,20)
+		psScroll.BackgroundTransparency=1; psScroll.BorderSizePixel=0
+		psScroll.ScrollBarThickness=2; psScroll.ScrollBarImageColor3=T.Accent
+		psScroll.CanvasSize=UDim2.new(0,0,0,0); psScroll.AutomaticCanvasSize=Enum.AutomaticSize.X
+		psScroll.ScrollingDirection=Enum.ScrollingDirection.X
+		onThemeChange(function() psScroll.ScrollBarImageColor3=T.Accent end)
+		local psLayout=Instance.new("UIListLayout",psScroll)
+		psLayout.FillDirection=Enum.FillDirection.Horizontal
+		psLayout.VerticalAlignment=Enum.VerticalAlignment.Center
+		psLayout.Padding=UDim.new(0,4)
+		local psPad=Instance.new("UIPadding",psScroll); psPad.PaddingTop=UDim.new(0,2); psPad.PaddingBottom=UDim.new(0,2)
+		local selPsBtn=nil
 		for _,ps in ipairs(PRESETS) do
-			local pb=Instance.new("TextButton"); pb.Size=UDim2.fromOffset(0,16); pb.AutomaticSize=Enum.AutomaticSize.X
-			pb.BackgroundColor3=hsvToRgb(ps.h/360,ps.s/100,ps.v/100); pb.BorderSizePixel=0
-			pb.Text=ps.name; pb.TextSize=7; pb.Font=Enum.Font.GothamBold; pb.TextColor3=Color3.new(1,1,1)
-			pb.AutoButtonColor=false; pb.Parent=presetRow; Corner(pb,4)
-			local pad=Instance.new("UIPadding",pb); pad.PaddingLeft=UDim.new(0,5); pad.PaddingRight=UDim.new(0,5)
+			local col=hsvToRgb(ps.h/360,ps.s/100,ps.v/100)
+			local pb=Instance.new("TextButton",psScroll)
+			pb.Size=UDim2.fromOffset(0,26); pb.AutomaticSize=Enum.AutomaticSize.X
+			pb.BackgroundColor3=col; pb.BorderSizePixel=0
+			pb.Text=ps.n; pb.TextSize=7; pb.Font=Enum.Font.GothamBold
+			pb.TextColor3=ps.s<15 and Color3.new(0.1,0.1,0.1) or Color3.new(1,1,1)
+			pb.AutoButtonColor=false; Corner(pb,5)
+			local ppd=Instance.new("UIPadding",pb); ppd.PaddingLeft=UDim.new(0,6); ppd.PaddingRight=UDim.new(0,6)
+			local pbStk=Stroke(pb,Color3.new(1,1,1),0)
 			pb.MouseButton1Click:Connect(function()
-				_AccentH=ps.h; _AccentS=ps.s/100; _AccentV=ps.v/100
-				applyTheme(); updatePreview()
-				BorderGrad.Color=ColorSequence.new({
-					ColorSequenceKeypoint.new(0,hsvToRgb(ps.h/360,1,0.7)),
-					ColorSequenceKeypoint.new(0.5,hsvToRgb((ps.h+40)/360,0.6,1)),
-					ColorSequenceKeypoint.new(1,hsvToRgb(ps.h/360,1,0.7)),
-				})
+				_AccentH=ps.h; _AccentH2=ps.h2; _AccentS=ps.s/100; _AccentV=ps.v/100
+				applyTheme(); refreshPreview()
+				if selPsBtn then TweenService:Create(selPsBtn:FindFirstChildOfClass("UIStroke"),F,{Thickness=0}):Play() end
+				selPsBtn=pb; TweenService:Create(pbStk,F,{Thickness=1.4,Color=Color3.new(1,1,1)}):Play()
 			end)
 		end
 
-		makeSliderRow(cpCard,"H",42,0,360,_AccentH,function(v)
-			_AccentH=v; applyTheme(); updatePreview()
-			BorderGrad.Color=ColorSequence.new({
-				ColorSequenceKeypoint.new(0,hsvToRgb(v/360,1,0.7)),
-				ColorSequenceKeypoint.new(0.5,hsvToRgb((v+40)/360,0.6,1)),
-				ColorSequenceKeypoint.new(1,hsvToRgb(v/360,1,0.7)),
-			})
+		local function makeSlider(yPos,labelTxt,minV,maxV,initPct,onChange)
+			local row=Instance.new("Frame",cpCard)
+			row.Size=UDim2.new(1,-12,0,19); row.Position=UDim2.new(0,6,0,yPos)
+			row.BackgroundTransparency=1
+			local ll=Label(row,labelTxt,8,T.Dim,Enum.Font.GothamBold)
+			ll.Size=UDim2.new(0,20,1,0); onThemeChange(function() ll.TextColor3=T.Dim end)
+			local vl=Label(row,"",8,T.White,Enum.Font.GothamBold)
+			vl.Size=UDim2.new(0,28,1,0); vl.Position=UDim2.new(1,-28,0,0)
+			vl.TextXAlignment=Enum.TextXAlignment.Right
+			vl.Text=tostring(math.floor(minV+initPct*(maxV-minV)))
+			local bg=Instance.new("Frame",row)
+			bg.Size=UDim2.new(1,-52,0,5); bg.Position=UDim2.new(0,22,0.5,-2.5)
+			bg.BackgroundColor3=T.TrackOff; bg.BorderSizePixel=0; Corner(bg,3)
+			onThemeChange(function() bg.BackgroundColor3=T.TrackOff end)
+			local fill=Instance.new("Frame",bg)
+			fill.Size=UDim2.new(initPct,0,1,0); fill.BackgroundColor3=T.Accent
+			fill.BorderSizePixel=0; Corner(fill,3)
+			onThemeChange(function() fill.BackgroundColor3=T.Accent end)
+			local knob=Instance.new("Frame",bg)
+			knob.Size=UDim2.fromOffset(9,9); knob.AnchorPoint=Vector2.new(0.5,0.5)
+			knob.Position=UDim2.new(initPct,0,0.5,0); knob.BackgroundColor3=T.White
+			knob.BorderSizePixel=0; Corner(knob,5)
+			local dragging=false
+			local function setV(pct)
+				pct=math.clamp(pct,0,1)
+				local v=math.floor(minV+pct*(maxV-minV))
+				fill.Size=UDim2.new(pct,0,1,0); knob.Position=UDim2.new(pct,0,0.5,0); vl.Text=tostring(v)
+				onChange(v)
+			end
+			bg.InputBegan:Connect(function(i)
+				if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+					dragging=true; setV((i.Position.X-bg.AbsolutePosition.X)/bg.AbsoluteSize.X)
+				end
+			end)
+			UserInputService.InputChanged:Connect(function(i)
+				if dragging and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
+					setV((i.Position.X-bg.AbsolutePosition.X)/bg.AbsoluteSize.X)
+				end
+			end)
+			UserInputService.InputEnded:Connect(function(i)
+				if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false end
+			end)
+		end
+
+		makeSlider(60, "H1",0,360,_AccentH/360,   function(v) _AccentH=v;  applyTheme(); refreshPreview() end)
+		makeSlider(83, "H2",0,360,_AccentH2/360,  function(v) _AccentH2=v; applyTheme(); refreshPreview() end)
+		makeSlider(106,"S", 0,100,_AccentS,        function(v) _AccentS=v/100; applyTheme(); refreshPreview() end)
+		makeSlider(129,"V", 10,100,(_AccentV-0.1)/0.9,function(v) _AccentV=v/100; applyTheme(); refreshPreview() end)
+		makeSlider(148,"BG",0,30,0,                function(v)
+			local b=v/100
+			T.BG=Color3.fromRGB(math.floor(8+b*80),math.floor(5+b*60),math.floor(12+b*90))
+			T.Header=Color3.fromRGB(math.floor(5+b*50),math.floor(3+b*40),math.floor(9+b*70))
+			T.Card=Color3.fromRGB(math.floor(15+b*50),math.floor(11+b*40),math.floor(22+b*60))
+			Win.BackgroundColor3=T.BG; Hdr.BackgroundColor3=T.Header; HdrFill.BackgroundColor3=T.Header
 		end)
-		makeSliderRow(cpCard,"S",68,0,100,math.floor(_AccentS*100),function(v) _AccentS=v/100; applyTheme(); updatePreview() end)
-		makeSliderRow(cpCard,"V",90,10,100,math.floor(_AccentV*100),function(v) _AccentV=v/100; applyTheme(); updatePreview() end)
 	end
 
 	CreateSection(SettingsTab.scroll,"SERVER")
