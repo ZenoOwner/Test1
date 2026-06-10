@@ -33,7 +33,7 @@ local __AG_stealActive   = false
 local __AG_MIN_HOLD_TIME = 1.3
 local __AG_TRIGGER_DELAY = 0.04
 
-local CONFIG_PATH = "VertxedHub_config.json"
+local CONFIG_PATH = "GammaHub_config.json"
 local Config = {toggles={}, keybinds={}}
 
 local function FH_Serialize()
@@ -182,7 +182,7 @@ AntiRagdoll.disable=function()
 	for _,c in pairs(AntiRagdoll.connections) do pcall(function() c:Disconnect() end) end
 	AntiRagdoll.connections={}
 end
-AntiRagdoll.enable()
+-- controlled by toggle only, does NOT auto-start
 
 do
 	local scaleNames={"HeadScale","BodyDepthScale","BodyHeightScale","BodyProportionScale","BodyTypeScale","BodyWidthScale"}
@@ -585,9 +585,9 @@ local function triggerAutoBlock()
 	if not AutoBlockEnabled then return end
 	task.spawn(function()
 		task.wait(getBlockDelay())
-		if not AutoBlockEnabled then return end
+		if not AutoBlockEnabled then return end -- re-check after delay
 		local target=getPlotOwnerPlayer() or getNearestPlayer()
-		if target then pcall(blockPlayer,target) end
+		if target and AutoBlockEnabled then pcall(blockPlayer,target) end
 	end)
 end
 
@@ -638,27 +638,53 @@ local function __AG_findPrompt()
 	return prompt
 end
 
+local _AccentH=280; local _AccentS=0.75; local _AccentV=0.95
+local function hsvToRgb(h,s,v)
+	local r,g,b
+	local i=math.floor(h*6); local f=h*6-i
+	local p=v*(1-s); local q=v*(1-f*s); local t2=v*(1-(1-f)*s)
+	local m=i%6
+	if m==0 then r,g,b=v,t2,p
+	elseif m==1 then r,g,b=q,v,p
+	elseif m==2 then r,g,b=p,v,t2
+	elseif m==3 then r,g,b=p,q,v
+	elseif m==4 then r,g,b=t2,p,v
+	else r,g,b=v,p,q end
+	return Color3.new(r,g,b)
+end
+local function getAccent() return hsvToRgb(_AccentH/360,_AccentS,_AccentV) end
+local function getAccentBright() return hsvToRgb(_AccentH/360,_AccentS*0.7,1) end
+
 local T={
-	BG          = Color3.fromRGB(10,  10,  14),
-	Header      = Color3.fromRGB(6,   6,   10),
-	Card        = Color3.fromRGB(18,  18,  26),
-	CardHover   = Color3.fromRGB(26,  26,  38),
-	Border      = Color3.fromRGB(38,  38,  58),
-	BorderHover = Color3.fromRGB(60,  80,  140),
-	White       = Color3.fromRGB(225, 230, 255),
-	Dim         = Color3.fromRGB(85,  85,  115),
-	Accent      = Color3.fromRGB(60,  120, 255),
-	AccentBright= Color3.fromRGB(100, 160, 255),
-	TabActive   = Color3.fromRGB(225, 230, 255),
-	TabInact    = Color3.fromRGB(55,  55,  85),
-	TrackOn     = Color3.fromRGB(60,  120, 255),
-	TrackOff    = Color3.fromRGB(30,  30,  48),
-	KnobOn      = Color3.fromRGB(200, 220, 255),
-	KnobOff     = Color3.fromRGB(75,  75,  105),
+	BG          = Color3.fromRGB(9,   7,   12),
+	Header      = Color3.fromRGB(6,   5,   10),
+	Card        = Color3.fromRGB(20,  15,  28),
+	CardHover   = Color3.fromRGB(30,  22,  42),
+	Border      = Color3.fromRGB(55,  35,  75),
+	BorderHover = Color3.fromRGB(140, 60,  180),
+	White       = Color3.fromRGB(235, 225, 255),
+	Dim         = Color3.fromRGB(110, 85,  140),
+	Accent      = Color3.fromRGB(180, 60,  255),
+	AccentBright= Color3.fromRGB(220, 120, 255),
+	TabActive   = Color3.fromRGB(235, 225, 255),
+	TabInact    = Color3.fromRGB(70,  50,  95),
+	TrackOn     = Color3.fromRGB(180, 60,  255),
+	TrackOff    = Color3.fromRGB(35,  25,  50),
+	KnobOn      = Color3.fromRGB(240, 200, 255),
+	KnobOff     = Color3.fromRGB(90,  65,  120),
 	Green       = Color3.fromRGB(52,  218, 88),
 	Red         = Color3.fromRGB(255, 65,  65),
-	Blue        = Color3.fromRGB(60,  140, 255),
+	Blue        = Color3.fromRGB(180, 60,  255),
+	Pink        = Color3.fromRGB(255, 80,  180),
 }
+
+local _themeListeners={}
+local function onThemeChange(fn) table.insert(_themeListeners,fn) end
+local function applyTheme()
+	T.Accent=getAccent(); T.AccentBright=getAccentBright()
+	T.TrackOn=T.Accent; T.Blue=T.Accent
+	for _,fn in ipairs(_themeListeners) do pcall(fn) end
+end
 local F=TweenInfo.new(0.15,Enum.EasingStyle.Quad,Enum.EasingDirection.Out)
 local M=TweenInfo.new(0.22,Enum.EasingStyle.Quad,Enum.EasingDirection.Out)
 local function Tween(o,i,p) TweenService:Create(o,i,p):Play() end
@@ -684,11 +710,11 @@ end
 local isMobile=UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 pcall(function()
-	if game.CoreGui:FindFirstChild("VertxedHub") then game.CoreGui.VertxedHub:Destroy() end
+	if game.CoreGui:FindFirstChild("GammaHub") then game.CoreGui.GammaHub:Destroy() end
 end)
 
 local GUI=Instance.new("ScreenGui")
-GUI.Name="VertxedHub"; GUI.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
+GUI.Name="GammaHub"; GUI.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
 GUI.ResetOnSpawn=false; GUI.IgnoreGuiInset=true
 if not pcall(function() GUI.Parent=game.CoreGui end) then
 	GUI.Parent=lp:WaitForChild("PlayerGui")
@@ -715,9 +741,9 @@ WinStroke.Thickness=1.4; WinStroke.ApplyStrokeMode=Enum.ApplyStrokeMode.Border
 WinStroke.Color=T.AccentBright; WinStroke.Parent=Win
 local BorderGrad=Instance.new("UIGradient")
 BorderGrad.Color=ColorSequence.new({
-	ColorSequenceKeypoint.new(0,Color3.fromRGB(30,60,160)),
-	ColorSequenceKeypoint.new(0.5,Color3.fromRGB(120,180,255)),
-	ColorSequenceKeypoint.new(1.0,Color3.fromRGB(30,60,160)),
+	ColorSequenceKeypoint.new(0,   Color3.fromRGB(120,30,180)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255,80,180)),
+	ColorSequenceKeypoint.new(1.0, Color3.fromRGB(120,30,180)),
 })
 BorderGrad.Rotation=0; BorderGrad.Parent=WinStroke
 local winScale=Instance.new("UIScale"); winScale.Scale=1; winScale.Parent=Win
@@ -737,10 +763,10 @@ HdrLine.BackgroundColor3=T.Border; HdrLine.BorderSizePixel=0; HdrLine.ZIndex=6; 
 
 local TitleLbl=Label(Hdr,"",14,T.White,Enum.Font.GothamBold)
 TitleLbl.RichText=true
-TitleLbl.Text='<font color="rgb(100,160,255)">Vertex</font> <font color="rgb(225,230,255)">Pvp</font>'
+TitleLbl.Text='<font color="rgb(220,120,255)">Gamma</font> <font color="rgb(255,80,180)">Pvp</font>'
 TitleLbl.Size=UDim2.new(1,-70,0,16); TitleLbl.Position=UDim2.new(0,10,0,5); TitleLbl.ZIndex=6
 
-local DiscordLbl=Label(Hdr,"discord.gg/3JnFzfcYB",isMobile and 7 or 8,T.Dim,Enum.Font.Gotham)
+local DiscordLbl=Label(Hdr,".gg/gammahub",isMobile and 7 or 8,T.Dim,Enum.Font.Gotham)
 DiscordLbl.Size=UDim2.new(1,-70,0,11); DiscordLbl.Position=UDim2.new(0,10,0,24)
 DiscordLbl.ZIndex=6; DiscordLbl.TextTruncate=Enum.TextTruncate.AtEnd
 
@@ -836,8 +862,8 @@ local function makeBigBtn(txt,order,accentCol)
 end
 
 local flashBtn,flashBtnStroke,flashBtnFlash=makeBigBtn("FLASH",1,T.AccentBright)
-local blockBtn,blockBtnStroke,blockBtnFlash=makeBigBtn("BLOCK",2,Color3.fromRGB(200,60,60))
-local resetBtn,resetBtnStroke,resetBtnFlash=makeBigBtn("RESET",3,Color3.fromRGB(80,80,120))
+local blockBtn,blockBtnStroke,blockBtnFlash=makeBigBtn("BLOCK",2,T.Pink)
+local resetBtn,resetBtnStroke,resetBtnFlash=makeBigBtn("RESET",3,Color3.fromRGB(120,60,160))
 
 local TabBar=Instance.new("Frame")
 TabBar.Size=UDim2.new(1,0,0,TAB_H); TabBar.Position=UDim2.new(0,0,0,TOTAL_TOP)
@@ -1474,7 +1500,11 @@ local function executeSteal(prompt)
 		updateProgressBar(1)
 		for _,f in ipairs(data.trigger) do pcall(f) end
 		task.wait(0.05)
-		if AutoBlockEnabled then triggerAutoBlock() end
+		-- only block if explicitly enabled right now
+		if AutoBlockEnabled==true then
+			local target=getPlotOwnerPlayer() or getNearestPlayer()
+			if target then task.spawn(function() pcall(blockPlayer,target) end) end
+		end
 		task.wait(0.2)
 		hideProgressBar()
 		data.ready=true; isStealing=false
@@ -1517,13 +1547,15 @@ local function buildSABGui()
 					local at=(desc.ActionText or ""):lower()
 					local ot=(desc.ObjectText or ""):lower()
 					if at:find("allow") or ot:find("allow") then
-						if hrp then
-							local part=desc.Parent
-							if part and part:IsA("BasePart") then
+						local part=desc.Parent
+						if part and part:IsA("BasePart") then
+							if hrp then
 								local d=(hrp.Position-part.Position).Magnitude
 								if d<bestDist then bestDist=d; best=desc end
+							else
+								best=desc
 							end
-						else best=desc; break end
+						end
 					end
 				end
 			end
@@ -1538,14 +1570,19 @@ local function buildSABGui()
 			end)
 		end
 	end
-	-- tiny 18x18 colored box, no text
 	local box=Instance.new("TextButton")
-	box.Size=UDim2.fromOffset(18,18)
-	box.Position=UDim2.new(0,6,0,6)
+	box.Size=UDim2.fromOffset(64,20)
+	box.AnchorPoint=Vector2.new(1,0)
+	box.Position=UDim2.new(1,-6,0,6)
 	box.BackgroundColor3=T.Dim
-	box.BorderSizePixel=0; box.Text=""; box.AutoButtonColor=false
+	box.BorderSizePixel=0
+	box.Text="---"
+	box.TextColor3=T.White
+	box.Font=Enum.Font.GothamBold
+	box.TextSize=9
+	box.AutoButtonColor=false
 	box.ZIndex=50; box.Parent=SABAllowGui
-	Corner(box,4); Stroke(box,T.Border,1)
+	Corner(box,5); Stroke(box,T.Border,1)
 	local function updateBox()
 		if onCooldown then return end
 		local p2=findMyPrompt()
@@ -1554,29 +1591,35 @@ local function buildSABGui()
 			local ot=(p2.ObjectText or ""):lower()
 			local isOpen=(at:find("disallow") or ot:find("disallow"))
 			if isOpen then
-				box.BackgroundColor3=T.Green
+				box.BackgroundColor3=Color3.fromRGB(22,100,38)
+				box.Text="Allowed"
+				box.TextColor3=T.Green
+				TweenService:Create(box:FindFirstChildOfClass("UIStroke"),F,{Color=T.Green}):Play()
 			else
-				box.BackgroundColor3=T.Red
+				box.BackgroundColor3=Color3.fromRGB(100,18,18)
+				box.Text="Disallowed"
+				box.TextColor3=T.Red
+				TweenService:Create(box:FindFirstChildOfClass("UIStroke"),F,{Color=T.Red}):Play()
 			end
 		else
-			box.BackgroundColor3=T.Dim
+			box.BackgroundColor3=T.Card
+			box.Text="No Prompt"
+			box.TextColor3=T.Dim
+			TweenService:Create(box:FindFirstChildOfClass("UIStroke"),F,{Color=T.Border}):Play()
 		end
 	end
-	box.MouseButton1Click:Connect(function()
+	local function onTap()
 		if onCooldown then return end
 		local p2=findMyPrompt()
 		if p2 then firePrompt(p2) end
-		onCooldown=true; box.BackgroundColor3=T.Dim
+		onCooldown=true
+		box.Text="..."
+		box.BackgroundColor3=T.Card
 		task.delay(COOLDOWN,function() onCooldown=false; updateBox() end)
-	end)
+	end
+	box.MouseButton1Click:Connect(onTap)
 	box.InputBegan:Connect(function(inp)
-		if inp.UserInputType==Enum.UserInputType.Touch then
-			if onCooldown then return end
-			local p2=findMyPrompt()
-			if p2 then firePrompt(p2) end
-			onCooldown=true; box.BackgroundColor3=T.Dim
-			task.delay(COOLDOWN,function() onCooldown=false; updateBox() end)
-		end
+		if inp.UserInputType==Enum.UserInputType.Touch then onTap() end
 	end)
 	updateBox()
 	task.spawn(function()
@@ -1604,7 +1647,7 @@ local function doFlash()
 			[8]={hrp=CFrame.new(Vector3.new(-342.8,-6.8,28.0)),cam=CFrame.lookAt(Vector3.new(-361.042,4.173,28.237),Vector3.new(-360.156,3.709,28.227))},
 			[9]={hrp=CFrame.new(Vector3.new(-343.8,-7.2,26.4)),cam=CFrame.lookAt(Vector3.new(-361.460,4.701,26.126),Vector3.new(-360.600,4.191,26.139))},
 			[10]={hrp=CFrame.new(Vector3.new(-341.0,-7.3,57.9)),cam=CFrame.lookAt(Vector3.new(-345.372,-1.632,77.674),Vector3.new(-345.081,-1.839,76.741))},
-			[11]={hrp=CFrame.new(Vector3.new(-355.1,-7.0,-14.0)),cam=CFrame.lookAt(Vector3.new(-361.363,-10.004,-13.798),Vector3.new(-360.589,-9.402,-13.600))},
+			[11]={hrp=CFrame.new(Vector3.new(-355.1,-7.0,-14.0)),cam=CFrame.lookAt(Vector3.new(-360.395,-10.007,-11.958),Vector3.new(-359.631,-9.385,-11.789))},
 			[12]={hrpWalk=CFrame.new(Vector3.new(-345.9,-7.0,-30.8)),hrp=CFrame.new(Vector3.new(-337.1,-7.0,-31.5)),cam=CFrame.lookAt(Vector3.new(-341.102,-9.999,-36.639),Vector3.new(-340.600,-9.430,-35.988))},
 			[13]={hrpWalk=CFrame.new(Vector3.new(-345.6,-7.0,-30.7)),hrp=CFrame.new(Vector3.new(-334.0,-7.0,-31.2)),cam=CFrame.lookAt(Vector3.new(-339.701,-9.990,-36.359),Vector3.new(-339.060,-9.486,-35.780))},
 			[14]={hrpWalk=CFrame.new(Vector3.new(-349.1,-7.0,-29.7)),hrp=CFrame.new(Vector3.new(-333.3,-7.0,-30.3)),cam=CFrame.lookAt(Vector3.new(-340.516,-9.984,-34.987),Vector3.new(-339.772,-9.524,-34.502))},
@@ -2563,6 +2606,117 @@ do
 			end
 		end
 		CreateToggle(SettingsTab.scroll,"Fast Panel","quick admin command panel for all players",function(v) fpShow(v) end)
+	end
+
+	CreateSection(SettingsTab.scroll,"THEME")
+	do
+		local cpCard=Instance.new("Frame"); cpCard.Size=UDim2.new(1,-12,0,110)
+		cpCard.BackgroundColor3=T.Card; cpCard.BackgroundTransparency=0.1
+		cpCard.BorderSizePixel=0; cpCard.Parent=SettingsTab.scroll; Corner(cpCard,7)
+		Stroke(cpCard,T.Border,1)
+
+		local previewBar=Instance.new("Frame"); previewBar.Size=UDim2.new(1,-12,0,10)
+		previewBar.Position=UDim2.new(0,6,0,6); previewBar.BackgroundColor3=T.Accent
+		previewBar.BorderSizePixel=0; previewBar.Parent=cpCard; Corner(previewBar,4)
+		local prevGrad=Instance.new("UIGradient"); prevGrad.Parent=previewBar
+		local function updatePreview()
+			prevGrad.Color=ColorSequence.new({
+				ColorSequenceKeypoint.new(0, hsvToRgb(_AccentH/360,1,1)),
+				ColorSequenceKeypoint.new(1, hsvToRgb((_AccentH+60)/360,1,1)),
+			})
+		end
+		updatePreview()
+
+		local function makeSliderRow(parent,labelTxt,yPos,minV,maxV,initVal,onChange)
+			local row=Instance.new("Frame"); row.Size=UDim2.new(1,-12,0,22)
+			row.Position=UDim2.new(0,6,0,yPos); row.BackgroundTransparency=1; row.Parent=parent
+			local lbl=Label(row,labelTxt,9,T.Dim,Enum.Font.GothamBold)
+			lbl.Size=UDim2.new(0,26,1,0); lbl.Position=UDim2.new(0,0,0,0)
+			lbl.TextXAlignment=Enum.TextXAlignment.Left
+			local valLbl=Label(row,tostring(initVal),9,T.White,Enum.Font.GothamBold)
+			valLbl.Size=UDim2.new(0,26,1,0); valLbl.Position=UDim2.new(1,-26,0,0)
+			valLbl.TextXAlignment=Enum.TextXAlignment.Right
+			local trackBg=Instance.new("Frame"); trackBg.Size=UDim2.new(1,-56,0,6)
+			trackBg.Position=UDim2.new(0,30,0.5,-3); trackBg.BackgroundColor3=T.TrackOff
+			trackBg.BorderSizePixel=0; trackBg.Parent=row; Corner(trackBg,3)
+			local fill=Instance.new("Frame"); fill.Size=UDim2.new((initVal-minV)/(maxV-minV),0,1,0)
+			fill.BackgroundColor3=T.Accent; fill.BorderSizePixel=0; fill.Parent=trackBg; Corner(fill,3)
+			local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(10,10)
+			knob.AnchorPoint=Vector2.new(0.5,0.5)
+			knob.Position=UDim2.new((initVal-minV)/(maxV-minV),0,0.5,0)
+			knob.BackgroundColor3=T.White; knob.BorderSizePixel=0; knob.Parent=trackBg; Corner(knob,5)
+			local dragging=false
+			local function setVal(pct)
+				pct=math.clamp(pct,0,1)
+				local v=math.floor(minV+pct*(maxV-minV))
+				fill.Size=UDim2.new(pct,0,1,0)
+				knob.Position=UDim2.new(pct,0,0.5,0)
+				valLbl.Text=tostring(v)
+				fill.BackgroundColor3=T.Accent; knob.BackgroundColor3=T.AccentBright
+				onChange(v)
+			end
+			trackBg.InputBegan:Connect(function(inp)
+				if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then
+					dragging=true
+					setVal((inp.Position.X-trackBg.AbsolutePosition.X)/trackBg.AbsoluteSize.X)
+				end
+			end)
+			UserInputService.InputChanged:Connect(function(inp)
+				if dragging and (inp.UserInputType==Enum.UserInputType.MouseMovement or inp.UserInputType==Enum.UserInputType.Touch) then
+					setVal((inp.Position.X-trackBg.AbsolutePosition.X)/trackBg.AbsoluteSize.X)
+				end
+			end)
+			UserInputService.InputEnded:Connect(function(inp)
+				if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then
+					dragging=false
+				end
+			end)
+			onThemeChange(function()
+				fill.BackgroundColor3=T.Accent; knob.BackgroundColor3=T.AccentBright
+			end)
+			return row
+		end
+
+		local PRESETS={
+			{name="Purple/Pink",h=280,s=75,v=95},
+			{name="Blue",h=220,s=80,v=100},
+			{name="Red",h=0,s=85,v=95},
+			{name="Green",h=130,s=70,v=90},
+			{name="Cyan",h=185,s=75,v=95},
+			{name="Orange",h=28,s=90,v=100},
+		}
+		local presetRow=Instance.new("Frame"); presetRow.Size=UDim2.new(1,-12,0,18)
+		presetRow.Position=UDim2.new(0,6,0,20); presetRow.BackgroundTransparency=1; presetRow.Parent=cpCard
+		local presetLayout=Instance.new("UIListLayout"); presetLayout.FillDirection=Enum.FillDirection.Horizontal
+		presetLayout.VerticalAlignment=Enum.VerticalAlignment.Center; presetLayout.Padding=UDim.new(0,3)
+		presetLayout.Parent=presetRow
+		for _,ps in ipairs(PRESETS) do
+			local pb=Instance.new("TextButton"); pb.Size=UDim2.fromOffset(0,16); pb.AutomaticSize=Enum.AutomaticSize.X
+			pb.BackgroundColor3=hsvToRgb(ps.h/360,ps.s/100,ps.v/100); pb.BorderSizePixel=0
+			pb.Text=ps.name; pb.TextSize=7; pb.Font=Enum.Font.GothamBold; pb.TextColor3=Color3.new(1,1,1)
+			pb.AutoButtonColor=false; pb.Parent=presetRow; Corner(pb,4)
+			local pad=Instance.new("UIPadding",pb); pad.PaddingLeft=UDim.new(0,5); pad.PaddingRight=UDim.new(0,5)
+			pb.MouseButton1Click:Connect(function()
+				_AccentH=ps.h; _AccentS=ps.s/100; _AccentV=ps.v/100
+				applyTheme(); updatePreview()
+				BorderGrad.Color=ColorSequence.new({
+					ColorSequenceKeypoint.new(0,hsvToRgb(ps.h/360,1,0.7)),
+					ColorSequenceKeypoint.new(0.5,hsvToRgb((ps.h+40)/360,0.6,1)),
+					ColorSequenceKeypoint.new(1,hsvToRgb(ps.h/360,1,0.7)),
+				})
+			end)
+		end
+
+		makeSliderRow(cpCard,"H",42,0,360,_AccentH,function(v)
+			_AccentH=v; applyTheme(); updatePreview()
+			BorderGrad.Color=ColorSequence.new({
+				ColorSequenceKeypoint.new(0,hsvToRgb(v/360,1,0.7)),
+				ColorSequenceKeypoint.new(0.5,hsvToRgb((v+40)/360,0.6,1)),
+				ColorSequenceKeypoint.new(1,hsvToRgb(v/360,1,0.7)),
+			})
+		end)
+		makeSliderRow(cpCard,"S",68,0,100,math.floor(_AccentS*100),function(v) _AccentS=v/100; applyTheme(); updatePreview() end)
+		makeSliderRow(cpCard,"V",90,10,100,math.floor(_AccentV*100),function(v) _AccentV=v/100; applyTheme(); updatePreview() end)
 	end
 
 	CreateSection(SettingsTab.scroll,"SERVER")
