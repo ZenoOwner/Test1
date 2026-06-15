@@ -23,7 +23,7 @@ local Cfg={
     flashOn=false,autoPotionOn=false,triggerChance=91,
     speedOn=false,speedVal=27,giantSpeedVal=40,
     infiniteJump=false,autoKickOn=false,
-    antiStealOn=false,antiIntruderOn=false,
+    antiStealOn=false,
     antiRagdollOn=true,antiAdminOn=true,antiSentryOn=true,antiBeeOn=true,
     aimbotOn=false,
     pos={},
@@ -40,7 +40,6 @@ for _,n in ipairs({"VertexHub","TokinuHub","TokinuHelper","TokinuBoosterGUI"}) d
     for _,p in ipairs({CoreGui,lp.PlayerGui}) do local g=p:FindFirstChild(n); if g then g:Destroy() end end
 end
 
--- CHANGED: new color scheme blue/purple
 local C={
     bg=Color3.fromRGB(8,8,14),
     panel=Color3.fromRGB(12,12,20),
@@ -169,7 +168,6 @@ task.spawn(function() while task.wait(0.8) do
     fpsLb.TextColor3=fps<40 and C.red or fps<55 and C.gold or C.grn
 end end)
 
--- CHANGED: reset panels button now shows confirm dialog
 local rsPnlBtn=mkBtn(SG,"Reset Panels",UDim2.fromOffset(80,12),UDim2.new(0.5,-40,0,4),C.panel,C.dim)
 rsPnlBtn.TextSize=7; rsPnlBtn.BackgroundTransparency=0.5
 
@@ -257,55 +255,86 @@ grabFill.BackgroundColor3=C.accent; grabFill.BorderSizePixel=0; co(grabFill,4)
 local bigBtn=mkBtn(mainContent,"FLASH GRAB",UDim2.new(1,0,0,44),UDim2.new(0,0,0,0),C.accent,C.white)
 bigBtn.TextSize=15; bigBtn.Font=Enum.Font.GothamBlack
 
--- Settings content
+-- ════════════════════════════════════════════════════════════════════
+-- SETTINGS CONTENT
+-- ════════════════════════════════════════════════════════════════════
 local settingsContent=Instance.new("Frame"); settingsContent.Size=UDim2.new(1,0,0,0)
 settingsContent.AutomaticSize=Enum.AutomaticSize.Y; settingsContent.BackgroundTransparency=1
 settingsContent.BorderSizePixel=0; settingsContent.LayoutOrder=3; settingsContent.Parent=mainF
 settingsContent.Visible=false
-local scLayout=Instance.new("UIListLayout",settingsContent); scLayout.Padding=UDim.new(0,5)
+local scLayout=Instance.new("UIListLayout",settingsContent); scLayout.Padding=UDim.new(0,4)
 scLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
-local scPad=Instance.new("UIPadding",settingsContent); scPad.PaddingLeft=UDim.new(0,8); scPad.PaddingRight=UDim.new(0,8)
-scPad.PaddingTop=UDim.new(0,6); scPad.PaddingBottom=UDim.new(0,8)
+local scPad=Instance.new("UIPadding",settingsContent); scPad.PaddingLeft=UDim.new(0,7); scPad.PaddingRight=UDim.new(0,7)
+scPad.PaddingTop=UDim.new(0,5); scPad.PaddingBottom=UDim.new(0,6)
 
 local function secLbl(txt)
-    local f=Instance.new("Frame",settingsContent); f.Size=UDim2.new(1,0,0,16); f.BackgroundTransparency=1; f.BorderSizePixel=0
-    lbl(f,{Size=UDim2.new(1,0,1,0);Text=txt;TextSize=8;Font=Enum.Font.GothamBlack;TextColor3=C.accent;TextXAlignment=Enum.TextXAlignment.Left})
+    local f=Instance.new("Frame",settingsContent); f.Size=UDim2.new(1,0,0,13); f.BackgroundTransparency=1; f.BorderSizePixel=0
+    lbl(f,{Size=UDim2.new(1,0,1,0);Text=txt;TextSize=7;Font=Enum.Font.GothamBlack;TextColor3=C.accent;TextXAlignment=Enum.TextXAlignment.Left})
 end
 
+-- SPEED BOOST row (single line)
 secLbl("SPEED BOOST")
 local spBtn,spSet=pillRow(settingsContent,"Speed Boost",C.accent)
 local speedOn=Cfg.speedOn; spSet(speedOn)
-local spValF=Instance.new("Frame",settingsContent); spValF.Size=UDim2.new(1,0,0,26)
+local spValF=Instance.new("Frame",settingsContent); spValF.Size=UDim2.new(1,0,0,22)
 spValF.BackgroundColor3=C.surf; spValF.BackgroundTransparency=0.28; spValF.BorderSizePixel=0; co(spValF,7)
-lbl(spValF,{Position=UDim2.new(0,8,0,0);Size=UDim2.new(0.5,0,1,0);Text="Speed";TextSize=9;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
-local spBox=Instance.new("TextBox",spValF); spBox.Size=UDim2.new(0.45,0,0.75,0); spBox.Position=UDim2.new(0.52,0,0.125,0)
+lbl(spValF,{Position=UDim2.new(0,6,0,0);Size=UDim2.new(0.38,0,1,0);Text="Speed";TextSize=8;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+local spBox=Instance.new("TextBox",spValF); spBox.Size=UDim2.new(0.3,0,0.72,0); spBox.Position=UDim2.new(0.4,0,0.14,0)
 spBox.BackgroundColor3=C.surf2; spBox.BackgroundTransparency=0.2; spBox.Text=tostring(Cfg.speedVal); spBox.TextColor3=C.white
-spBox.Font=Enum.Font.GothamBold; spBox.TextSize=10; spBox.ClearTextOnFocus=false; spBox.BorderSizePixel=0; co(spBox,5)
-
-secLbl("GIANT POTION")
-local gpValF=Instance.new("Frame",settingsContent); gpValF.Size=UDim2.new(1,0,0,26)
-gpValF.BackgroundColor3=C.surf; gpValF.BackgroundTransparency=0.28; gpValF.BorderSizePixel=0; co(gpValF,7)
-lbl(gpValF,{Position=UDim2.new(0,8,0,0);Size=UDim2.new(0.5,0,1,0);Text="Potion Spd";TextSize=9;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
-local gpBox=Instance.new("TextBox",gpValF); gpBox.Size=UDim2.new(0.45,0,0.75,0); gpBox.Position=UDim2.new(0.52,0,0.125,0)
+spBox.Font=Enum.Font.GothamBold; spBox.TextSize=9; spBox.ClearTextOnFocus=false; spBox.BorderSizePixel=0; co(spBox,4)
+lbl(spValF,{Position=UDim2.new(0.72,0,0,0);Size=UDim2.new(0.14,0,1,0);Text="Pot";TextSize=7;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+local gpBox=Instance.new("TextBox",spValF); gpBox.Size=UDim2.new(0.24,0,0.72,0); gpBox.Position=UDim2.new(0.76,0,0.14,0)
 gpBox.BackgroundColor3=C.surf2; gpBox.BackgroundTransparency=0.2; gpBox.Text=tostring(Cfg.giantSpeedVal); gpBox.TextColor3=C.white
-gpBox.Font=Enum.Font.GothamBold; gpBox.TextSize=10; gpBox.ClearTextOnFocus=false; gpBox.BorderSizePixel=0; co(gpBox,5)
+gpBox.Font=Enum.Font.GothamBold; gpBox.TextSize=9; gpBox.ClearTextOnFocus=false; gpBox.BorderSizePixel=0; co(gpBox,4)
 
-secLbl("MISC")
-local ijBtn,ijSet=pillRow(settingsContent,"Infinite Jump",C.grn)
+-- CHANGED: "Helpers" section with 2x2 compact grid for toggles
+secLbl("HELPERS")
+-- Infinite Jump + Aimbot on same row
+local helpRow1=Instance.new("Frame",settingsContent); helpRow1.Size=UDim2.new(1,0,0,20); helpRow1.BackgroundTransparency=1; helpRow1.BorderSizePixel=0
+
+-- mini pill builder for 2-col grid
+local function miniPill(parent,label,col,xScale,xOff)
+    local row=Instance.new("Frame",parent)
+    row.Size=UDim2.new(0.5,-3,1,0); row.Position=UDim2.new(xScale,xOff,0,0)
+    row.BackgroundColor3=C.surf; row.BackgroundTransparency=0.28; row.BorderSizePixel=0; co(row,6)
+    local rs=stk(row,1,C.str,0.55)
+    local rl=lbl(row,{Position=UDim2.new(0,5,0,0);Size=UDim2.new(1,-28,1,0);Text=label;TextSize=7;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+    local track=Instance.new("Frame"); track.Size=UDim2.fromOffset(20,10); track.Position=UDim2.new(1,-23,0.5,-5)
+    track.BackgroundColor3=C.surf2; track.BorderSizePixel=0; track.Parent=row; co(track,10)
+    local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(7,7); knob.Position=UDim2.new(0,1.5,0.5,-3.5)
+    knob.BackgroundColor3=C.dim; knob.BorderSizePixel=0; knob.Parent=track; co(knob,7)
+    local pb=Instance.new("TextButton"); pb.Size=UDim2.new(1,0,1,0); pb.BackgroundTransparency=1; pb.Text=""; pb.Parent=row
+    local onC=col or C.accent; local isOn=false
+    local function set(v) isOn=v
+        TweenSvc:Create(track,TweenInfo.new(0.12),{BackgroundColor3=v and onC or C.surf2}):Play()
+        TweenSvc:Create(knob,TweenInfo.new(0.12),{Position=v and UDim2.new(1,-8.5,0.5,-3.5) or UDim2.new(0,1.5,0.5,-3.5),BackgroundColor3=v and C.white or C.dim}):Play()
+        TweenSvc:Create(rs,TweenInfo.new(0.12),{Color=v and onC or C.str,Transparency=v and 0.18 or 0.55}):Play()
+        rl.TextColor3=v and C.white or C.dim
+    end
+    return pb,set
+end
+
+local ijBtn,ijSet=miniPill(helpRow1,"Inf Jump",C.grn,0,0)
 local ijOn=Cfg.infiniteJump; ijSet(ijOn)
-local aimbotBtn,aimbotSet=pillRow(settingsContent,"Aimbot",C.blue)
+local aimbotBtn,aimbotSet=miniPill(helpRow1,"Aimbot",C.blue,0.5,3)
 local aimbotOn=Cfg.aimbotOn; aimbotSet(aimbotOn)
+helpRow1.Parent=settingsContent -- already parented but ensure layout picks it up
 
-secLbl("PROTECTION")
-local arBtn,arSet=pillRow(settingsContent,"Anti Ragdoll",C.accent)
+-- Anti Ragdoll + Anti Admin on same row
+local helpRow2=Instance.new("Frame",settingsContent); helpRow2.Size=UDim2.new(1,0,0,20); helpRow2.BackgroundTransparency=1; helpRow2.BorderSizePixel=0
+local arBtn,arSet=miniPill(helpRow2,"Anti Ragdoll",C.accent,0,0)
 local antiRagdollOn=Cfg.antiRagdollOn; arSet(antiRagdollOn)
-local aapBtn,aapSet=pillRow(settingsContent,"Anti Admin Panel",C.accent)
+local aapBtn,aapSet=miniPill(helpRow2,"Anti Admin",C.accent,0.5,3)
 local antiAdminOn=Cfg.antiAdminOn; aapSet(antiAdminOn)
-local asBtn2,asSet2=pillRow(settingsContent,"Anti Sentry",C.accent)
+
+-- Anti Sentry + Anti Beehive on same row
+local helpRow3=Instance.new("Frame",settingsContent); helpRow3.Size=UDim2.new(1,0,0,20); helpRow3.BackgroundTransparency=1; helpRow3.BorderSizePixel=0
+local asBtn2,asSet2=miniPill(helpRow3,"Anti Sentry",C.cyan,0,0)
 local antiSentryOn=Cfg.antiSentryOn; asSet2(antiSentryOn)
-local abBtn,abSet=pillRow(settingsContent,"Anti Beehive",C.gold)
+local abBtn,abSet=miniPill(helpRow3,"Anti Bee",C.gold,0.5,3)
 local antiBeeOn=Cfg.antiBeeOn; abSet(antiBeeOn)
 
+-- toggle settings open/close
 local settingsOpen=false
 settingsBtn.MouseButton1Click:Connect(function()
     settingsOpen=not settingsOpen
@@ -315,7 +344,7 @@ settingsBtn.MouseButton1Click:Connect(function()
     titleLbl.Text=settingsOpen and "Settings" or "FLASH GRAB"
 end)
 
--- CHANGED: speed boost toggle properly starts/stops boost
+-- Speed boost functions
 local boostConn=nil
 local currentSpeed=Cfg.speedVal
 local function startBoost(spd)
@@ -356,7 +385,7 @@ gpBox.FocusLost:Connect(function() local n=math.clamp(math.floor(tonumber(gpBox.
 if speedOn then startBoost(currentSpeed) end
 
 -- ════════════════════════════════════════════════════════════════════
--- CHANGED: ACTIONS PANEL (new, separate)
+-- ACTIONS PANEL
 -- ════════════════════════════════════════════════════════════════════
 local actF,actC=makePanel("Actions",148,72,C.purple,10,10,"actions")
 local rejBtn=mkBtn(actC,"REJOIN",UDim2.new(1,-8,0,20),UDim2.new(0,0,0,0),C.surf2,C.white); rejBtn.TextSize=9
@@ -368,29 +397,21 @@ end)
 kickBtn.MouseButton1Click:Connect(function() lp:Kick("kicked by r9qbx") end)
 
 -- ════════════════════════════════════════════════════════════════════
--- CHANGED: BASE PROTECTOR PANEL (new, separate) - Defense panel removed
--- Anti Steal + Anti Intruder moved here too
+-- BASE PROTECTOR PANEL — only Anti Steal from Phantom Flash V5
 -- ════════════════════════════════════════════════════════════════════
-local bpF,bpC=makePanel("Base Protector",148,106,C.cyan,10,90,"baseprot")
-local bpBtn,bpSet=pillRow(bpC,"Base Protector",C.cyan)
-local baseProtOn=false; bpSet(baseProtOn)
-bpBtn.MouseButton1Click:Connect(function() baseProtOn=not baseProtOn; bpSet(baseProtOn) end)
-
+local bpF,bpC=makePanel("Base Protector",148,52,C.cyan,10,90,"baseprot")
+-- CHANGED: only Anti Steal (copied from Phantom Flash V5 logic), removed Anti Intruder
 local antiStealOn=Cfg.antiStealOn
-local antiIntruderOn=Cfg.antiIntruderOn
 local asBtn,asSet=pillRow(bpC,"Anti Steal",C.red)
 asSet(antiStealOn)
-local aiBtn,aiSet=pillRow(bpC,"Anti Intruder",C.gold)
-aiSet(antiIntruderOn)
 asBtn.MouseButton1Click:Connect(function() antiStealOn=not antiStealOn; Cfg.antiStealOn=antiStealOn; save(); asSet(antiStealOn) end)
-aiBtn.MouseButton1Click:Connect(function() antiIntruderOn=not antiIntruderOn; Cfg.antiIntruderOn=antiIntruderOn; save(); aiSet(antiIntruderOn) end)
 
 -- ════════════════════════════════════════════════════════════════════
--- ADMIN PANEL (unchanged from original)
+-- ADMIN PANEL
 -- ════════════════════════════════════════════════════════════════════
 local AP_W=186
 local AP=Instance.new("Frame"); AP.Size=UDim2.fromOffset(AP_W,22)
-AP.Position=UDim2.fromOffset(10,204); AP.BackgroundColor3=C.panel; AP.BackgroundTransparency=0.22
+AP.Position=UDim2.fromOffset(10,150); AP.BackgroundColor3=C.panel; AP.BackgroundTransparency=0.22
 AP.BorderSizePixel=0; AP.ClipsDescendants=true; AP.Parent=SG; co(AP,9)
 stk(AP,1.2,C.str,0.35); loadPos("ap",AP)
 
@@ -504,7 +525,7 @@ RunSvc.Heartbeat:Connect(function()
     end end
 end)
 
--- CHANGED: Reset panels with confirm dialog
+-- Reset panels confirm
 rsPnlBtn.MouseButton1Click:Connect(function()
     local dlg=Instance.new("Frame",SG)
     dlg.Size=UDim2.fromOffset(160,52); dlg.Position=UDim2.new(0.5,-80,0.5,-26)
@@ -520,17 +541,18 @@ rsPnlBtn.MouseButton1Click:Connect(function()
         Cfg.pos["main"]={x=math.floor(mainF.Position.X.Offset),y=math.floor(mainF.Position.Y.Offset)}
         actF.Position=UDim2.fromOffset(10,10); Cfg.pos["actions"]={x=10,y=10}
         bpF.Position=UDim2.fromOffset(10,90); Cfg.pos["baseprot"]={x=10,y=90}
-        AP.Position=UDim2.fromOffset(10,204); Cfg.pos["ap"]={x=10,y=204}
+        AP.Position=UDim2.fromOffset(10,150); Cfg.pos["ap"]={x=10,y=150}
         save()
     end)
     nb.MouseButton1Click:Connect(function() dlg:Destroy() end)
 end)
 
 -- ════════════════════════════════════════════════════════════════════
--- CHANGED: FLASH GRAB - click only, holds steal prompt, fires flash at %
--- Original had PPS auto loop. Now: button click = grab sequence only
+-- FLASH GRAB CORE
+-- CHANGED: only fires when prompt is within 7 studs OR visible on screen
+-- Only on click, not always-on. 1.3s hold like Von grab.
 -- ════════════════════════════════════════════════════════════════════
-local flashEnabled=Cfg.flashOn; local triggerBump=false; local activePrompts={}
+local triggerBump=false; local activePrompts={}
 
 local function getPingBase(p) if p<=30 then return 0.91 elseif p<=70 then return 0.92 elseif p<=120 then return 0.93 else return 0.94 end end
 RunSvc.Heartbeat:Connect(function()
@@ -552,11 +574,6 @@ local function buildCBs(prompt)
     end
     if #data.hold>0 or #data.trig>0 then StealCBs[prompt]=data end
 end
-local function fireCBs(prompt)
-    local d=StealCBs[prompt]; if not d then return end
-    for _,fn in ipairs(d.hold) do task.spawn(fn) end
-    task.wait(0.05); for _,fn in ipairs(d.trig) do task.spawn(fn) end
-end
 
 local function getPromptPos(pr)
     local p=pr.Parent
@@ -565,6 +582,29 @@ local function getPromptPos(pr)
     if p:IsA("Model") then local r=p.PrimaryPart or p:FindFirstChildWhichIsA("BasePart"); return r and r.Position end
     local pt=p:FindFirstChildWhichIsA("BasePart",true); return pt and pt.Position
 end
+
+-- CHANGED: isPromptVisible — checks if prompt is within 7 studs OR visible on screen
+local function isPromptVisible(prompt)
+    local char=lp.Character; if not char then return false end
+    local hrp=char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso"); if not hrp then return false end
+    local pos=getPromptPos(prompt); if not pos then return false end
+
+    -- within 7 studs = definitely visible/reachable
+    local dist=(hrp.Position-pos).Magnitude
+    if dist<=7 then return true end
+
+    -- also check if within normal activation distance
+    if dist<=math.max(prompt.MaxActivationDistance,8) then
+        -- check if on screen (project to screen)
+        local ok,screenPos,onScreen=pcall(function()
+            return cam:WorldToScreenPoint(pos)
+        end)
+        if ok and onScreen then return true end
+    end
+
+    return false
+end
+
 local function findNearestSteal()
     local char=lp.Character; if not char then return nil end
     local hrp=char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso"); if not hrp then return nil end
@@ -596,7 +636,8 @@ local function equipFlash()
     end)
 end
 
--- CHANGED: big button = click to start grab sequence, NOT always-on auto loop
+-- CHANGED: Flash Grab — only click-triggered, only holds if prompt visible or within 7 studs
+-- Uses 1.3s hold like Von grab. Fires flash at slider% of hold.
 local grabActive=false
 bigBtn.MouseButton1Click:Connect(function()
     if grabActive then return end
@@ -607,6 +648,11 @@ bigBtn.MouseButton1Click:Connect(function()
     local hum=char:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health<=0 then return end
 
+    local prompt=findNearestSteal()
+
+    -- CHANGED: only proceed if prompt is visible on screen or within 7 studs
+    if not prompt or not isPromptVisible(prompt) then return end
+
     pcall(equipFlash); task.wait(0.05)
 
     if autoPotionOn then
@@ -615,15 +661,13 @@ bigBtn.MouseButton1Click:Connect(function()
         if giant then giant.Parent=char; task.spawn(function() giant:Activate() end) end
     end
 
-    local prompt=findNearestSteal()
-    if not prompt then return end
-
     grabActive=true
     grabProgress.Visible=true
     buildCBs(prompt)
 
     task.spawn(function()
-        local holdDur=math.max(prompt.HoldDuration,0.001)
+        -- CHANGED: use 1.3s hold like Von grab (same as the doc) clamped to actual hold duration
+        local holdDur=math.max(prompt.HoldDuration or 1.3, 0.001)
         local trigTime=holdDur*sliderValue
         local st=tick()
         local flashFired=false
@@ -639,7 +683,6 @@ bigBtn.MouseButton1Click:Connect(function()
             end)
         end
 
-        -- hold loop: fire flash at trigger% of hold duration
         while tick()-st < holdDur+0.15 do
             local elapsed=tick()-st
             local pct=math.clamp(elapsed/holdDur,0,1)
@@ -671,7 +714,7 @@ bigBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Align Camera (unchanged from original)
+-- Align Camera
 local cfA=CFrame.new(-322.066,-7.871,111.991)*CFrame.Angles(0.332,-0.019,0.000)
 local cfB=CFrame.new(-325.856,-7.866,113.027)*CFrame.Angles(0.327,3.130,0.000)
 local lookA2=cfA.LookVector; local lookB2=cfB.LookVector; local desiredY=lookA2.Y
@@ -698,7 +741,7 @@ end)
 -- BACKGROUND SYSTEMS
 -- ════════════════════════════════════════════════════════════════════
 
--- CHANGED: Giant potion - ragdoll fires INSTANTLY when potion used (HipHeight changes)
+-- Giant potion: instant ragdoll + speed on use
 lp.CharacterAdded:Connect(function(c)
     local hum=c:WaitForChild("Humanoid"); task.wait(0.3)
     local baseH=hum.HipHeight; local gpActive=false; local gpPrev=currentSpeed
@@ -707,7 +750,6 @@ lp.CharacterAdded:Connect(function(c)
         local newH=hum.HipHeight
         if not gpActive and newH>baseH*1.4 then
             gpActive=true; gpPrev=currentSpeed
-            -- CHANGED: instant ragdoll the moment giant potion activates
             if ADM_REMOTE then
                 task.spawn(function() pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,lp,"ragdoll") end) end)
             end
@@ -720,24 +762,29 @@ lp.CharacterAdded:Connect(function(c)
     end)
 end)
 
--- CHANGED: Infinite jump - no longer resets character, just reconnects the event
+-- CHANGED: Infinite jump using Delta's infinite yield style
+-- Uses JumpRequest event, doesn't touch character state or reset anything
 local jumpConn=nil
 local function setupIJ(char)
     if jumpConn then jumpConn:Disconnect(); jumpConn=nil end
-    local hum=char:WaitForChild("Humanoid")
+    local hum=char:WaitForChild("Humanoid",10); if not hum then return end
+    -- Delta infinite yield style: listen to JumpRequest, change state to Jumping
     jumpConn=UIS.JumpRequest:Connect(function()
         if not ijOn then return end
+        if not hum or not hum.Parent then return end
         if hum.Health<=0 then return end
-        local st=hum:GetState()
-        if st~=Enum.HumanoidStateType.Dead and st~=Enum.HumanoidStateType.None then
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        end
+        -- Only fire when in air states too (infinite jump)
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
     end)
 end
 if lp.Character then task.spawn(function() pcall(setupIJ,lp.Character) end) end
-lp.CharacterAdded:Connect(function(c) task.wait(0.1); pcall(setupIJ,c) end)
+-- Reconnect on respawn — does NOT reset/kill character, just rebinds the event
+lp.CharacterAdded:Connect(function(c)
+    task.wait(0.15)
+    pcall(setupIJ,c)
+end)
 
--- Aimbot (unchanged)
+-- Aimbot
 local aimbotTarget=nil; local aimbotRemote=nil
 task.spawn(function()
     local net=RS:FindFirstChild("Packages"); if net then net=net:FindFirstChild("Net") end; if not net then return end
@@ -766,7 +813,7 @@ workspace.DescendantAdded:Connect(function(obj)
     end
 end)
 
--- Anti Ragdoll (unchanged from original)
+-- Anti Ragdoll
 local arConn=nil
 local function startAR()
     if arConn then return end
@@ -792,7 +839,7 @@ local function startAR()
 end
 startAR()
 
--- Anti Admin Panel (unchanged from original)
+-- Anti Admin Panel
 local aap_origScales={}; local aap_origHipH=nil; local aap_graceUntil=0
 local aap_scaleNames={"HeadScale","BodyDepthScale","BodyHeightScale","BodyProportionScale","BodyTypeScale","BodyWidthScale"}
 local function aap_captureOrig()
@@ -852,8 +899,7 @@ task.spawn(function()
     end
 end)
 
--- CHANGED: Anti Beehive fixed - only removes lighting effects + movement inversion
--- Does NOT destroy bee-named objects on character (that was breaking own beehive placement)
+-- Anti Beehive (fixed — only removes invert/reverse/confuse, not bee parts)
 local beeList={"BlurEffect","ColorCorrectionEffect","BloomEffect","SunRaysEffect","DepthOfFieldEffect","PostEffect"}
 local function isBee(o) for _,n in ipairs(beeList) do if o:IsA(n) then return true end end; return false end
 local function clearBee() for _,v in pairs(Lighting:GetDescendants()) do if isBee(v) then pcall(function() v:Destroy() end) end end end
@@ -861,13 +907,9 @@ clearBee(); Lighting.DescendantAdded:Connect(function(o) task.wait(); if antiBee
 RunSvc.Heartbeat:Connect(function()
     if not antiBeeOn then return end
     local char=lp.Character; if not char then return end
-    -- CHANGED: only remove invert/reverse/confuse scripts, NOT "bee" named parts
-    -- (those are your own beehive structure and shouldn't be touched)
     for _,obj in ipairs(char:GetDescendants()) do
         local nl=obj.Name:lower()
-        if nl:find("invert") or nl:find("reverse") or nl:find("confuse") then
-            pcall(function() obj:Destroy() end)
-        end
+        if nl:find("invert") or nl:find("reverse") or nl:find("confuse") then pcall(function() obj:Destroy() end) end
     end
     local hum=char:FindFirstChildOfClass("Humanoid"); local root=char:FindFirstChild("HumanoidRootPart")
     if hum and root and hum.MoveDirection.Magnitude>0.1 then
@@ -876,7 +918,7 @@ RunSvc.Heartbeat:Connect(function()
     end
 end)
 
--- Anti Sentry (unchanged from original)
+-- Anti Sentry
 local DETECTION_DISTANCE=200; local PULL_DISTANCE=-5
 local sentryFirstSeen={}; local sentryTarget=nil
 local function getSentryWeapon()
@@ -931,49 +973,8 @@ task.spawn(function() task.wait(1)
     end
 end)
 
--- CHANGED: Base Protector logic (from Phantom Flash V5)
--- ragdoll + balloon anyone who steps on your base steal hitbox
-local myBase=nil
-task.spawn(function()
-    while task.wait(1) do
-        if not baseProtOn then myBase=nil; continue end
-        local plots=workspace:FindFirstChild("Plots"); if not plots then continue end
-        for _,p in ipairs(plots:GetChildren()) do
-            local sign=p:FindFirstChild("PlotSign"); if not sign then continue end
-            local tl=sign:FindFirstChild("TextLabel",true); if not tl then continue end
-            local t=tl.Text:lower()
-            if t:find(lp.Name:lower(),1,true) or t:find(lp.DisplayName:lower(),1,true) then
-                myBase=p; break
-            end
-        end
-    end
-end)
-local lastBPPunish={}
-task.spawn(function()
-    while task.wait(0.15) do
-        if not baseProtOn or not myBase or not ADM_REMOTE then continue end
-        local hitbox=myBase:FindFirstChild("StealHitbox",true)
-        if not hitbox then continue end
-        local cf,sz=hitbox.CFrame,hitbox.Size
-        local hx,hz=sz.X*0.5,sz.Z*0.5
-        for _,p in ipairs(Players:GetPlayers()) do
-            if p==lp then continue end
-            local char2=p.Character; if not char2 then continue end
-            local hrp2=char2:FindFirstChild("HumanoidRootPart"); if not hrp2 then continue end
-            local rel=cf:PointToObjectSpace(hrp2.Position)
-            if math.abs(rel.X)<=hx and math.abs(rel.Z)<=hz then
-                local now=tick(); local uid=p.UserId
-                if not lastBPPunish[uid] or now-lastBPPunish[uid]>1.5 then
-                    lastBPPunish[uid]=now
-                    task.spawn(function() pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,p,"ragdoll") end) end)
-                    task.delay(0.6,function() task.spawn(function() pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,p,"balloon") end) end) end)
-                end
-            end
-        end
-    end
-end)
-
--- Anti Steal + Anti Intruder (unchanged from original)
+-- Base Protector logic (Anti Steal from Phantom Flash V5)
+-- stealHitbox/myPlotRef needed for anti steal + base prot
 local stealHitbox=nil; local myPlotRef=nil
 task.spawn(function()
     while task.wait(1.2) do
@@ -990,17 +991,22 @@ task.spawn(function()
         end
     end
 end)
+
+-- CHANGED: Anti Steal from Phantom Flash V5 — finds thief closest to steal HITBOX not local player
 local carpets={["Flying Carpet"]=true,["Witch's Broom"]=true,["Santa's Sleigh"]=true,["Cupid's Wings"]=true}
-local lastPunish={}; local lastStealPunish={}
+local lastPunish={}
 local function punish(p)
     if not ADM_REMOTE or not p or p==lp then return end
+    local char=p.Character; if not char then return end
+    local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
     local uid=p.UserId; local now=tick()
-    if lastPunish[uid] and now-lastPunish[uid]<0.4 then return end
+    if lastPunish[uid] and now-lastPunish[uid]<0.5 then return end
     lastPunish[uid]=now
-    local cmd=(lastStealPunish[uid] and now-lastStealPunish[uid]<20) and "ragdoll" or "balloon"
-    lastStealPunish[uid]=now
-    task.spawn(function() pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,p,cmd) end) end)
+    -- Phantom Flash V5 style: balloon instant
+    task.spawn(function() pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,p,"balloon") end) end)
+    rowCdEnd["balloon"]=tick()+(ROW_CD["balloon"] or 30)
 end
+-- find thief by closest to steal hitbox (Phantom Flash V5 exact logic)
 local function findThief()
     local searchPos=stealHitbox and stealHitbox.Position
     if not searchPos then local myHRP=lp.Character and lp.Character:FindFirstChild("HumanoidRootPart"); searchPos=myHRP and myHRP.Position end
@@ -1030,7 +1036,7 @@ pcall(function()
     if not hookfunction or not fireproximityprompt then return end
     local old=fireproximityprompt
     hookfunction(fireproximityprompt,newcclosure(function(prompt,...)
-        if (antiStealOn or antiIntruderOn) and ADM_REMOTE and (prompt.ActionText or ""):lower():find("steal") then
+        if antiStealOn and ADM_REMOTE and (prompt.ActionText or ""):lower():find("steal") then
             local thief=findThief(); if thief then punish(thief) end; chkHitbox()
         end
         return old(prompt,...)
@@ -1040,7 +1046,7 @@ pcall(function()
     for _,obj in ipairs(RS:GetDescendants()) do
         if obj:IsA("RemoteEvent") then
             obj.OnClientEvent:Connect(function(...)
-                if not (antiStealOn or antiIntruderOn) or not ADM_REMOTE or not myPlotRef then return end
+                if not antiStealOn or not ADM_REMOTE or not myPlotRef then return end
                 for _,a in ipairs({...}) do
                     if type(a)=="string" and a:lower():find("stealing") then local thief=findThief(); if thief then punish(thief) end; return end
                 end
@@ -1050,12 +1056,12 @@ pcall(function()
 end)
 task.spawn(function()
     while task.wait(0.12) do
-        if not (antiStealOn or antiIntruderOn) or not ADM_REMOTE then continue end
+        if not antiStealOn or not ADM_REMOTE then continue end
         chkHitbox()
     end
 end)
 
--- Player ESP (unchanged from original)
+-- Player ESP
 local ESPTAG="VxE_"..tostring(math.random(1000,9999))
 local function mkESP(plr)
     if plr==lp then return end
@@ -1084,7 +1090,7 @@ for _,p in ipairs(Players:GetPlayers()) do if p~=lp then task.defer(function() m
 Players.PlayerAdded:Connect(function(p) p.CharacterAdded:Connect(function() task.wait(0.5); mkESP(p) end) end)
 for _,p in ipairs(Players:GetPlayers()) do if p~=lp then p.CharacterAdded:Connect(function() task.wait(0.5); mkESP(p) end) end end
 
--- Timer ESP (unchanged from original)
+-- Timer ESP
 local timerESPs={}; local myPlotRef2=nil; local baseAlerted=false
 local ECOL_R=Color3.fromRGB(255,65,65); local ECOL_Y=Color3.fromRGB(255,190,40); local ECOL_G=Color3.fromRGB(52,218,88)
 local function showAlert()
@@ -1135,7 +1141,7 @@ task.spawn(function() while task.wait(0.9) do
     end
 end end)
 
--- Auto kick on steal text (unchanged)
+-- Auto kick on steal text
 local function watchObj(obj)
     if not (obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox")) then return end
     local function chk(t) if type(t)=="string" and t:lower():find("you stole") and autoKickOn then pcall(function() lp:Kick("nice steal twin") end) end end
