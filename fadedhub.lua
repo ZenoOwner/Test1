@@ -172,57 +172,158 @@ local rsPnlBtn=mkBtn(SG,"Reset Panels",UDim2.fromOffset(80,12),UDim2.new(0.5,-40
 rsPnlBtn.TextSize=7; rsPnlBtn.BackgroundTransparency=0.5
 
 -- ════════════════════════════════════════════════════════════════════
--- MAIN PANEL
+-- MAIN PANEL — redesigned cleaner layout
 -- ════════════════════════════════════════════════════════════════════
-local MP_W=190
+local MP_W=210
 local mainF=Instance.new("Frame"); mainF.Size=UDim2.fromOffset(MP_W,0)
 mainF.AutomaticSize=Enum.AutomaticSize.Y
-mainF.Position=UDim2.new(0.5,-MP_W/2,0.5,-160); mainF.BackgroundColor3=C.panel
-mainF.BackgroundTransparency=0.18; mainF.BorderSizePixel=0; mainF.Parent=SG; mainF.ClipsDescendants=false
-co(mainF,12); stk(mainF,1.4,C.accent,0.3); loadPos("main",mainF)
+mainF.Position=UDim2.new(0.5,-MP_W/2,0.5,-170); mainF.BackgroundColor3=Color3.fromRGB(9,9,15)
+mainF.BackgroundTransparency=0.08; mainF.BorderSizePixel=0; mainF.Parent=SG; mainF.ClipsDescendants=false
+co(mainF,14)
+local mainStroke=stk(mainF,1.5,C.accent,0.25)
+loadPos("main",mainF)
 local mainLayout=Instance.new("UIListLayout",mainF); mainLayout.Padding=UDim.new(0,0); mainLayout.SortOrder=Enum.SortOrder.LayoutOrder
 
-local hdrPill=Instance.new("Frame"); hdrPill.Size=UDim2.new(1,-16,0,44); hdrPill.LayoutOrder=1
-hdrPill.BackgroundColor3=C.surf; hdrPill.BackgroundTransparency=0.12; hdrPill.BorderSizePixel=0; hdrPill.Parent=mainF
-Instance.new("UIPadding",hdrPill).PaddingLeft=UDim.new(0,8); co(hdrPill,12)
-local titleLbl=lbl(hdrPill,{Position=UDim2.new(0,0,0,0);Size=UDim2.new(1,-46,1,0);Text="FLASH GRAB";TextSize=15;Font=Enum.Font.GothamBlack;TextColor3=C.accent;TextXAlignment=Enum.TextXAlignment.Left})
-local settingsBtn=Instance.new("TextButton"); settingsBtn.Size=UDim2.fromOffset(34,34)
-settingsBtn.Position=UDim2.new(1,-42,0.5,-17); settingsBtn.BackgroundColor3=C.surf2
-settingsBtn.BackgroundTransparency=0.1; settingsBtn.Text="⚙"; settingsBtn.TextSize=16
-settingsBtn.TextColor3=C.white; settingsBtn.Font=Enum.Font.GothamBold
-settingsBtn.BorderSizePixel=0; settingsBtn.AutoButtonColor=false; settingsBtn.Parent=hdrPill; co(settingsBtn,10)
-dragF(mainF,hdrPill,"main")
+-- Top bar: drag handle + title + settings gear
+local topBar=Instance.new("Frame"); topBar.Size=UDim2.new(1,0,0,38); topBar.LayoutOrder=1
+topBar.BackgroundColor3=C.accent; topBar.BackgroundTransparency=0.82; topBar.BorderSizePixel=0; topBar.Parent=mainF
+co(topBar,14)
+-- bottom fill to square off the bottom of topBar
+local topBarFill=Instance.new("Frame",topBar); topBarFill.Size=UDim2.new(1,0,0,14)
+topBarFill.Position=UDim2.new(0,0,1,-14); topBarFill.BackgroundColor3=C.accent; topBarFill.BackgroundTransparency=0.82; topBarFill.BorderSizePixel=0
 
+-- accent left strip
+local accentStrip=Instance.new("Frame",topBar); accentStrip.Size=UDim2.fromOffset(3,22)
+accentStrip.Position=UDim2.new(0,10,0.5,-11); accentStrip.BackgroundColor3=C.accent; accentStrip.BorderSizePixel=0; co(accentStrip,2)
+
+local titleLbl=lbl(topBar,{Position=UDim2.new(0,20,0,0);Size=UDim2.new(1,-64,1,0);Text="⚡ Vertex Hub";TextSize=13;Font=Enum.Font.GothamBlack;TextColor3=C.white;TextXAlignment=Enum.TextXAlignment.Left})
+
+local settingsBtn=Instance.new("TextButton"); settingsBtn.Size=UDim2.fromOffset(28,28)
+settingsBtn.Position=UDim2.new(1,-36,0.5,-14); settingsBtn.BackgroundColor3=C.surf2
+settingsBtn.BackgroundTransparency=0.3; settingsBtn.Text="⚙"; settingsBtn.TextSize=14
+settingsBtn.TextColor3=C.dim; settingsBtn.Font=Enum.Font.GothamBold
+settingsBtn.BorderSizePixel=0; settingsBtn.AutoButtonColor=false; settingsBtn.Parent=topBar; co(settingsBtn,8)
+dragF(mainF,topBar,"main")
+
+-- main content
 local mainContent=Instance.new("Frame"); mainContent.Size=UDim2.new(1,0,0,0)
 mainContent.AutomaticSize=Enum.AutomaticSize.Y; mainContent.BackgroundTransparency=1
 mainContent.BorderSizePixel=0; mainContent.LayoutOrder=2; mainContent.Parent=mainF
-local mcLayout=Instance.new("UIListLayout",mainContent); mcLayout.Padding=UDim.new(0,5)
+local mcLayout=Instance.new("UIListLayout",mainContent); mcLayout.Padding=UDim.new(0,6)
 mcLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
-local mcPad=Instance.new("UIPadding",mainContent); mcPad.PaddingLeft=UDim.new(0,8); mcPad.PaddingRight=UDim.new(0,8); mcPad.PaddingTop=UDim.new(0,6); mcPad.PaddingBottom=UDim.new(0,6)
+local mcPad=Instance.new("UIPadding",mainContent); mcPad.PaddingLeft=UDim.new(0,10); mcPad.PaddingRight=UDim.new(0,10); mcPad.PaddingTop=UDim.new(0,8); mcPad.PaddingBottom=UDim.new(0,8)
 
-local potBtn,potSet=pillRow(mainContent,"Auto Potion",C.accent)
-local autoPotionOn=Cfg.autoPotionOn; potSet(autoPotionOn)
-potBtn.MouseButton1Click:Connect(function() autoPotionOn=not autoPotionOn; Cfg.autoPotionOn=autoPotionOn; save(); potSet(autoPotionOn) end)
+-- Flash TP toggle row (Tokinu-style)
+local flashToggleRow=Instance.new("Frame",mainContent); flashToggleRow.Size=UDim2.new(1,0,0,36); flashToggleRow.BackgroundTransparency=1; flashToggleRow.BorderSizePixel=0
+local flashToggleBtn=Instance.new("TextButton",flashToggleRow); flashToggleBtn.Size=UDim2.new(1,0,1,0); flashToggleBtn.Position=UDim2.new(0,0,0,0)
+flashToggleBtn.BackgroundColor3=Color3.fromRGB(14,14,22); flashToggleBtn.BackgroundTransparency=0.1; flashToggleBtn.BorderSizePixel=0
+flashToggleBtn.AutoButtonColor=false; flashToggleBtn.Text=""; co(flashToggleBtn,10)
+local flashTStroke=stk(flashToggleBtn,1.2,C.str,0.5)
+local flashTIcon=lbl(flashToggleBtn,{Position=UDim2.new(0,10,0,0);Size=UDim2.new(0,20,1,0);Text="⚡";TextSize=14;Font=Enum.Font.GothamBlack;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+local flashTLabel=lbl(flashToggleBtn,{Position=UDim2.new(0,32,0,0);Size=UDim2.new(1,-70,1,0);Text="Flash TP";TextSize=11;Font=Enum.Font.GothamBold;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+local flashTState=lbl(flashToggleBtn,{Position=UDim2.new(1,-46,0,0);Size=UDim2.new(0,36,1,0);Text="OFF";TextSize=10;Font=Enum.Font.GothamBlack;TextColor3=C.red;TextXAlignment=Enum.TextXAlignment.Right})
+-- pill inside toggle
+local flashTPill=Instance.new("Frame",flashToggleBtn); flashTPill.Size=UDim2.fromOffset(30,14); flashTPill.Position=UDim2.new(1,-42,0.5,-7)
+flashTPill.BackgroundColor3=C.surf2; flashTPill.BorderSizePixel=0; co(flashTPill,12)
+local flashTKnob=Instance.new("Frame",flashTPill); flashTKnob.Size=UDim2.fromOffset(9,9); flashTKnob.Position=UDim2.new(0,2.5,0.5,-4.5)
+flashTKnob.BackgroundColor3=C.dim; flashTKnob.BorderSizePixel=0; co(flashTKnob,9)
 
-local akBtn,akSet=pillRow(mainContent,"Auto Kick",C.red)
-local autoKickOn=Cfg.autoKickOn; akSet(autoKickOn)
-akBtn.MouseButton1Click:Connect(function() autoKickOn=not autoKickOn; Cfg.autoKickOn=autoKickOn; save(); akSet(autoKickOn) end)
+local flashEnabled=Cfg.flashOn
+local function setFlashToggleVisual(v)
+    local col=v and C.accent or C.str
+    TweenSvc:Create(flashTPill,TweenInfo.new(0.12),{BackgroundColor3=v and C.accent or C.surf2}):Play()
+    TweenSvc:Create(flashTKnob,TweenInfo.new(0.12),{Position=v and UDim2.new(1,-11.5,0.5,-4.5) or UDim2.new(0,2.5,0.5,-4.5),BackgroundColor3=v and C.white or C.dim}):Play()
+    TweenSvc:Create(flashTStroke,TweenInfo.new(0.12),{Color=v and C.accent or C.str,Transparency=v and 0.18 or 0.5}):Play()
+    flashTIcon.TextColor3=v and C.accent or C.dim
+    flashTLabel.TextColor3=v and C.white or C.dim
+    flashTState.Text=v and "ON" or "OFF"; flashTState.TextColor3=v and C.grn or C.red
+end
+setFlashToggleVisual(flashEnabled)
+flashToggleBtn.MouseButton1Click:Connect(function()
+    flashEnabled=not flashEnabled; Cfg.flashOn=flashEnabled; save(); setFlashToggleVisual(flashEnabled)
+end)
 
-local alignBtn=mkBtn(mainContent,"ALIGN CAMERA",UDim2.new(1,0,0,22),UDim2.new(0,0,0,0),C.surf2,C.dim)
-alignBtn.TextSize=9
+-- Auto Potion + Auto Kick as small side-by-side pills
+local miniRow=Instance.new("Frame",mainContent); miniRow.Size=UDim2.new(1,0,0,24); miniRow.BackgroundTransparency=1; miniRow.BorderSizePixel=0
+local potBtn,potSet=miniPill and miniPill(miniRow,"Auto Potion",C.accent,0,0) or (function()
+    -- fallback if miniPill not defined yet — define inline
+    local row=Instance.new("Frame",miniRow); row.Size=UDim2.new(0.5,-3,1,0); row.Position=UDim2.new(0,0,0,0)
+    row.BackgroundColor3=C.surf; row.BackgroundTransparency=0.28; row.BorderSizePixel=0; co(row,6)
+    local rs=stk(row,1,C.str,0.55)
+    local rl=lbl(row,{Position=UDim2.new(0,5,0,0);Size=UDim2.new(1,-28,1,0);Text="Auto Potion";TextSize=7;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+    local track=Instance.new("Frame"); track.Size=UDim2.fromOffset(20,10); track.Position=UDim2.new(1,-23,0.5,-5); track.BackgroundColor3=C.surf2; track.BorderSizePixel=0; track.Parent=row; co(track,10)
+    local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(7,7); knob.Position=UDim2.new(0,1.5,0.5,-3.5); knob.BackgroundColor3=C.dim; knob.BorderSizePixel=0; knob.Parent=track; co(knob,7)
+    local pb=Instance.new("TextButton"); pb.Size=UDim2.new(1,0,1,0); pb.BackgroundTransparency=1; pb.Text=""; pb.Parent=row
+    local isOn=false
+    local function set(v) isOn=v
+        TweenSvc:Create(track,TweenInfo.new(0.12),{BackgroundColor3=v and C.accent or C.surf2}):Play()
+        TweenSvc:Create(knob,TweenInfo.new(0.12),{Position=v and UDim2.new(1,-8.5,0.5,-3.5) or UDim2.new(0,1.5,0.5,-3.5),BackgroundColor3=v and C.white or C.dim}):Play()
+        TweenSvc:Create(rs,TweenInfo.new(0.12),{Color=v and C.accent or C.str,Transparency=v and 0.18 or 0.55}):Play()
+        rl.TextColor3=v and C.white or C.dim
+    end
+    return pb,set
+end)()
 
-local divLine=Instance.new("Frame",mainContent); divLine.Size=UDim2.new(1,0,0,1)
-divLine.BackgroundColor3=C.str; divLine.BackgroundTransparency=0.7; divLine.BorderSizePixel=0
+-- Since miniPill may or may not be defined at this point in layout order,
+-- build both mini pills here directly:
+-- clear miniRow and rebuild properly
+for _,c in ipairs(miniRow:GetChildren()) do c:Destroy() end
 
-local trigLbl=lbl(mainContent,{Size=UDim2.new(1,0,0,14);Text="Trigger: "..Cfg.triggerChance.."%";TextSize=9;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+local function mkMiniPill2(parent,label,col,xsc,xoff)
+    local row=Instance.new("Frame",parent); row.Size=UDim2.new(0.5,-3,1,0); row.Position=UDim2.new(xsc,xoff,0,0)
+    row.BackgroundColor3=C.surf; row.BackgroundTransparency=0.28; row.BorderSizePixel=0; co(row,6)
+    local rs=stk(row,1,C.str,0.55)
+    local rl=lbl(row,{Position=UDim2.new(0,5,0,0);Size=UDim2.new(1,-28,1,0);Text=label;TextSize=7;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+    local track=Instance.new("Frame"); track.Size=UDim2.fromOffset(20,10); track.Position=UDim2.new(1,-23,0.5,-5); track.BackgroundColor3=C.surf2; track.BorderSizePixel=0; track.Parent=row; co(track,10)
+    local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(7,7); knob.Position=UDim2.new(0,1.5,0.5,-3.5); knob.BackgroundColor3=C.dim; knob.BorderSizePixel=0; knob.Parent=track; co(knob,7)
+    local pb=Instance.new("TextButton"); pb.Size=UDim2.new(1,0,1,0); pb.BackgroundTransparency=1; pb.Text=""; pb.Parent=row
+    local isOn=false; local onC=col or C.accent
+    local function set(v) isOn=v
+        TweenSvc:Create(track,TweenInfo.new(0.12),{BackgroundColor3=v and onC or C.surf2}):Play()
+        TweenSvc:Create(knob,TweenInfo.new(0.12),{Position=v and UDim2.new(1,-8.5,0.5,-3.5) or UDim2.new(0,1.5,0.5,-3.5),BackgroundColor3=v and C.white or C.dim}):Play()
+        TweenSvc:Create(rs,TweenInfo.new(0.12),{Color=v and onC or C.str,Transparency=v and 0.18 or 0.55}):Play()
+        rl.TextColor3=v and C.white or C.dim
+    end
+    return pb,set
+end
 
-local slWrap=Instance.new("Frame",mainContent); slWrap.Size=UDim2.new(1,0,0,16)
-slWrap.BackgroundTransparency=1; slWrap.BorderSizePixel=0
-local slBack=Instance.new("Frame",slWrap); slBack.Size=UDim2.new(1,0,0,6); slBack.Position=UDim2.new(0,0,0.5,-3)
+local potBtn2,potSet2=mkMiniPill2(miniRow,"Auto Potion",C.accent,0,0)
+local autoPotionOn=Cfg.autoPotionOn; potSet2(autoPotionOn)
+potBtn2.MouseButton1Click:Connect(function() autoPotionOn=not autoPotionOn; Cfg.autoPotionOn=autoPotionOn; save(); potSet2(autoPotionOn) end)
+
+local akBtn2,akSet2=mkMiniPill2(miniRow,"Auto Kick",C.red,0.5,3)
+local autoKickOn=Cfg.autoKickOn; akSet2(autoKickOn)
+akBtn2.MouseButton1Click:Connect(function() autoKickOn=not autoKickOn; Cfg.autoKickOn=autoKickOn; save(); akSet2(autoKickOn) end)
+
+-- Align Camera button
+local alignBtn=Instance.new("TextButton",mainContent); alignBtn.Size=UDim2.new(1,0,0,26)
+alignBtn.BackgroundColor3=Color3.fromRGB(14,14,22); alignBtn.BackgroundTransparency=0.1; alignBtn.BorderSizePixel=0
+alignBtn.Text="ALIGN CAMERA"; alignBtn.TextColor3=C.dim; alignBtn.Font=Enum.Font.GothamBold; alignBtn.TextSize=9
+alignBtn.AutoButtonColor=false; co(alignBtn,8); stk(alignBtn,1,C.str,0.55)
+
+-- Divider with label
+local divWrap=Instance.new("Frame",mainContent); divWrap.Size=UDim2.new(1,0,0,16); divWrap.BackgroundTransparency=1; divWrap.BorderSizePixel=0
+local divLine=Instance.new("Frame",divWrap); divLine.Size=UDim2.new(0.32,0,0,1); divLine.Position=UDim2.new(0,0,0.5,0)
+divLine.BackgroundColor3=C.str; divLine.BackgroundTransparency=0.5; divLine.BorderSizePixel=0
+local trigLbl=lbl(divWrap,{Position=UDim2.new(0.34,0,0,0);Size=UDim2.new(0.32,0,1,0);Text="when to flash";TextSize=7;TextColor3=C.dim;Font=Enum.Font.GothamBold})
+local divLine2=Instance.new("Frame",divWrap); divLine2.Size=UDim2.new(0.32,0,0,1); divLine2.Position=UDim2.new(0.68,0,0.5,0)
+divLine2.BackgroundColor3=C.str; divLine2.BackgroundTransparency=0.5; divLine2.BorderSizePixel=0
+
+-- Slider zone (Tokinu-style compact with % badge)
+local sliderZone=Instance.new("Frame",mainContent); sliderZone.Size=UDim2.new(1,0,0,28)
+sliderZone.BackgroundColor3=Color3.fromRGB(14,14,22); sliderZone.BackgroundTransparency=0.1; sliderZone.BorderSizePixel=0; co(sliderZone,8)
+stk(sliderZone,1,C.str,0.55)
+
+-- % badge
+local pctBadge=Instance.new("Frame",sliderZone); pctBadge.Size=UDim2.fromOffset(38,20); pctBadge.Position=UDim2.new(1,-44,0.5,-10)
+pctBadge.BackgroundColor3=C.accent; pctBadge.BackgroundTransparency=0.7; pctBadge.BorderSizePixel=0; co(pctBadge,6)
+local pctLbl=lbl(pctBadge,{Size=UDim2.new(1,0,1,0);Text=Cfg.triggerChance.."%";TextSize=9;Font=Enum.Font.GothamBlack;TextColor3=C.white})
+
+local slBack=Instance.new("Frame",sliderZone); slBack.Size=UDim2.new(1,-54,0,5); slBack.Position=UDim2.new(0,8,0.5,-2.5)
 slBack.BackgroundColor3=C.surf2; slBack.BorderSizePixel=0; co(slBack,3)
 local slFill=Instance.new("Frame",slBack); slFill.Size=UDim2.new(Cfg.triggerChance/100,0,1,0)
 slFill.BackgroundColor3=C.accent; slFill.BorderSizePixel=0; co(slFill,3)
-local slDot=Instance.new("Frame",slBack); slDot.Size=UDim2.fromOffset(14,14)
+local slDot=Instance.new("Frame",slBack); slDot.Size=UDim2.fromOffset(13,13)
 slDot.AnchorPoint=Vector2.new(0.5,0.5); slDot.Position=UDim2.new(Cfg.triggerChance/100,0,0.5,0)
 slDot.BackgroundColor3=C.white; slDot.BorderSizePixel=0; co(slDot,7)
 stk(slDot,1.5,C.accent,0)
@@ -232,7 +333,8 @@ local function setSlider(px)
     local rel=math.clamp((px-slBack.AbsolutePosition.X)/math.max(slBack.AbsoluteSize.X,1),0,1)
     manualOverride=true; sliderValue=rel; Cfg.triggerChance=math.floor(rel*100); save()
     slFill.Size=UDim2.new(rel,0,1,0); slDot.Position=UDim2.new(rel,0,0.5,0)
-    trigLbl.Text="Trigger: "..math.floor(rel*100).."%"
+    pctLbl.Text=math.floor(rel*100).."%"
+    trigLbl.Text="when to flash"
 end
 slBack.InputBegan:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then slDragging=true; setSlider(i.Position.X) end
@@ -247,13 +349,18 @@ UIS.InputEnded:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then slDragging=false end
 end)
 
-local grabProgress=Instance.new("Frame",mainContent); grabProgress.Size=UDim2.new(1,0,0,8)
-grabProgress.BackgroundColor3=C.surf2; grabProgress.BorderSizePixel=0; grabProgress.Visible=false; co(grabProgress,4)
+-- Progress bar (hidden by default, shown during grab)
+local grabProgress=Instance.new("Frame",mainContent); grabProgress.Size=UDim2.new(1,0,0,5)
+grabProgress.BackgroundColor3=C.surf2; grabProgress.BorderSizePixel=0; grabProgress.Visible=false; co(grabProgress,3)
 local grabFill=Instance.new("Frame",grabProgress); grabFill.Size=UDim2.new(0,0,1,0)
-grabFill.BackgroundColor3=C.accent; grabFill.BorderSizePixel=0; co(grabFill,4)
+grabFill.BackgroundColor3=C.accent; grabFill.BorderSizePixel=0; co(grabFill,3)
 
-local bigBtn=mkBtn(mainContent,"FLASH GRAB",UDim2.new(1,0,0,44),UDim2.new(0,0,0,0),C.accent,C.white)
-bigBtn.TextSize=15; bigBtn.Font=Enum.Font.GothamBlack
+-- Big FLASH GRAB button — Tokinu style, dark bg with accent border
+local bigBtn=Instance.new("TextButton",mainContent); bigBtn.Size=UDim2.new(1,0,0,46)
+bigBtn.BackgroundColor3=C.accent; bigBtn.BackgroundTransparency=0.85; bigBtn.BorderSizePixel=0
+bigBtn.Text="⚡ FLASH GRAB"; bigBtn.TextColor3=C.white; bigBtn.Font=Enum.Font.GothamBlack; bigBtn.TextSize=15
+bigBtn.AutoButtonColor=false; co(bigBtn,10)
+stk(bigBtn,1.5,C.accent,0.15)
 
 -- ════════════════════════════════════════════════════════════════════
 -- SETTINGS CONTENT
@@ -559,9 +666,45 @@ RunSvc.Heartbeat:Connect(function()
     if not manualOverride then
         local p=lp:GetNetworkPing()*1000; local base=getPingBase(p); local v=triggerBump and base+0.01 or base
         if math.abs(v-sliderValue)>0.005 then
-            sliderValue=v; slFill.Size=UDim2.new(v,0,1,0); slDot.Position=UDim2.new(v,0,0.5,0); trigLbl.Text="Trigger: "..math.floor(v*100).."%"
+            sliderValue=v; slFill.Size=UDim2.new(v,0,1,0); slDot.Position=UDim2.new(v,0,0.5,0)
+            pctLbl.Text=math.floor(v*100).."%"
         end
     end
+end)
+
+-- Tokinu-exact PPS listener: fires flash when manually holding a steal prompt
+-- Works BOTH when holding manually AND when flash grab button holds it
+PPS.PromptButtonHoldBegan:Connect(function(prompt)
+    if not flashEnabled then return end
+    if prompt.ActionText~="Steal" then return end
+    if activePrompts[prompt] then return end
+    activePrompts[prompt]=true
+    local fired=false
+    local fireAt=os.clock()+math.max(prompt.HoldDuration,0.001)*sliderValue
+    local conn
+    conn=RunSvc.PreRender:Connect(function()
+        if fired then conn:Disconnect(); return end
+        if not prompt or not prompt.Parent then conn:Disconnect(); activePrompts[prompt]=nil; return end
+        if os.clock()>=fireAt then
+            fired=true; conn:Disconnect(); activePrompts[prompt]=nil
+            triggerBump=not triggerBump
+            local char=lp.Character; if not char then return end
+            local tool=char:FindFirstChildOfClass("Tool")
+            if tool then pcall(function() tool:Activate() end) end
+            -- auto potion fires here (after flash) if enabled
+            if autoPotionOn then
+                task.spawn(function()
+                    RunSvc.Heartbeat:Wait()
+                    local bp=lp:FindFirstChild("Backpack")
+                    local giant=char:FindFirstChild("Giant Potion") or (bp and bp:FindFirstChild("Giant Potion"))
+                    if giant then giant.Parent=char; task.spawn(function() giant:Activate() end) end
+                end)
+            end
+        end
+    end)
+    prompt.PromptButtonHoldEnded:Connect(function()
+        if not fired then fired=true; activePrompts[prompt]=nil; conn:Disconnect() end
+    end)
 end)
 
 local StealCBs={}
