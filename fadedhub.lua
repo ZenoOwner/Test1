@@ -1,4 +1,4 @@
--- VertexHub | r9qbx discord
+-- VertexHub V3 | r9qbx discord
 pcall(function() setfpscap(9999) end)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
@@ -37,29 +37,33 @@ end)
 local function save() pcall(function() if writefile then writefile(CFG,HttpSvc:JSONEncode(Cfg)) end end) end
 
 for _,n in ipairs({"VertexHub","TokinuHub","TokinuHelper","TokinuBoosterGUI"}) do
-    for _,p in ipairs({CoreGui,lp.PlayerGui}) do local g=p:FindFirstChild(n); if g then g:Destroy() end end
+    for _,p in ipairs({CoreGui,lp.PlayerGui}) do
+        local g=p:FindFirstChild(n); if g then g:Destroy() end
+    end
 end
 
+-- NEW color scheme: dark emerald/teal
 local C={
-    bg=Color3.fromRGB(8,8,14),
-    panel=Color3.fromRGB(12,12,20),
-    surf=Color3.fromRGB(20,20,32),
-    surf2=Color3.fromRGB(30,30,46),
-    accent=Color3.fromRGB(80,100,255),
-    accentB=Color3.fromRGB(110,130,255),
-    white=Color3.fromRGB(235,235,240),
-    dim=Color3.fromRGB(100,100,130),
-    str=Color3.fromRGB(50,50,75),
-    red=Color3.fromRGB(220,50,50),
-    grn=Color3.fromRGB(52,218,88),
-    gold=Color3.fromRGB(255,190,40),
-    blue=Color3.fromRGB(80,160,255),
-    purple=Color3.fromRGB(140,80,255),
-    cyan=Color3.fromRGB(50,200,220),
+    bg=Color3.fromRGB(5,10,10),
+    panel=Color3.fromRGB(8,14,13),
+    surf=Color3.fromRGB(13,22,20),
+    surf2=Color3.fromRGB(20,32,30),
+    accent=Color3.fromRGB(30,200,140),
+    accentD=Color3.fromRGB(20,140,100),
+    accentB=Color3.fromRGB(60,230,170),
+    white=Color3.fromRGB(230,240,238),
+    dim=Color3.fromRGB(85,115,110),
+    str=Color3.fromRGB(30,55,50),
+    red=Color3.fromRGB(220,65,65),
+    grn=Color3.fromRGB(40,210,120),
+    gold=Color3.fromRGB(255,195,45),
+    blue=Color3.fromRGB(65,150,255),
+    purple=Color3.fromRGB(150,80,255),
+    cyan=Color3.fromRGB(40,190,220),
+    orange=Color3.fromRGB(255,140,40),
 }
 
-local TI=TweenInfo.new(0.14,Enum.EasingStyle.Quad,Enum.EasingDirection.Out)
-local function tw(o,p) TweenSvc:Create(o,TI,p):Play() end
+local function tw(o,p,t) TweenSvc:Create(o,TweenInfo.new(t or 0.13,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),p):Play() end
 local function co(p,r) local c=Instance.new("UICorner"); c.CornerRadius=UDim.new(0,r or 8); c.Parent=p end
 local function stk(p,th,col,tr)
     local s=Instance.new("UIStroke"); s.Thickness=th or 1; s.Color=col or C.str
@@ -70,12 +74,12 @@ local function lbl(par,props)
     l.Font=Enum.Font.GothamBold; l.TextColor3=C.white; l.BorderSizePixel=0
     for k,v in pairs(props) do l[k]=v end; l.Parent=par; return l
 end
-local function mkBtn(par,text,sz,pos,bg,tc)
-    local b=Instance.new("TextButton"); b.Size=sz; b.Position=pos
+local function btn(par,text,sz,pos,bg,tc,ts)
+    local b=Instance.new("TextButton"); b.Size=sz; b.Position=pos or UDim2.new(0,0,0,0)
     b.BackgroundColor3=bg or C.surf; b.BackgroundTransparency=0.15
     b.Text=text; b.TextColor3=tc or C.white; b.Font=Enum.Font.GothamBold
-    b.TextSize=10; b.BorderSizePixel=0; b.AutoButtonColor=false; b.Parent=par
-    co(b,8); return b
+    b.TextSize=ts or 9; b.BorderSizePixel=0; b.AutoButtonColor=false; b.Parent=par
+    co(b,7); return b
 end
 
 local function dragF(frame,hdr,key)
@@ -84,11 +88,9 @@ local function dragF(frame,hdr,key)
         if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
             on=true; ds=i.Position; sp=frame.Position
             i.Changed:Connect(function()
-                if i.UserInputState==Enum.UserInputState.End then
-                    on=false
+                if i.UserInputState==Enum.UserInputState.End then on=false
                     if key then if not Cfg.pos then Cfg.pos={} end
-                        Cfg.pos[key]={x=math.floor(frame.Position.X.Offset),y=math.floor(frame.Position.Y.Offset)}; save()
-                    end
+                        Cfg.pos[key]={x=math.floor(frame.Position.X.Offset),y=math.floor(frame.Position.Y.Offset)}; save() end
                 end
             end)
         end
@@ -104,24 +106,69 @@ local function loadPos(key,frame)
     local p=Cfg.pos and Cfg.pos[key]; if p then frame.Position=UDim2.fromOffset(p.x,p.y) end
 end
 
-local function pillRow(parent,label,onCol)
-    local row=Instance.new("Frame"); row.Size=UDim2.new(1,-8,0,20)
-    row.BackgroundColor3=C.surf; row.BackgroundTransparency=0.28; row.BorderSizePixel=0; row.Parent=parent; co(row,6)
-    local rs=stk(row,1,C.str,0.55)
-    local rl=lbl(row,{Position=UDim2.new(0,6,0,0);Size=UDim2.new(1,-38,1,0);Text=label;TextSize=8;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
-    local track=Instance.new("Frame"); track.Size=UDim2.fromOffset(25,12); track.Position=UDim2.new(1,-29,0.5,-6)
-    track.BackgroundColor3=C.surf2; track.BorderSizePixel=0; track.Parent=row; co(track,12)
-    local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(8,8); knob.Position=UDim2.new(0,2,0.5,-4)
-    knob.BackgroundColor3=C.dim; knob.BorderSizePixel=0; knob.Parent=track; co(knob,8)
+-- toggle pill
+local function pill(parent,label,onCol)
+    local row=Instance.new("Frame"); row.Size=UDim2.new(1,-8,0,21)
+    row.BackgroundColor3=C.surf; row.BackgroundTransparency=0.25; row.BorderSizePixel=0; row.Parent=parent; co(row,6)
+    local rs=stk(row,1,C.str,0.6)
+    local rl=lbl(row,{Position=UDim2.new(0,7,0,0);Size=UDim2.new(1,-40,1,0);Text=label;TextSize=8;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+    local track=Instance.new("Frame"); track.Size=UDim2.fromOffset(26,13); track.Position=UDim2.new(1,-30,0.5,-6.5)
+    track.BackgroundColor3=C.surf2; track.BorderSizePixel=0; track.Parent=row; co(track,13)
+    local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(9,9); knob.Position=UDim2.new(0,2,0.5,-4.5)
+    knob.BackgroundColor3=C.dim; knob.BorderSizePixel=0; knob.Parent=track; co(knob,9)
     local pb=Instance.new("TextButton"); pb.Size=UDim2.new(1,0,1,0); pb.BackgroundTransparency=1; pb.Text=""; pb.Parent=row
     local col=onCol or C.accent; local isOn=false
     local function set(v) isOn=v
-        TweenSvc:Create(track,TweenInfo.new(0.12),{BackgroundColor3=v and col or C.surf2}):Play()
-        TweenSvc:Create(knob,TweenInfo.new(0.12),{Position=v and UDim2.new(1,-10,0.5,-4) or UDim2.new(0,2,0.5,-4),BackgroundColor3=v and C.white or C.dim}):Play()
-        TweenSvc:Create(rs,TweenInfo.new(0.12),{Color=v and col or C.str,Transparency=v and 0.18 or 0.55}):Play()
+        tw(track,{BackgroundColor3=v and col or C.surf2})
+        tw(knob,{Position=v and UDim2.new(1,-11,0.5,-4.5) or UDim2.new(0,2,0.5,-4.5),BackgroundColor3=v and C.white or C.dim})
+        tw(rs,{Color=v and col or C.str,Transparency=v and 0.15 or 0.6})
         rl.TextColor3=v and C.white or C.dim
     end
-    return pb,set,function() return isOn end
+    return pb,set
+end
+
+-- mini pill for 2-col grid
+local function miniPill(parent,label,col,xsc,xoff)
+    local row=Instance.new("Frame",parent); row.Size=UDim2.new(0.5,-3,1,0); row.Position=UDim2.new(xsc,xoff,0,0)
+    row.BackgroundColor3=C.surf; row.BackgroundTransparency=0.25; row.BorderSizePixel=0; co(row,6)
+    local rs=stk(row,1,C.str,0.6)
+    local rl=lbl(row,{Position=UDim2.new(0,5,0,0);Size=UDim2.new(1,-28,1,0);Text=label;TextSize=7;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+    local track=Instance.new("Frame"); track.Size=UDim2.fromOffset(21,11); track.Position=UDim2.new(1,-24,0.5,-5.5)
+    track.BackgroundColor3=C.surf2; track.BorderSizePixel=0; track.Parent=row; co(track,11)
+    local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(7,7); knob.Position=UDim2.new(0,2,0.5,-3.5)
+    knob.BackgroundColor3=C.dim; knob.BorderSizePixel=0; knob.Parent=track; co(knob,7)
+    local pb=Instance.new("TextButton"); pb.Size=UDim2.new(1,0,1,0); pb.BackgroundTransparency=1; pb.Text=""; pb.Parent=row
+    local onC=col or C.accent; local isOn=false
+    local function set(v) isOn=v
+        tw(track,{BackgroundColor3=v and onC or C.surf2})
+        tw(knob,{Position=v and UDim2.new(1,-9,0.5,-3.5) or UDim2.new(0,2,0.5,-3.5),BackgroundColor3=v and C.white or C.dim})
+        tw(rs,{Color=v and onC or C.str,Transparency=v and 0.15 or 0.6})
+        rl.TextColor3=v and C.white or C.dim
+    end
+    return pb,set
+end
+
+-- panel maker
+local function makePanel(name,w,h,col,defX,defY,key)
+    local f=Instance.new("Frame"); f.Size=UDim2.fromOffset(w,h); f.Position=UDim2.fromOffset(defX,defY)
+    f.BackgroundColor3=C.panel; f.BackgroundTransparency=0.18; f.BorderSizePixel=0; f.ClipsDescendants=true; f.Parent=SG; co(f,9)
+    stk(f,1.2,col or C.str,0.35)
+    local hdr=Instance.new("Frame"); hdr.Size=UDim2.new(1,0,0,20); hdr.BackgroundColor3=C.surf
+    hdr.BackgroundTransparency=0.2; hdr.BorderSizePixel=0; hdr.Parent=f; co(hdr,9)
+    Instance.new("Frame",hdr).Size,Instance.new("Frame",hdr).Position,Instance.new("Frame",hdr).BackgroundColor3,Instance.new("Frame",hdr).BackgroundTransparency,Instance.new("Frame",hdr).BorderSizePixel=UDim2.new(1,0,0,6),UDim2.new(0,0,1,-6),C.surf,0.2,0
+    if name then lbl(hdr,{Position=UDim2.new(0,7,0,0);Size=UDim2.new(1,-24,1,0);Text=name;TextSize=8;Font=Enum.Font.GothamBlack;TextXAlignment=Enum.TextXAlignment.Left;TextColor3=col or C.dim}) end
+    local mb=btn(hdr,"─",UDim2.fromOffset(14,13),UDim2.new(1,-17,0.5,-6.5),C.surf2,C.dim,8); mb.BackgroundTransparency=0.6
+    local content=Instance.new("Frame"); content.Size=UDim2.new(1,0,0,h-20)
+    content.Position=UDim2.fromOffset(0,20); content.BackgroundTransparency=1; content.BorderSizePixel=0; content.Parent=f
+    local layout=Instance.new("UIListLayout",content); layout.Padding=UDim.new(0,4); layout.HorizontalAlignment=Enum.HorizontalAlignment.Center
+    Instance.new("UIPadding",content).PaddingTop=UDim.new(0,4)
+    local folded=false
+    mb.MouseButton1Click:Connect(function()
+        folded=not folded; mb.Text=folded and "+" or "─"
+        TweenSvc:Create(f,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{Size=UDim2.fromOffset(w,folded and 20 or h)}):Play()
+    end)
+    if key then dragF(f,hdr,key); loadPos(key,f) end
+    return f,content,hdr,mb
 end
 
 -- ScreenGui
@@ -129,35 +176,11 @@ local SG=Instance.new("ScreenGui"); SG.Name="VertexHub"
 SG.ResetOnSpawn=false; SG.ZIndexBehavior=Enum.ZIndexBehavior.Global; SG.IgnoreGuiInset=true
 if not pcall(function() SG.Parent=CoreGui end) then SG.Parent=lp:WaitForChild("PlayerGui") end
 
-local function makePanel(name,w,h,col,defX,defY,key)
-    local f=Instance.new("Frame"); f.Size=UDim2.fromOffset(w,h); f.Position=UDim2.fromOffset(defX,defY)
-    f.BackgroundColor3=C.panel; f.BackgroundTransparency=0.22; f.BorderSizePixel=0; f.ClipsDescendants=true; f.Parent=SG; co(f,9)
-    stk(f,1.2,col or C.str,0.35)
-    local hdr=Instance.new("Frame"); hdr.Size=UDim2.new(1,0,0,20); hdr.BackgroundColor3=C.surf
-    hdr.BackgroundTransparency=0.18; hdr.BorderSizePixel=0; hdr.Parent=f; co(hdr,9)
-    local hf=Instance.new("Frame"); hf.Size=UDim2.new(1,0,0,6); hf.Position=UDim2.new(0,0,1,-6)
-    hf.BackgroundColor3=C.surf; hf.BackgroundTransparency=0.18; hf.BorderSizePixel=0; hf.Parent=hdr
-    if name then lbl(hdr,{Position=UDim2.new(0,7,0,0);Size=UDim2.new(1,-24,1,0);Text=name;TextSize=8;Font=Enum.Font.GothamBlack;TextXAlignment=Enum.TextXAlignment.Left;TextColor3=col or C.dim}) end
-    local mb=mkBtn(hdr,"─",UDim2.fromOffset(14,13),UDim2.new(1,-17,0.5,-6.5),C.surf2,C.dim); mb.TextSize=8; mb.BackgroundTransparency=0.6
-    local content=Instance.new("Frame"); content.Size=UDim2.new(1,0,0,h-20)
-    content.Position=UDim2.fromOffset(0,20); content.BackgroundTransparency=1; content.BorderSizePixel=0; content.Parent=f
-    local layout=Instance.new("UIListLayout",content); layout.Padding=UDim.new(0,4)
-    layout.HorizontalAlignment=Enum.HorizontalAlignment.Center
-    Instance.new("UIPadding",content).PaddingTop=UDim.new(0,4)
-    local folded=false
-    mb.MouseButton1Click:Connect(function()
-        folded=not folded; mb.Text=folded and "+" or "─"
-        TweenSvc:Create(f,TweenInfo.new(0.2,Enum.EasingStyle.Quad),{Size=UDim2.fromOffset(w,folded and 20 or h)}):Play()
-    end)
-    if key then dragF(f,hdr,key); loadPos(key,f) end
-    return f,content,hdr,mb,layout
-end
-
--- FPS/Ping
-local fpsF=Instance.new("Frame",SG); fpsF.Size=UDim2.fromOffset(120,16)
-fpsF.Position=UDim2.new(0,4,1,-22); fpsF.BackgroundColor3=C.panel; fpsF.BackgroundTransparency=0.35; fpsF.BorderSizePixel=0; co(fpsF,5)
-stk(fpsF,1,C.str,0.5)
-local fpsLb=lbl(fpsF,{Size=UDim2.new(1,0,1,0);Text="FPS --  ·  PING -- ms";TextSize=8;TextColor3=C.dim})
+-- FPS/Ping strip
+local fpsF=Instance.new("Frame",SG); fpsF.Size=UDim2.fromOffset(126,15)
+fpsF.Position=UDim2.new(0,4,1,-20); fpsF.BackgroundColor3=C.panel; fpsF.BackgroundTransparency=0.3; fpsF.BorderSizePixel=0; co(fpsF,5)
+stk(fpsF,1,C.str,0.55)
+local fpsLb=lbl(fpsF,{Size=UDim2.new(1,0,1,0);Text="FPS --  ·  PING -- ms";TextSize=7;TextColor3=C.dim})
 local lastDt=1/60
 RunSvc.RenderStepped:Connect(function(dt) lastDt=dt end)
 task.spawn(function() while task.wait(0.8) do
@@ -165,168 +188,116 @@ task.spawn(function() while task.wait(0.8) do
     local fps=math.min(999,math.floor(1/math.max(lastDt,0.001))); local ping=0
     pcall(function() ping=math.floor(lp:GetNetworkPing()*1000) end)
     fpsLb.Text="FPS "..fps.."  ·  "..ping.."ms"
-    fpsLb.TextColor3=fps<40 and C.red or fps<55 and C.gold or C.grn
+    fpsLb.TextColor3=fps<40 and C.red or fps<55 and C.gold or C.accent
 end end)
 
-local rsPnlBtn=mkBtn(SG,"Reset Panels",UDim2.fromOffset(80,12),UDim2.new(0.5,-40,0,4),C.panel,C.dim)
-rsPnlBtn.TextSize=7; rsPnlBtn.BackgroundTransparency=0.5
+local rsPnlBtn=btn(SG,"Reset Panels",UDim2.fromOffset(78,11),UDim2.new(0.5,-39,0,3),C.panel,C.dim,6)
+rsPnlBtn.BackgroundTransparency=0.5
 
 -- ════════════════════════════════════════════════════════════════════
--- MAIN PANEL — redesigned cleaner layout
+-- MAIN PANEL — brand new design
 -- ════════════════════════════════════════════════════════════════════
-local MP_W=210
-local mainF=Instance.new("Frame"); mainF.Size=UDim2.fromOffset(MP_W,0)
+local MP_W=205
+local mainF=Instance.new("Frame",SG); mainF.Size=UDim2.fromOffset(MP_W,0)
 mainF.AutomaticSize=Enum.AutomaticSize.Y
-mainF.Position=UDim2.new(0.5,-MP_W/2,0.5,-170); mainF.BackgroundColor3=Color3.fromRGB(9,9,15)
-mainF.BackgroundTransparency=0.08; mainF.BorderSizePixel=0; mainF.Parent=SG; mainF.ClipsDescendants=false
-co(mainF,14)
-local mainStroke=stk(mainF,1.5,C.accent,0.25)
-loadPos("main",mainF)
+mainF.Position=UDim2.new(0.5,-MP_W/2,0.5,-175)
+mainF.BackgroundColor3=Color3.fromRGB(6,12,11)
+mainF.BackgroundTransparency=0.05; mainF.BorderSizePixel=0; mainF.ClipsDescendants=false
+co(mainF,13); stk(mainF,1.5,C.accent,0.3); loadPos("main",mainF)
 local mainLayout=Instance.new("UIListLayout",mainF); mainLayout.Padding=UDim.new(0,0); mainLayout.SortOrder=Enum.SortOrder.LayoutOrder
 
--- Top bar: drag handle + title + settings gear
-local topBar=Instance.new("Frame"); topBar.Size=UDim2.new(1,0,0,38); topBar.LayoutOrder=1
-topBar.BackgroundColor3=C.accent; topBar.BackgroundTransparency=0.82; topBar.BorderSizePixel=0; topBar.Parent=mainF
-co(topBar,14)
--- bottom fill to square off the bottom of topBar
-local topBarFill=Instance.new("Frame",topBar); topBarFill.Size=UDim2.new(1,0,0,14)
-topBarFill.Position=UDim2.new(0,0,1,-14); topBarFill.BackgroundColor3=C.accent; topBarFill.BackgroundTransparency=0.82; topBarFill.BorderSizePixel=0
-
--- accent left strip
-local accentStrip=Instance.new("Frame",topBar); accentStrip.Size=UDim2.fromOffset(3,22)
-accentStrip.Position=UDim2.new(0,10,0.5,-11); accentStrip.BackgroundColor3=C.accent; accentStrip.BorderSizePixel=0; co(accentStrip,2)
-
-local titleLbl=lbl(topBar,{Position=UDim2.new(0,20,0,0);Size=UDim2.new(1,-64,1,0);Text="⚡ Vertex Hub";TextSize=13;Font=Enum.Font.GothamBlack;TextColor3=C.white;TextXAlignment=Enum.TextXAlignment.Left})
-
-local settingsBtn=Instance.new("TextButton"); settingsBtn.Size=UDim2.fromOffset(28,28)
-settingsBtn.Position=UDim2.new(1,-36,0.5,-14); settingsBtn.BackgroundColor3=C.surf2
-settingsBtn.BackgroundTransparency=0.3; settingsBtn.Text="⚙"; settingsBtn.TextSize=14
+-- Header
+local hdr=Instance.new("Frame",mainF); hdr.LayoutOrder=1
+hdr.Size=UDim2.new(1,0,0,40); hdr.BackgroundTransparency=1; hdr.BorderSizePixel=0
+-- accent top line
+local accentLine=Instance.new("Frame",hdr); accentLine.Size=UDim2.new(1,0,0,2); accentLine.Position=UDim2.new(0,0,0,0)
+accentLine.BackgroundColor3=C.accent; accentLine.BorderSizePixel=0
+local accentCornerL=Instance.new("Frame",hdr); accentCornerL.Size=UDim2.fromOffset(3,38); accentCornerL.Position=UDim2.new(0,0,0,2)
+accentCornerL.BackgroundColor3=C.accent; accentCornerL.BackgroundTransparency=0.7; accentCornerL.BorderSizePixel=0
+-- title
+lbl(hdr,{Position=UDim2.new(0,12,0,0);Size=UDim2.new(1,-80,1,0);Text="VERTEX HUB";TextSize=14;Font=Enum.Font.GothamBlack;TextColor3=C.accent;TextXAlignment=Enum.TextXAlignment.Left})
+lbl(hdr,{Position=UDim2.new(0,12,0,22);Size=UDim2.new(1,-80,0,14);Text="r9qbx on discord";TextSize=7;Font=Enum.Font.Gotham;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+local settingsBtn=Instance.new("TextButton",hdr); settingsBtn.Size=UDim2.fromOffset(30,30)
+settingsBtn.Position=UDim2.new(1,-38,0.5,-15); settingsBtn.BackgroundColor3=C.surf
+settingsBtn.BackgroundTransparency=0.2; settingsBtn.Text="⚙"; settingsBtn.TextSize=15
 settingsBtn.TextColor3=C.dim; settingsBtn.Font=Enum.Font.GothamBold
-settingsBtn.BorderSizePixel=0; settingsBtn.AutoButtonColor=false; settingsBtn.Parent=topBar; co(settingsBtn,8)
-dragF(mainF,topBar,"main")
+settingsBtn.BorderSizePixel=0; settingsBtn.AutoButtonColor=false; co(settingsBtn,8); stk(settingsBtn,1,C.str,0.5)
+dragF(mainF,hdr,"main")
 
--- main content
-local mainContent=Instance.new("Frame"); mainContent.Size=UDim2.new(1,0,0,0)
-mainContent.AutomaticSize=Enum.AutomaticSize.Y; mainContent.BackgroundTransparency=1
-mainContent.BorderSizePixel=0; mainContent.LayoutOrder=2; mainContent.Parent=mainF
-local mcLayout=Instance.new("UIListLayout",mainContent); mcLayout.Padding=UDim.new(0,6)
-mcLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
-local mcPad=Instance.new("UIPadding",mainContent); mcPad.PaddingLeft=UDim.new(0,10); mcPad.PaddingRight=UDim.new(0,10); mcPad.PaddingTop=UDim.new(0,8); mcPad.PaddingBottom=UDim.new(0,8)
+-- content wrapper
+local mainContent=Instance.new("Frame",mainF); mainContent.LayoutOrder=2
+mainContent.Size=UDim2.new(1,0,0,0); mainContent.AutomaticSize=Enum.AutomaticSize.Y
+mainContent.BackgroundTransparency=1; mainContent.BorderSizePixel=0
+local mcLay=Instance.new("UIListLayout",mainContent); mcLay.Padding=UDim.new(0,6); mcLay.HorizontalAlignment=Enum.HorizontalAlignment.Center
+local mcPad=Instance.new("UIPadding",mainContent)
+mcPad.PaddingLeft=UDim.new(0,9); mcPad.PaddingRight=UDim.new(0,9); mcPad.PaddingTop=UDim.new(0,7); mcPad.PaddingBottom=UDim.new(0,8)
 
--- Flash TP toggle row (Tokinu-style)
-local flashToggleRow=Instance.new("Frame",mainContent); flashToggleRow.Size=UDim2.new(1,0,0,36); flashToggleRow.BackgroundTransparency=1; flashToggleRow.BorderSizePixel=0
-local flashToggleBtn=Instance.new("TextButton",flashToggleRow); flashToggleBtn.Size=UDim2.new(1,0,1,0); flashToggleBtn.Position=UDim2.new(0,0,0,0)
-flashToggleBtn.BackgroundColor3=Color3.fromRGB(14,14,22); flashToggleBtn.BackgroundTransparency=0.1; flashToggleBtn.BorderSizePixel=0
-flashToggleBtn.AutoButtonColor=false; flashToggleBtn.Text=""; co(flashToggleBtn,10)
-local flashTStroke=stk(flashToggleBtn,1.2,C.str,0.5)
-local flashTIcon=lbl(flashToggleBtn,{Position=UDim2.new(0,10,0,0);Size=UDim2.new(0,20,1,0);Text="⚡";TextSize=14;Font=Enum.Font.GothamBlack;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
-local flashTLabel=lbl(flashToggleBtn,{Position=UDim2.new(0,32,0,0);Size=UDim2.new(1,-70,1,0);Text="Flash TP";TextSize=11;Font=Enum.Font.GothamBold;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
-local flashTState=lbl(flashToggleBtn,{Position=UDim2.new(1,-46,0,0);Size=UDim2.new(0,36,1,0);Text="OFF";TextSize=10;Font=Enum.Font.GothamBlack;TextColor3=C.red;TextXAlignment=Enum.TextXAlignment.Right})
--- pill inside toggle
-local flashTPill=Instance.new("Frame",flashToggleBtn); flashTPill.Size=UDim2.fromOffset(30,14); flashTPill.Position=UDim2.new(1,-42,0.5,-7)
-flashTPill.BackgroundColor3=C.surf2; flashTPill.BorderSizePixel=0; co(flashTPill,12)
-local flashTKnob=Instance.new("Frame",flashTPill); flashTKnob.Size=UDim2.fromOffset(9,9); flashTKnob.Position=UDim2.new(0,2.5,0.5,-4.5)
-flashTKnob.BackgroundColor3=C.dim; flashTKnob.BorderSizePixel=0; co(flashTKnob,9)
+-- Flash TP toggle (big row)
+local ftRow=Instance.new("Frame",mainContent); ftRow.Size=UDim2.new(1,0,0,38); ftRow.BackgroundTransparency=1; ftRow.BorderSizePixel=0
+local ftBtn=Instance.new("TextButton",ftRow); ftBtn.Size=UDim2.new(1,0,1,0)
+ftBtn.BackgroundColor3=C.surf; ftBtn.BackgroundTransparency=0.2; ftBtn.BorderSizePixel=0
+ftBtn.AutoButtonColor=false; ftBtn.Text=""; co(ftBtn,9)
+local ftStroke=stk(ftBtn,1.2,C.str,0.5)
+-- icon box
+local ftIconBox=Instance.new("Frame",ftBtn); ftIconBox.Size=UDim2.fromOffset(30,30); ftIconBox.Position=UDim2.new(0,5,0.5,-15)
+ftIconBox.BackgroundColor3=C.accentD; ftIconBox.BackgroundTransparency=0.6; ftIconBox.BorderSizePixel=0; co(ftIconBox,7)
+local ftIcon=lbl(ftIconBox,{Size=UDim2.new(1,0,1,0);Text="⚡";TextSize=16;Font=Enum.Font.GothamBlack;TextColor3=C.accent})
+local ftLabel=lbl(ftBtn,{Position=UDim2.new(0,42,0,4);Size=UDim2.new(1,-90,0,16);Text="Flash TP";TextSize=12;Font=Enum.Font.GothamBlack;TextColor3=C.dim})
+local ftSub=lbl(ftBtn,{Position=UDim2.new(0,42,0,21);Size=UDim2.new(1,-90,0,12);Text="off — toggle to enable";TextSize=7;Font=Enum.Font.Gotham;TextColor3=C.str})
+-- pill
+local ftTrack=Instance.new("Frame",ftBtn); ftTrack.Size=UDim2.fromOffset(32,16); ftTrack.Position=UDim2.new(1,-40,0.5,-8)
+ftTrack.BackgroundColor3=C.surf2; ftTrack.BorderSizePixel=0; co(ftTrack,16)
+local ftKnob=Instance.new("Frame",ftTrack); ftKnob.Size=UDim2.fromOffset(11,11); ftKnob.Position=UDim2.new(0,2.5,0.5,-5.5)
+ftKnob.BackgroundColor3=C.dim; ftKnob.BorderSizePixel=0; co(ftKnob,11)
 
 local flashEnabled=Cfg.flashOn
-local function setFlashToggleVisual(v)
-    local col=v and C.accent or C.str
-    TweenSvc:Create(flashTPill,TweenInfo.new(0.12),{BackgroundColor3=v and C.accent or C.surf2}):Play()
-    TweenSvc:Create(flashTKnob,TweenInfo.new(0.12),{Position=v and UDim2.new(1,-11.5,0.5,-4.5) or UDim2.new(0,2.5,0.5,-4.5),BackgroundColor3=v and C.white or C.dim}):Play()
-    TweenSvc:Create(flashTStroke,TweenInfo.new(0.12),{Color=v and C.accent or C.str,Transparency=v and 0.18 or 0.5}):Play()
-    flashTIcon.TextColor3=v and C.accent or C.dim
-    flashTLabel.TextColor3=v and C.white or C.dim
-    flashTState.Text=v and "ON" or "OFF"; flashTState.TextColor3=v and C.grn or C.red
+local function setFlashVis(v)
+    tw(ftTrack,{BackgroundColor3=v and C.accent or C.surf2})
+    tw(ftKnob,{Position=v and UDim2.new(1,-13.5,0.5,-5.5) or UDim2.new(0,2.5,0.5,-5.5),BackgroundColor3=v and C.white or C.dim})
+    tw(ftStroke,{Color=v and C.accent or C.str,Transparency=v and 0.12 or 0.5})
+    tw(ftIconBox,{BackgroundTransparency=v and 0.3 or 0.6})
+    ftIcon.TextColor3=v and C.accent or C.dim
+    ftLabel.TextColor3=v and C.white or C.dim
+    ftSub.Text=v and "on — fires at "..math.floor(sliderValue*100).."%"  or "off — toggle to enable"
+    ftSub.TextColor3=v and C.accent or C.str
 end
-setFlashToggleVisual(flashEnabled)
-flashToggleBtn.MouseButton1Click:Connect(function()
-    flashEnabled=not flashEnabled; Cfg.flashOn=flashEnabled; save(); setFlashToggleVisual(flashEnabled)
+
+ftBtn.MouseButton1Click:Connect(function()
+    flashEnabled=not flashEnabled; Cfg.flashOn=flashEnabled; save(); setFlashVis(flashEnabled)
 end)
 
--- Auto Potion + Auto Kick as small side-by-side pills
-local miniRow=Instance.new("Frame",mainContent); miniRow.Size=UDim2.new(1,0,0,24); miniRow.BackgroundTransparency=1; miniRow.BorderSizePixel=0
-local potBtn,potSet=miniPill and miniPill(miniRow,"Auto Potion",C.accent,0,0) or (function()
-    -- fallback if miniPill not defined yet — define inline
-    local row=Instance.new("Frame",miniRow); row.Size=UDim2.new(0.5,-3,1,0); row.Position=UDim2.new(0,0,0,0)
-    row.BackgroundColor3=C.surf; row.BackgroundTransparency=0.28; row.BorderSizePixel=0; co(row,6)
-    local rs=stk(row,1,C.str,0.55)
-    local rl=lbl(row,{Position=UDim2.new(0,5,0,0);Size=UDim2.new(1,-28,1,0);Text="Auto Potion";TextSize=7;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
-    local track=Instance.new("Frame"); track.Size=UDim2.fromOffset(20,10); track.Position=UDim2.new(1,-23,0.5,-5); track.BackgroundColor3=C.surf2; track.BorderSizePixel=0; track.Parent=row; co(track,10)
-    local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(7,7); knob.Position=UDim2.new(0,1.5,0.5,-3.5); knob.BackgroundColor3=C.dim; knob.BorderSizePixel=0; knob.Parent=track; co(knob,7)
-    local pb=Instance.new("TextButton"); pb.Size=UDim2.new(1,0,1,0); pb.BackgroundTransparency=1; pb.Text=""; pb.Parent=row
-    local isOn=false
-    local function set(v) isOn=v
-        TweenSvc:Create(track,TweenInfo.new(0.12),{BackgroundColor3=v and C.accent or C.surf2}):Play()
-        TweenSvc:Create(knob,TweenInfo.new(0.12),{Position=v and UDim2.new(1,-8.5,0.5,-3.5) or UDim2.new(0,1.5,0.5,-3.5),BackgroundColor3=v and C.white or C.dim}):Play()
-        TweenSvc:Create(rs,TweenInfo.new(0.12),{Color=v and C.accent or C.str,Transparency=v and 0.18 or 0.55}):Play()
-        rl.TextColor3=v and C.white or C.dim
-    end
-    return pb,set
-end)()
+-- mini row: auto potion + auto kick
+local miniRowA=Instance.new("Frame",mainContent); miniRowA.Size=UDim2.new(1,0,0,22); miniRowA.BackgroundTransparency=1; miniRowA.BorderSizePixel=0
+local potBtn,potSet=miniPill(miniRowA,"Auto Potion",C.accent,0,0)
+local autoPotionOn=Cfg.autoPotionOn; potSet(autoPotionOn)
+potBtn.MouseButton1Click:Connect(function() autoPotionOn=not autoPotionOn; Cfg.autoPotionOn=autoPotionOn; save(); potSet(autoPotionOn) end)
+local akBtn,akSet=miniPill(miniRowA,"Auto Kick",C.red,0.5,3)
+local autoKickOn=Cfg.autoKickOn; akSet(autoKickOn)
+akBtn.MouseButton1Click:Connect(function() autoKickOn=not autoKickOn; Cfg.autoKickOn=autoKickOn; save(); akSet(autoKickOn) end)
 
--- Since miniPill may or may not be defined at this point in layout order,
--- build both mini pills here directly:
--- clear miniRow and rebuild properly
-for _,c in ipairs(miniRow:GetChildren()) do c:Destroy() end
-
-local function mkMiniPill2(parent,label,col,xsc,xoff)
-    local row=Instance.new("Frame",parent); row.Size=UDim2.new(0.5,-3,1,0); row.Position=UDim2.new(xsc,xoff,0,0)
-    row.BackgroundColor3=C.surf; row.BackgroundTransparency=0.28; row.BorderSizePixel=0; co(row,6)
-    local rs=stk(row,1,C.str,0.55)
-    local rl=lbl(row,{Position=UDim2.new(0,5,0,0);Size=UDim2.new(1,-28,1,0);Text=label;TextSize=7;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
-    local track=Instance.new("Frame"); track.Size=UDim2.fromOffset(20,10); track.Position=UDim2.new(1,-23,0.5,-5); track.BackgroundColor3=C.surf2; track.BorderSizePixel=0; track.Parent=row; co(track,10)
-    local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(7,7); knob.Position=UDim2.new(0,1.5,0.5,-3.5); knob.BackgroundColor3=C.dim; knob.BorderSizePixel=0; knob.Parent=track; co(knob,7)
-    local pb=Instance.new("TextButton"); pb.Size=UDim2.new(1,0,1,0); pb.BackgroundTransparency=1; pb.Text=""; pb.Parent=row
-    local isOn=false; local onC=col or C.accent
-    local function set(v) isOn=v
-        TweenSvc:Create(track,TweenInfo.new(0.12),{BackgroundColor3=v and onC or C.surf2}):Play()
-        TweenSvc:Create(knob,TweenInfo.new(0.12),{Position=v and UDim2.new(1,-8.5,0.5,-3.5) or UDim2.new(0,1.5,0.5,-3.5),BackgroundColor3=v and C.white or C.dim}):Play()
-        TweenSvc:Create(rs,TweenInfo.new(0.12),{Color=v and onC or C.str,Transparency=v and 0.18 or 0.55}):Play()
-        rl.TextColor3=v and C.white or C.dim
-    end
-    return pb,set
-end
-
-local potBtn2,potSet2=mkMiniPill2(miniRow,"Auto Potion",C.accent,0,0)
-local autoPotionOn=Cfg.autoPotionOn; potSet2(autoPotionOn)
-potBtn2.MouseButton1Click:Connect(function() autoPotionOn=not autoPotionOn; Cfg.autoPotionOn=autoPotionOn; save(); potSet2(autoPotionOn) end)
-
-local akBtn2,akSet2=mkMiniPill2(miniRow,"Auto Kick",C.red,0.5,3)
-local autoKickOn=Cfg.autoKickOn; akSet2(autoKickOn)
-akBtn2.MouseButton1Click:Connect(function() autoKickOn=not autoKickOn; Cfg.autoKickOn=autoKickOn; save(); akSet2(autoKickOn) end)
-
--- Align Camera button
-local alignBtn=Instance.new("TextButton",mainContent); alignBtn.Size=UDim2.new(1,0,0,26)
-alignBtn.BackgroundColor3=Color3.fromRGB(14,14,22); alignBtn.BackgroundTransparency=0.1; alignBtn.BorderSizePixel=0
+-- align cam button
+local alignBtn=Instance.new("TextButton",mainContent); alignBtn.Size=UDim2.new(1,0,0,24)
+alignBtn.BackgroundColor3=C.surf; alignBtn.BackgroundTransparency=0.3; alignBtn.BorderSizePixel=0
 alignBtn.Text="ALIGN CAMERA"; alignBtn.TextColor3=C.dim; alignBtn.Font=Enum.Font.GothamBold; alignBtn.TextSize=9
-alignBtn.AutoButtonColor=false; co(alignBtn,8); stk(alignBtn,1,C.str,0.55)
+alignBtn.AutoButtonColor=false; co(alignBtn,7); stk(alignBtn,1,C.str,0.6)
 
--- Divider with label
-local divWrap=Instance.new("Frame",mainContent); divWrap.Size=UDim2.new(1,0,0,16); divWrap.BackgroundTransparency=1; divWrap.BorderSizePixel=0
-local divLine=Instance.new("Frame",divWrap); divLine.Size=UDim2.new(0.32,0,0,1); divLine.Position=UDim2.new(0,0,0.5,0)
-divLine.BackgroundColor3=C.str; divLine.BackgroundTransparency=0.5; divLine.BorderSizePixel=0
-local trigLbl=lbl(divWrap,{Position=UDim2.new(0.34,0,0,0);Size=UDim2.new(0.32,0,1,0);Text="when to flash";TextSize=7;TextColor3=C.dim;Font=Enum.Font.GothamBold})
-local divLine2=Instance.new("Frame",divWrap); divLine2.Size=UDim2.new(0.32,0,0,1); divLine2.Position=UDim2.new(0.68,0,0.5,0)
-divLine2.BackgroundColor3=C.str; divLine2.BackgroundTransparency=0.5; divLine2.BorderSizePixel=0
-
--- Slider zone (Tokinu-style compact with % badge)
-local sliderZone=Instance.new("Frame",mainContent); sliderZone.Size=UDim2.new(1,0,0,28)
-sliderZone.BackgroundColor3=Color3.fromRGB(14,14,22); sliderZone.BackgroundTransparency=0.1; sliderZone.BorderSizePixel=0; co(sliderZone,8)
-stk(sliderZone,1,C.str,0.55)
-
+-- slider section
+local sliderSection=Instance.new("Frame",mainContent); sliderSection.Size=UDim2.new(1,0,0,36)
+sliderSection.BackgroundColor3=C.surf; sliderSection.BackgroundTransparency=0.25; sliderSection.BorderSizePixel=0; co(sliderSection,8)
+stk(sliderSection,1,C.str,0.55)
+lbl(sliderSection,{Position=UDim2.new(0,8,0,4);Size=UDim2.new(0.55,0,0,14);Text="when to trigger";TextSize=7;Font=Enum.Font.GothamBold;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
 -- % badge
-local pctBadge=Instance.new("Frame",sliderZone); pctBadge.Size=UDim2.fromOffset(38,20); pctBadge.Position=UDim2.new(1,-44,0.5,-10)
-pctBadge.BackgroundColor3=C.accent; pctBadge.BackgroundTransparency=0.7; pctBadge.BorderSizePixel=0; co(pctBadge,6)
+local pctBadge=Instance.new("Frame",sliderSection); pctBadge.Size=UDim2.fromOffset(36,18); pctBadge.Position=UDim2.new(1,-42,0,5)
+pctBadge.BackgroundColor3=C.accent; pctBadge.BackgroundTransparency=0.6; pctBadge.BorderSizePixel=0; co(pctBadge,6)
 local pctLbl=lbl(pctBadge,{Size=UDim2.new(1,0,1,0);Text=Cfg.triggerChance.."%";TextSize=9;Font=Enum.Font.GothamBlack;TextColor3=C.white})
-
-local slBack=Instance.new("Frame",sliderZone); slBack.Size=UDim2.new(1,-54,0,5); slBack.Position=UDim2.new(0,8,0.5,-2.5)
+-- slider track
+local slBack=Instance.new("Frame",sliderSection); slBack.Size=UDim2.new(1,-16,0,5); slBack.Position=UDim2.new(0,8,1,-13)
 slBack.BackgroundColor3=C.surf2; slBack.BorderSizePixel=0; co(slBack,3)
 local slFill=Instance.new("Frame",slBack); slFill.Size=UDim2.new(Cfg.triggerChance/100,0,1,0)
 slFill.BackgroundColor3=C.accent; slFill.BorderSizePixel=0; co(slFill,3)
 local slDot=Instance.new("Frame",slBack); slDot.Size=UDim2.fromOffset(13,13)
 slDot.AnchorPoint=Vector2.new(0.5,0.5); slDot.Position=UDim2.new(Cfg.triggerChance/100,0,0.5,0)
-slDot.BackgroundColor3=C.white; slDot.BorderSizePixel=0; co(slDot,7)
-stk(slDot,1.5,C.accent,0)
+slDot.BackgroundColor3=C.white; slDot.BorderSizePixel=0; co(slDot,7); stk(slDot,1.5,C.accent,0)
 
 local sliderValue=Cfg.triggerChance/100; local manualOverride=false; local slDragging=false
 local function setSlider(px)
@@ -334,7 +305,7 @@ local function setSlider(px)
     manualOverride=true; sliderValue=rel; Cfg.triggerChance=math.floor(rel*100); save()
     slFill.Size=UDim2.new(rel,0,1,0); slDot.Position=UDim2.new(rel,0,0.5,0)
     pctLbl.Text=math.floor(rel*100).."%"
-    trigLbl.Text="when to flash"
+    if flashEnabled then ftSub.Text="on — fires at "..math.floor(rel*100).."%" end
 end
 slBack.InputBegan:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then slDragging=true; setSlider(i.Position.X) end
@@ -349,111 +320,82 @@ UIS.InputEnded:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then slDragging=false end
 end)
 
--- Progress bar (hidden by default, shown during grab)
+-- status label shown above grab btn
+local statusLbl=lbl(mainContent,{Size=UDim2.new(1,0,0,14);Text="";TextSize=8;Font=Enum.Font.GothamBold;TextColor3=C.dim})
+statusLbl.Visible=false
+
+-- progress bar
 local grabProgress=Instance.new("Frame",mainContent); grabProgress.Size=UDim2.new(1,0,0,5)
 grabProgress.BackgroundColor3=C.surf2; grabProgress.BorderSizePixel=0; grabProgress.Visible=false; co(grabProgress,3)
 local grabFill=Instance.new("Frame",grabProgress); grabFill.Size=UDim2.new(0,0,1,0)
 grabFill.BackgroundColor3=C.accent; grabFill.BorderSizePixel=0; co(grabFill,3)
 
--- Big FLASH GRAB button — Tokinu style, dark bg with accent border
+-- FLASH GRAB button
 local bigBtn=Instance.new("TextButton",mainContent); bigBtn.Size=UDim2.new(1,0,0,46)
-bigBtn.BackgroundColor3=C.accent; bigBtn.BackgroundTransparency=0.85; bigBtn.BorderSizePixel=0
-bigBtn.Text="⚡ FLASH GRAB"; bigBtn.TextColor3=C.white; bigBtn.Font=Enum.Font.GothamBlack; bigBtn.TextSize=15
-bigBtn.AutoButtonColor=false; co(bigBtn,10)
-stk(bigBtn,1.5,C.accent,0.15)
+bigBtn.BackgroundColor3=C.accent; bigBtn.BackgroundTransparency=0.88; bigBtn.BorderSizePixel=0
+bigBtn.Text="⚡  FLASH GRAB"; bigBtn.TextColor3=C.white; bigBtn.Font=Enum.Font.GothamBlack; bigBtn.TextSize=15
+bigBtn.AutoButtonColor=false; co(bigBtn,10); stk(bigBtn,1.5,C.accent,0.12)
 
 -- ════════════════════════════════════════════════════════════════════
--- SETTINGS CONTENT
+-- SETTINGS CONTENT (hidden by default)
 -- ════════════════════════════════════════════════════════════════════
-local settingsContent=Instance.new("Frame"); settingsContent.Size=UDim2.new(1,0,0,0)
-settingsContent.AutomaticSize=Enum.AutomaticSize.Y; settingsContent.BackgroundTransparency=1
-settingsContent.BorderSizePixel=0; settingsContent.LayoutOrder=3; settingsContent.Parent=mainF
-settingsContent.Visible=false
-local scLayout=Instance.new("UIListLayout",settingsContent); scLayout.Padding=UDim.new(0,4)
-scLayout.HorizontalAlignment=Enum.HorizontalAlignment.Center
-local scPad=Instance.new("UIPadding",settingsContent); scPad.PaddingLeft=UDim.new(0,7); scPad.PaddingRight=UDim.new(0,7)
-scPad.PaddingTop=UDim.new(0,5); scPad.PaddingBottom=UDim.new(0,6)
+local settingsContent=Instance.new("Frame",mainF); settingsContent.LayoutOrder=3
+settingsContent.Size=UDim2.new(1,0,0,0); settingsContent.AutomaticSize=Enum.AutomaticSize.Y
+settingsContent.BackgroundTransparency=1; settingsContent.BorderSizePixel=0; settingsContent.Visible=false
+local scLay=Instance.new("UIListLayout",settingsContent); scLay.Padding=UDim.new(0,4); scLay.HorizontalAlignment=Enum.HorizontalAlignment.Center
+local scPad=Instance.new("UIPadding",settingsContent)
+scPad.PaddingLeft=UDim.new(0,9); scPad.PaddingRight=UDim.new(0,9); scPad.PaddingTop=UDim.new(0,6); scPad.PaddingBottom=UDim.new(0,8)
 
-local function secLbl(txt)
-    local f=Instance.new("Frame",settingsContent); f.Size=UDim2.new(1,0,0,13); f.BackgroundTransparency=1; f.BorderSizePixel=0
+local function secLabel(txt)
+    local f=Instance.new("Frame",settingsContent); f.Size=UDim2.new(1,0,0,14); f.BackgroundTransparency=1; f.BorderSizePixel=0
     lbl(f,{Size=UDim2.new(1,0,1,0);Text=txt;TextSize=7;Font=Enum.Font.GothamBlack;TextColor3=C.accent;TextXAlignment=Enum.TextXAlignment.Left})
 end
 
--- SPEED BOOST row (single line)
-secLbl("SPEED BOOST")
-local spBtn,spSet=pillRow(settingsContent,"Speed Boost",C.accent)
+secLabel("SPEED BOOST")
+local spBtn,spSet=pill(settingsContent,"Speed Boost",C.accent)
 local speedOn=Cfg.speedOn; spSet(speedOn)
-local spValF=Instance.new("Frame",settingsContent); spValF.Size=UDim2.new(1,0,0,22)
+local spValF=Instance.new("Frame",settingsContent); spValF.Size=UDim2.new(1,0,0,24)
 spValF.BackgroundColor3=C.surf; spValF.BackgroundTransparency=0.28; spValF.BorderSizePixel=0; co(spValF,7)
-lbl(spValF,{Position=UDim2.new(0,6,0,0);Size=UDim2.new(0.38,0,1,0);Text="Speed";TextSize=8;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
-local spBox=Instance.new("TextBox",spValF); spBox.Size=UDim2.new(0.3,0,0.72,0); spBox.Position=UDim2.new(0.4,0,0.14,0)
+lbl(spValF,{Position=UDim2.new(0,6,0,0);Size=UDim2.new(0.36,0,1,0);Text="Speed";TextSize=8;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+local spBox=Instance.new("TextBox",spValF); spBox.Size=UDim2.new(0.28,0,0.7,0); spBox.Position=UDim2.new(0.38,0,0.15,0)
 spBox.BackgroundColor3=C.surf2; spBox.BackgroundTransparency=0.2; spBox.Text=tostring(Cfg.speedVal); spBox.TextColor3=C.white
 spBox.Font=Enum.Font.GothamBold; spBox.TextSize=9; spBox.ClearTextOnFocus=false; spBox.BorderSizePixel=0; co(spBox,4)
-lbl(spValF,{Position=UDim2.new(0.72,0,0,0);Size=UDim2.new(0.14,0,1,0);Text="Pot";TextSize=7;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
-local gpBox=Instance.new("TextBox",spValF); gpBox.Size=UDim2.new(0.24,0,0.72,0); gpBox.Position=UDim2.new(0.76,0,0.14,0)
+lbl(spValF,{Position=UDim2.new(0.68,2,0,0);Size=UDim2.new(0.12,0,1,0);Text="Pot";TextSize=7;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
+local gpBox=Instance.new("TextBox",spValF); gpBox.Size=UDim2.new(0.22,0,0.7,0); gpBox.Position=UDim2.new(0.78,0,0.15,0)
 gpBox.BackgroundColor3=C.surf2; gpBox.BackgroundTransparency=0.2; gpBox.Text=tostring(Cfg.giantSpeedVal); gpBox.TextColor3=C.white
 gpBox.Font=Enum.Font.GothamBold; gpBox.TextSize=9; gpBox.ClearTextOnFocus=false; gpBox.BorderSizePixel=0; co(gpBox,4)
 
--- CHANGED: "Helpers" section with 2x2 compact grid for toggles
-secLbl("HELPERS")
--- Infinite Jump + Aimbot on same row
-local helpRow1=Instance.new("Frame",settingsContent); helpRow1.Size=UDim2.new(1,0,0,20); helpRow1.BackgroundTransparency=1; helpRow1.BorderSizePixel=0
-
--- mini pill builder for 2-col grid
-local function miniPill(parent,label,col,xScale,xOff)
-    local row=Instance.new("Frame",parent)
-    row.Size=UDim2.new(0.5,-3,1,0); row.Position=UDim2.new(xScale,xOff,0,0)
-    row.BackgroundColor3=C.surf; row.BackgroundTransparency=0.28; row.BorderSizePixel=0; co(row,6)
-    local rs=stk(row,1,C.str,0.55)
-    local rl=lbl(row,{Position=UDim2.new(0,5,0,0);Size=UDim2.new(1,-28,1,0);Text=label;TextSize=7;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left})
-    local track=Instance.new("Frame"); track.Size=UDim2.fromOffset(20,10); track.Position=UDim2.new(1,-23,0.5,-5)
-    track.BackgroundColor3=C.surf2; track.BorderSizePixel=0; track.Parent=row; co(track,10)
-    local knob=Instance.new("Frame"); knob.Size=UDim2.fromOffset(7,7); knob.Position=UDim2.new(0,1.5,0.5,-3.5)
-    knob.BackgroundColor3=C.dim; knob.BorderSizePixel=0; knob.Parent=track; co(knob,7)
-    local pb=Instance.new("TextButton"); pb.Size=UDim2.new(1,0,1,0); pb.BackgroundTransparency=1; pb.Text=""; pb.Parent=row
-    local onC=col or C.accent; local isOn=false
-    local function set(v) isOn=v
-        TweenSvc:Create(track,TweenInfo.new(0.12),{BackgroundColor3=v and onC or C.surf2}):Play()
-        TweenSvc:Create(knob,TweenInfo.new(0.12),{Position=v and UDim2.new(1,-8.5,0.5,-3.5) or UDim2.new(0,1.5,0.5,-3.5),BackgroundColor3=v and C.white or C.dim}):Play()
-        TweenSvc:Create(rs,TweenInfo.new(0.12),{Color=v and onC or C.str,Transparency=v and 0.18 or 0.55}):Play()
-        rl.TextColor3=v and C.white or C.dim
-    end
-    return pb,set
-end
-
-local ijBtn,ijSet=miniPill(helpRow1,"Inf Jump",C.grn,0,0)
+secLabel("HELPERS")
+local hr1=Instance.new("Frame",settingsContent); hr1.Size=UDim2.new(1,0,0,21); hr1.BackgroundTransparency=1; hr1.BorderSizePixel=0
+local ijBtn,ijSet=miniPill(hr1,"Inf Jump",C.grn,0,0)
 local ijOn=Cfg.infiniteJump; ijSet(ijOn)
-local aimbotBtn,aimbotSet=miniPill(helpRow1,"Aimbot",C.blue,0.5,3)
+local aimbotBtn,aimbotSet=miniPill(hr1,"Aimbot",C.blue,0.5,3)
 local aimbotOn=Cfg.aimbotOn; aimbotSet(aimbotOn)
-helpRow1.Parent=settingsContent -- already parented but ensure layout picks it up
 
--- Anti Ragdoll + Anti Admin on same row
-local helpRow2=Instance.new("Frame",settingsContent); helpRow2.Size=UDim2.new(1,0,0,20); helpRow2.BackgroundTransparency=1; helpRow2.BorderSizePixel=0
-local arBtn,arSet=miniPill(helpRow2,"Anti Ragdoll",C.accent,0,0)
+local hr2=Instance.new("Frame",settingsContent); hr2.Size=UDim2.new(1,0,0,21); hr2.BackgroundTransparency=1; hr2.BorderSizePixel=0
+local arBtn,arSet=miniPill(hr2,"Anti Ragdoll",C.accent,0,0)
 local antiRagdollOn=Cfg.antiRagdollOn; arSet(antiRagdollOn)
-local aapBtn,aapSet=miniPill(helpRow2,"Anti Admin",C.accent,0.5,3)
+local aapBtn,aapSet=miniPill(hr2,"Anti Admin",C.accent,0.5,3)
 local antiAdminOn=Cfg.antiAdminOn; aapSet(antiAdminOn)
 
--- Anti Sentry + Anti Beehive on same row
-local helpRow3=Instance.new("Frame",settingsContent); helpRow3.Size=UDim2.new(1,0,0,20); helpRow3.BackgroundTransparency=1; helpRow3.BorderSizePixel=0
-local asBtn2,asSet2=miniPill(helpRow3,"Anti Sentry",C.cyan,0,0)
+local hr3=Instance.new("Frame",settingsContent); hr3.Size=UDim2.new(1,0,0,21); hr3.BackgroundTransparency=1; hr3.BorderSizePixel=0
+local asBtn2,asSet2=miniPill(hr3,"Anti Sentry",C.cyan,0,0)
 local antiSentryOn=Cfg.antiSentryOn; asSet2(antiSentryOn)
-local abBtn,abSet=miniPill(helpRow3,"Anti Bee",C.gold,0.5,3)
+local abBtn,abSet=miniPill(hr3,"Anti Bee",C.gold,0.5,3)
 local antiBeeOn=Cfg.antiBeeOn; abSet(antiBeeOn)
 
--- toggle settings open/close
+-- settings toggle
 local settingsOpen=false
 settingsBtn.MouseButton1Click:Connect(function()
     settingsOpen=not settingsOpen
     mainContent.Visible=not settingsOpen
     settingsContent.Visible=settingsOpen
     settingsBtn.Text=settingsOpen and "✕" or "⚙"
-    titleLbl.Text=settingsOpen and "Settings" or "FLASH GRAB"
+    settingsBtn.TextColor3=settingsOpen and C.accent or C.dim
 end)
 
--- Speed boost functions
-local boostConn=nil
-local currentSpeed=Cfg.speedVal
+-- speed boost
+local boostConn=nil; local currentSpeed=Cfg.speedVal
 local function startBoost(spd)
     if boostConn then boostConn:Disconnect(); boostConn=nil end
     boostConn=RunSvc.Heartbeat:Connect(function()
@@ -466,20 +408,13 @@ local function startBoost(spd)
         end
     end)
 end
-local function stopBoost()
-    if boostConn then boostConn:Disconnect(); boostConn=nil end
-end
+local function stopBoost() if boostConn then boostConn:Disconnect(); boostConn=nil end end
+if speedOn then startBoost(currentSpeed) end
 
 spBtn.MouseButton1Click:Connect(function()
     speedOn=not speedOn; Cfg.speedOn=speedOn; save(); spSet(speedOn)
-    if speedOn then
-        currentSpeed=math.clamp(tonumber(spBox.Text) or Cfg.speedVal,1,120)
-        startBoost(currentSpeed)
-    else
-        stopBoost()
-    end
+    if speedOn then currentSpeed=math.clamp(tonumber(spBox.Text) or 27,1,120); startBoost(currentSpeed) else stopBoost() end
 end)
-
 ijBtn.MouseButton1Click:Connect(function() ijOn=not ijOn; Cfg.infiniteJump=ijOn; save(); ijSet(ijOn) end)
 aimbotBtn.MouseButton1Click:Connect(function() aimbotOn=not aimbotOn; Cfg.aimbotOn=aimbotOn; save(); aimbotSet(aimbotOn) end)
 arBtn.MouseButton1Click:Connect(function() antiRagdollOn=not antiRagdollOn; Cfg.antiRagdollOn=antiRagdollOn; save(); arSet(antiRagdollOn) end)
@@ -489,27 +424,26 @@ abBtn.MouseButton1Click:Connect(function() antiBeeOn=not antiBeeOn; Cfg.antiBeeO
 spBox.FocusLost:Connect(function() local n=math.clamp(math.floor(tonumber(spBox.Text) or 27),1,120); spBox.Text=tostring(n); Cfg.speedVal=n; save() end)
 gpBox.FocusLost:Connect(function() local n=math.clamp(math.floor(tonumber(gpBox.Text) or 40),1,120); gpBox.Text=tostring(n); Cfg.giantSpeedVal=n; save() end)
 
-if speedOn then startBoost(currentSpeed) end
+setFlashVis(flashEnabled)
 
 -- ════════════════════════════════════════════════════════════════════
 -- ACTIONS PANEL
 -- ════════════════════════════════════════════════════════════════════
-local actF,actC=makePanel("Actions",148,72,C.purple,10,10,"actions")
-local rejBtn=mkBtn(actC,"REJOIN",UDim2.new(1,-8,0,20),UDim2.new(0,0,0,0),C.surf2,C.white); rejBtn.TextSize=9
-local kickBtn=mkBtn(actC,"KICK SELF",UDim2.new(1,-8,0,20),UDim2.new(0,0,0,0),C.surf2,C.red); kickBtn.TextSize=9
+local actF,actC=makePanel("Actions",140,72,C.purple,10,10,"actions")
+local rejBtn=btn(actC,"↺  REJOIN",UDim2.new(1,-8,0,20),UDim2.new(0,0,0,0),C.surf2,C.white,9)
+local kickBtn=btn(actC,"✕  KICK SELF",UDim2.new(1,-8,0,20),UDim2.new(0,0,0,0),C.surf2,C.red,9)
 rejBtn.MouseButton1Click:Connect(function()
-    rejBtn.Text=".."; lp:Kick("rejoining")
+    rejBtn.Text="..."; lp:Kick("rejoining")
     task.delay(0.1,function() TeleSvc:Teleport(game.PlaceId,lp) end)
 end)
 kickBtn.MouseButton1Click:Connect(function() lp:Kick("kicked by r9qbx") end)
 
 -- ════════════════════════════════════════════════════════════════════
--- BASE PROTECTOR PANEL — only Anti Steal from Phantom Flash V5
+-- BASE PROTECTOR PANEL
 -- ════════════════════════════════════════════════════════════════════
-local bpF,bpC=makePanel("Base Protector",148,52,C.cyan,10,90,"baseprot")
--- CHANGED: only Anti Steal (copied from Phantom Flash V5 logic), removed Anti Intruder
+local bpF,bpC=makePanel("Base Protector",140,52,C.cyan,10,90,"baseprot")
 local antiStealOn=Cfg.antiStealOn
-local asBtn,asSet=pillRow(bpC,"Anti Steal",C.red)
+local asBtn,asSet=pill(bpC,"Anti Steal",C.red)
 asSet(antiStealOn)
 asBtn.MouseButton1Click:Connect(function() antiStealOn=not antiStealOn; Cfg.antiStealOn=antiStealOn; save(); asSet(antiStealOn) end)
 
@@ -517,24 +451,19 @@ asBtn.MouseButton1Click:Connect(function() antiStealOn=not antiStealOn; Cfg.anti
 -- ADMIN PANEL
 -- ════════════════════════════════════════════════════════════════════
 local AP_W=186
-local AP=Instance.new("Frame"); AP.Size=UDim2.fromOffset(AP_W,22)
+local AP=Instance.new("Frame",SG); AP.Size=UDim2.fromOffset(AP_W,22)
 AP.Position=UDim2.fromOffset(10,150); AP.BackgroundColor3=C.panel; AP.BackgroundTransparency=0.22
-AP.BorderSizePixel=0; AP.ClipsDescendants=true; AP.Parent=SG; co(AP,9)
-stk(AP,1.2,C.str,0.35); loadPos("ap",AP)
-
-local apHdr=Instance.new("Frame"); apHdr.Size=UDim2.new(1,0,0,21); apHdr.BackgroundColor3=C.surf
-apHdr.BackgroundTransparency=0.18; apHdr.BorderSizePixel=0; apHdr.Parent=AP; co(apHdr,9)
-local apHf=Instance.new("Frame",apHdr); apHf.Size=UDim2.new(1,0,0,7); apHf.Position=UDim2.new(0,0,1,-7)
-apHf.BackgroundColor3=C.surf; apHf.BackgroundTransparency=0.18; apHf.BorderSizePixel=0
+AP.BorderSizePixel=0; AP.ClipsDescendants=true; co(AP,9); stk(AP,1.2,C.str,0.35); loadPos("ap",AP)
+local apHdr=Instance.new("Frame",AP); apHdr.Size=UDim2.new(1,0,0,21); apHdr.BackgroundColor3=C.surf; apHdr.BackgroundTransparency=0.2; apHdr.BorderSizePixel=0; co(apHdr,9)
+Instance.new("Frame",apHdr).Size,Instance.new("Frame",apHdr).Position,Instance.new("Frame",apHdr).BackgroundColor3,Instance.new("Frame",apHdr).BackgroundTransparency,Instance.new("Frame",apHdr).BorderSizePixel=UDim2.new(1,0,0,7),UDim2.new(0,0,1,-7),C.surf,0.2,0
 lbl(apHdr,{Position=UDim2.new(0,7,0,0);Size=UDim2.new(1,-24,1,0);Text="Admin Panel";TextSize=8;Font=Enum.Font.GothamBlack;TextXAlignment=Enum.TextXAlignment.Left;TextColor3=C.dim})
-local apMb=mkBtn(apHdr,"─",UDim2.fromOffset(14,13),UDim2.new(1,-17,0.5,-6.5),C.surf2,C.dim); apMb.TextSize=8; apMb.BackgroundTransparency=0.6
+local apMb=btn(apHdr,"─",UDim2.fromOffset(14,13),UDim2.new(1,-17,0.5,-6.5),C.surf2,C.dim,8); apMb.BackgroundTransparency=0.6
 dragF(AP,apHdr,"ap")
-
-local pScroll=Instance.new("ScrollingFrame"); pScroll.Size=UDim2.fromOffset(AP_W-8,0); pScroll.Position=UDim2.fromOffset(4,22)
+local pScroll=Instance.new("ScrollingFrame",AP); pScroll.Size=UDim2.fromOffset(AP_W-8,0); pScroll.Position=UDim2.fromOffset(4,22)
 pScroll.BackgroundColor3=C.bg; pScroll.BackgroundTransparency=0.65; pScroll.BorderSizePixel=0
 pScroll.ScrollBarThickness=2; pScroll.ScrollBarImageColor3=C.accent; pScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
-pScroll.CanvasSize=UDim2.new(0,0,0,0); pScroll.Parent=AP; co(pScroll,4)
-local pLayout=Instance.new("UIListLayout"); pLayout.Padding=UDim.new(0,2); pLayout.SortOrder=Enum.SortOrder.Name; pLayout.Parent=pScroll
+pScroll.CanvasSize=UDim2.new(0,0,0,0); co(pScroll,4)
+local pLayout=Instance.new("UIListLayout",pScroll); pLayout.Padding=UDim.new(0,2); pLayout.SortOrder=Enum.SortOrder.Name
 Instance.new("UIPadding",pScroll).PaddingTop=UDim.new(0,2)
 local apFolded=false
 local function resAP()
@@ -545,8 +474,8 @@ end
 pLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(resAP)
 apMb.MouseButton1Click:Connect(function()
     apFolded=not apFolded; apMb.Text=apFolded and "+" or "─"; pScroll.Visible=not apFolded
-    if apFolded then TweenSvc:Create(AP,TweenInfo.new(0.2,Enum.EasingStyle.Quad),{Size=UDim2.fromOffset(AP_W,22)}):Play()
-    else local ch=math.min(pLayout.AbsoluteContentSize.Y+4,120); TweenSvc:Create(AP,TweenInfo.new(0.2,Enum.EasingStyle.Quad),{Size=UDim2.fromOffset(AP_W,22+ch+3)}):Play() end
+    if apFolded then TweenSvc:Create(AP,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{Size=UDim2.fromOffset(AP_W,22)}):Play()
+    else local ch=math.min(pLayout.AbsoluteContentSize.Y+4,120); TweenSvc:Create(AP,TweenInfo.new(0.18,Enum.EasingStyle.Quad),{Size=UDim2.fromOffset(AP_W,22+ch+3)}):Play() end
 end)
 
 local ADM_REMOTE=nil; local ADM_UUID="f888ee6e-c86d-46e1-93d7-0639d6635d42"
@@ -574,7 +503,6 @@ local function fireClick(tgt)
     if not ADM_REMOTE then return end
     for _,cmd in ipairs(CLICK_CMDS) do aFire(tgt,cmd); if ROW_CD[cmd] then rowCdEnd[cmd]=tick()+ROW_CD[cmd] end end
 end
-
 local IW2=16; local IH2=18; local IG2=2
 local ITOT=#RCMDS*(IW2+IG2)-IG2; local CW2=AP_W-12; local CSTART=CW2-ITOT-3
 local pCards={}; local cmdBtnRefs={}
@@ -582,20 +510,20 @@ local function refreshAP()
     for _,c in pairs(pCards) do pcall(function() c:Destroy() end) end; pCards={}; cmdBtnRefs={}
     for _,p in ipairs(Players:GetPlayers()) do
         if p==lp then continue end
-        local card=Instance.new("Frame"); card.Name=p.Name; card.Size=UDim2.new(1,-4,0,30)
-        card.BackgroundColor3=C.surf; card.BackgroundTransparency=0.26; card.BorderSizePixel=0; card.Parent=pScroll; co(card,5)
+        local card=Instance.new("Frame",pScroll); card.Name=p.Name; card.Size=UDim2.new(1,-4,0,30)
+        card.BackgroundColor3=C.surf; card.BackgroundTransparency=0.26; card.BorderSizePixel=0; co(card,5)
         local cs=stk(card,1,C.str,0.55)
-        local cz=Instance.new("TextButton"); cz.Size=UDim2.fromOffset(CSTART,30); cz.BackgroundTransparency=1; cz.Text=""; cz.AutoButtonColor=false; cz.Parent=card
-        local ava=Instance.new("ImageLabel"); ava.Size=UDim2.fromOffset(18,18); ava.Position=UDim2.new(0,3,0.5,-9); ava.BackgroundColor3=C.surf2; ava.BorderSizePixel=0; ava.Parent=card; co(ava,9)
+        local cz=Instance.new("TextButton",card); cz.Size=UDim2.fromOffset(CSTART,30); cz.BackgroundTransparency=1; cz.Text=""; cz.AutoButtonColor=false
+        local ava=Instance.new("ImageLabel",card); ava.Size=UDim2.fromOffset(18,18); ava.Position=UDim2.new(0,3,0.5,-9); ava.BackgroundColor3=C.surf2; ava.BorderSizePixel=0; co(ava,9)
         task.spawn(function() local ok,img=pcall(Players.GetUserThumbnailAsync,Players,p.UserId,Enum.ThumbnailType.HeadShot,Enum.ThumbnailSize.Size48x48); if ok then ava.Image=img end end)
         lbl(card,{Position=UDim2.new(0,23,0,3);Size=UDim2.fromOffset(CSTART-26,13);Text=p.DisplayName;TextSize=9;Font=Enum.Font.GothamBold;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Left;TextTruncate=Enum.TextTruncate.AtEnd})
         lbl(card,{Position=UDim2.new(0,23,0,16);Size=UDim2.fromOffset(CSTART-26,10);Text="@"..p.Name;TextSize=7;Font=Enum.Font.Gotham;TextColor3=C.str;TextXAlignment=Enum.TextXAlignment.Left;TextTruncate=Enum.TextTruncate.AtEnd})
         cmdBtnRefs[p.UserId]={}
         for i,def in ipairs(RCMDS) do
             local bx=CSTART+3+(i-1)*(IW2+IG2)
-            local ib=Instance.new("TextButton"); ib.Size=UDim2.fromOffset(IW2,IH2); ib.Position=UDim2.new(0,bx,0.5,-IH2/2)
+            local ib=Instance.new("TextButton",card); ib.Size=UDim2.fromOffset(IW2,IH2); ib.Position=UDim2.new(0,bx,0.5,-IH2/2)
             ib.BackgroundColor3=C.surf2; ib.BackgroundTransparency=0.22; ib.Text=def.icon; ib.TextSize=11; ib.TextColor3=C.dim
-            ib.Font=Enum.Font.GothamBold; ib.BorderSizePixel=0; ib.AutoButtonColor=false; ib.Parent=card; co(ib,4); stk(ib,1,C.str,0.52)
+            ib.Font=Enum.Font.GothamBold; ib.BorderSizePixel=0; ib.AutoButtonColor=false; co(ib,4); stk(ib,1,C.str,0.52)
             cmdBtnRefs[p.UserId][def.cmd]=ib
             local pd,dc=p,def.cmd
             ib.MouseButton1Click:Connect(function()
@@ -605,8 +533,7 @@ local function refreshAP()
         local pd=p
         cz.MouseButton1Click:Connect(function()
             for _,c2 in pairs(pCards) do local s2=c2:FindFirstChildOfClass("UIStroke"); if s2 then s2.Color=C.str;s2.Transparency=0.55 end; c2.BackgroundTransparency=0.26 end
-            cs.Color=C.accent; cs.Transparency=0.1; card.BackgroundTransparency=0.1
-            fireClick(pd)
+            cs.Color=C.accent; cs.Transparency=0.1; card.BackgroundTransparency=0.1; fireClick(pd)
         end)
         pCards[p.UserId]=card
     end
@@ -616,7 +543,6 @@ Players.PlayerAdded:Connect(function() task.wait(0.5); refreshAP() end)
 Players.PlayerRemoving:Connect(function() task.wait(0.2); refreshAP() end)
 lp.CharacterAdded:Connect(function() task.wait(2.5); refreshAP() end)
 task.delay(2.5,refreshAP)
-
 RunSvc.Heartbeat:Connect(function()
     local now=tick()
     for uid,cmds in pairs(cmdBtnRefs) do for cmd,ib in pairs(cmds) do
@@ -632,18 +558,16 @@ RunSvc.Heartbeat:Connect(function()
     end end
 end)
 
--- Reset panels confirm
+-- Reset panels
 rsPnlBtn.MouseButton1Click:Connect(function()
-    local dlg=Instance.new("Frame",SG)
-    dlg.Size=UDim2.fromOffset(160,52); dlg.Position=UDim2.new(0.5,-80,0.5,-26)
-    dlg.BackgroundColor3=C.panel; dlg.BackgroundTransparency=0.05; dlg.BorderSizePixel=0; co(dlg,10)
-    stk(dlg,1.5,C.accent,0.2)
-    lbl(dlg,{Position=UDim2.new(0,0,0,5);Size=UDim2.new(1,0,0,20);Text="Reset all panels?";TextSize=9;TextColor3=C.white;Font=Enum.Font.GothamBlack})
-    local yb=mkBtn(dlg,"Yes",UDim2.fromOffset(62,20),UDim2.new(0,8,1,-26),C.accent,C.white); yb.TextSize=9
-    local nb=mkBtn(dlg,"No",UDim2.fromOffset(62,20),UDim2.new(1,-70,1,-26),C.surf2,C.dim); nb.TextSize=9
+    local dlg=Instance.new("Frame",SG); dlg.Size=UDim2.fromOffset(162,54); dlg.Position=UDim2.new(0.5,-81,0.5,-27)
+    dlg.BackgroundColor3=C.panel; dlg.BackgroundTransparency=0.05; dlg.BorderSizePixel=0; co(dlg,11); stk(dlg,1.5,C.accent,0.2)
+    lbl(dlg,{Position=UDim2.new(0,0,0,6);Size=UDim2.new(1,0,0,20);Text="Reset all panels?";TextSize=9;TextColor3=C.white;Font=Enum.Font.GothamBlack})
+    local yb=btn(dlg,"Yes",UDim2.fromOffset(64,20),UDim2.new(0,8,1,-26),C.accent,C.white,9)
+    local nb=btn(dlg,"No",UDim2.fromOffset(64,20),UDim2.new(1,-72,1,-26),C.surf2,C.dim,9)
     yb.MouseButton1Click:Connect(function()
         dlg:Destroy()
-        mainF.Position=UDim2.new(0.5,-MP_W/2,0.5,-160)
+        mainF.Position=UDim2.new(0.5,-MP_W/2,0.5,-175)
         if not Cfg.pos then Cfg.pos={} end
         Cfg.pos["main"]={x=math.floor(mainF.Position.X.Offset),y=math.floor(mainF.Position.Y.Offset)}
         actF.Position=UDim2.fromOffset(10,10); Cfg.pos["actions"]={x=10,y=10}
@@ -656,55 +580,18 @@ end)
 
 -- ════════════════════════════════════════════════════════════════════
 -- FLASH GRAB CORE
--- CHANGED: only fires when prompt is within 7 studs OR visible on screen
--- Only on click, not always-on. 1.3s hold like Von grab.
 -- ════════════════════════════════════════════════════════════════════
 local triggerBump=false; local activePrompts={}
 
+-- auto slider from ping
 local function getPingBase(p) if p<=30 then return 0.91 elseif p<=70 then return 0.92 elseif p<=120 then return 0.93 else return 0.94 end end
 RunSvc.Heartbeat:Connect(function()
     if not manualOverride then
         local p=lp:GetNetworkPing()*1000; local base=getPingBase(p); local v=triggerBump and base+0.01 or base
         if math.abs(v-sliderValue)>0.005 then
-            sliderValue=v; slFill.Size=UDim2.new(v,0,1,0); slDot.Position=UDim2.new(v,0,0.5,0)
-            pctLbl.Text=math.floor(v*100).."%"
+            sliderValue=v; slFill.Size=UDim2.new(v,0,1,0); slDot.Position=UDim2.new(v,0,0.5,0); pctLbl.Text=math.floor(v*100).."%"
         end
     end
-end)
-
--- Tokinu-exact PPS listener: fires flash when manually holding a steal prompt
--- Works BOTH when holding manually AND when flash grab button holds it
-PPS.PromptButtonHoldBegan:Connect(function(prompt)
-    if not flashEnabled then return end
-    if prompt.ActionText~="Steal" then return end
-    if activePrompts[prompt] then return end
-    activePrompts[prompt]=true
-    local fired=false
-    local fireAt=os.clock()+math.max(prompt.HoldDuration,0.001)*sliderValue
-    local conn
-    conn=RunSvc.PreRender:Connect(function()
-        if fired then conn:Disconnect(); return end
-        if not prompt or not prompt.Parent then conn:Disconnect(); activePrompts[prompt]=nil; return end
-        if os.clock()>=fireAt then
-            fired=true; conn:Disconnect(); activePrompts[prompt]=nil
-            triggerBump=not triggerBump
-            local char=lp.Character; if not char then return end
-            local tool=char:FindFirstChildOfClass("Tool")
-            if tool then pcall(function() tool:Activate() end) end
-            -- auto potion fires here (after flash) if enabled
-            if autoPotionOn then
-                task.spawn(function()
-                    RunSvc.Heartbeat:Wait()
-                    local bp=lp:FindFirstChild("Backpack")
-                    local giant=char:FindFirstChild("Giant Potion") or (bp and bp:FindFirstChild("Giant Potion"))
-                    if giant then giant.Parent=char; task.spawn(function() giant:Activate() end) end
-                end)
-            end
-        end
-    end)
-    prompt.PromptButtonHoldEnded:Connect(function()
-        if not fired then fired=true; activePrompts[prompt]=nil; conn:Disconnect() end
-    end)
 end)
 
 local StealCBs={}
@@ -726,25 +613,17 @@ local function getPromptPos(pr)
     local pt=p:FindFirstChildWhichIsA("BasePart",true); return pt and pt.Position
 end
 
--- CHANGED: isPromptVisible — checks if prompt is within 7 studs OR visible on screen
+-- visible = within 7 studs OR on screen within activation distance
 local function isPromptVisible(prompt)
     local char=lp.Character; if not char then return false end
     local hrp=char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("UpperTorso"); if not hrp then return false end
     local pos=getPromptPos(prompt); if not pos then return false end
-
-    -- within 7 studs = definitely visible/reachable
     local dist=(hrp.Position-pos).Magnitude
     if dist<=7 then return true end
-
-    -- also check if within normal activation distance
     if dist<=math.max(prompt.MaxActivationDistance,8) then
-        -- check if on screen (project to screen)
-        local ok,screenPos,onScreen=pcall(function()
-            return cam:WorldToScreenPoint(pos)
-        end)
+        local ok,_,onScreen=pcall(function() return cam:WorldToScreenPoint(pos) end)
         if ok and onScreen then return true end
     end
-
     return false
 end
 
@@ -779,13 +658,51 @@ local function equipFlash()
     end)
 end
 
--- CHANGED: Flash Grab — only click-triggered, only holds if prompt visible or within 7 studs
--- Uses 1.3s hold like Von grab. Fires flash at slider% of hold.
+-- Tokinu-exact PPS listener: fires flash when ANY steal prompt is held (manual or script)
+PPS.PromptButtonHoldBegan:Connect(function(prompt)
+    if not flashEnabled then return end
+    if prompt.ActionText~="Steal" then return end
+    if activePrompts[prompt] then return end
+    activePrompts[prompt]=true
+    local fired=false
+    local fireAt=os.clock()+math.max(prompt.HoldDuration,0.001)*sliderValue
+    local conn
+    conn=RunSvc.PreRender:Connect(function()
+        if fired then conn:Disconnect(); return end
+        if not prompt or not prompt.Parent then conn:Disconnect(); activePrompts[prompt]=nil; return end
+        if os.clock()>=fireAt then
+            fired=true; conn:Disconnect(); activePrompts[prompt]=nil
+            triggerBump=not triggerBump
+            local char=lp.Character; if not char then return end
+            local tool=char:FindFirstChildOfClass("Tool")
+            if tool then pcall(function() tool:Activate() end) end
+            -- auto potion fires after flash if enabled
+            if autoPotionOn then
+                task.spawn(function()
+                    RunSvc.Heartbeat:Wait()
+                    local bp=lp:FindFirstChild("Backpack")
+                    local giant=char:FindFirstChild("Giant Potion") or (bp and bp:FindFirstChild("Giant Potion"))
+                    if giant then giant.Parent=char; task.spawn(function() giant:Activate() end) end
+                end)
+            end
+        end
+    end)
+    prompt.PromptButtonHoldEnded:Connect(function()
+        if not fired then fired=true; activePrompts[prompt]=nil; conn:Disconnect() end
+    end)
+end)
+
+-- FLASH GRAB button: click only, checks visibility, shows "No brainrot found" if none
 local grabActive=false
+local function showStatus(msg,col,dur)
+    statusLbl.Text=msg; statusLbl.TextColor3=col or C.dim; statusLbl.Visible=true
+    task.delay(dur or 1.5,function() if statusLbl.Text==msg then statusLbl.Visible=false end end)
+end
+
 bigBtn.MouseButton1Click:Connect(function()
     if grabActive then return end
-    tw(bigBtn,{BackgroundColor3=C.accentB})
-    task.delay(0.2,function() tw(bigBtn,{BackgroundColor3=C.accent}) end)
+    tw(bigBtn,{BackgroundColor3=C.accent,BackgroundTransparency=0.6})
+    task.delay(0.18,function() tw(bigBtn,{BackgroundColor3=C.accent,BackgroundTransparency=0.88}) end)
 
     local char=lp.Character; if not char then return end
     local hum=char:FindFirstChildOfClass("Humanoid")
@@ -793,27 +710,23 @@ bigBtn.MouseButton1Click:Connect(function()
 
     local prompt=findNearestSteal()
 
-    -- CHANGED: only proceed if prompt is visible on screen or within 7 studs
-    if not prompt or not isPromptVisible(prompt) then return end
-
-    pcall(equipFlash); task.wait(0.05)
-
-    if autoPotionOn then
-        local bp=lp:FindFirstChild("Backpack")
-        local giant=char:FindFirstChild("Giant Potion") or (bp and bp:FindFirstChild("Giant Potion"))
-        if giant then giant.Parent=char; task.spawn(function() giant:Activate() end) end
+    -- No prompt visible or within 7 studs: show message
+    if not prompt or not isPromptVisible(prompt) then
+        showStatus("🚫 No brainrot found",C.red,1.8)
+        return
     end
+
+    showStatus("⚡ Grabbing...",C.accent,2)
+    pcall(equipFlash); task.wait(0.05)
 
     grabActive=true
     grabProgress.Visible=true
     buildCBs(prompt)
 
     task.spawn(function()
-        -- CHANGED: use 1.3s hold like Von grab (same as the doc) clamped to actual hold duration
-        local holdDur=math.max(prompt.HoldDuration or 1.3, 0.001)
+        local holdDur=math.max(prompt.HoldDuration or 1.3,0.001)
         local trigTime=holdDur*sliderValue
-        local st=tick()
-        local flashFired=false
+        local st=tick(); local flashFired=false
 
         local data=StealCBs[prompt]
         if data and #data.hold>0 then
@@ -826,19 +739,13 @@ bigBtn.MouseButton1Click:Connect(function()
             end)
         end
 
-        while tick()-st < holdDur+0.15 do
+        while tick()-st<holdDur+0.15 do
             local elapsed=tick()-st
-            local pct=math.clamp(elapsed/holdDur,0,1)
-            TweenSvc:Create(grabFill,TweenInfo.new(0.04),{Size=UDim2.new(pct,0,1,0)}):Play()
-
+            TweenSvc:Create(grabFill,TweenInfo.new(0.04),{Size=UDim2.new(math.clamp(elapsed/holdDur,0,1),0,1,0)}):Play()
             if not flashFired and elapsed>=trigTime then
-                flashFired=true
-                triggerBump=not triggerBump
+                flashFired=true; triggerBump=not triggerBump
                 local fc=lp.Character
-                if fc then
-                    local tool=fc:FindFirstChildOfClass("Tool")
-                    if tool then pcall(function() tool:Activate() end) end
-                end
+                if fc then local tool=fc:FindFirstChildOfClass("Tool"); if tool then pcall(function() tool:Activate() end) end end
             end
             task.wait()
         end
@@ -849,10 +756,8 @@ bigBtn.MouseButton1Click:Connect(function()
             pcall(function() prompt:InputHoldEnd() end)
         end
 
-        grabFill.Size=UDim2.new(1,0,1,0)
-        task.wait(0.1)
-        grabProgress.Visible=false
-        grabFill.Size=UDim2.new(0,0,1,0)
+        grabFill.Size=UDim2.new(1,0,1,0); task.wait(0.1)
+        grabProgress.Visible=false; grabFill.Size=UDim2.new(0,0,1,0)
         grabActive=false
     end)
 end)
@@ -869,22 +774,21 @@ local function getBestLook()
 end
 local camBusy=false
 alignBtn.MouseButton1Click:Connect(function()
-    if camBusy then return end; camBusy=true
-    tw(alignBtn,{BackgroundColor3=C.accent})
+    if camBusy then return end; camBusy=true; tw(alignBtn,{BackgroundColor3=C.accentD,BackgroundTransparency=0.1})
     pcall(equipFlash); task.wait(0.05)
     pcall(function()
         local pos=cam.CFrame.Position; local best=getBestLook()
         cam.CameraType=Enum.CameraType.Scriptable; cam.CFrame=CFrame.lookAt(pos,pos+best)
         task.wait(); cam.CameraType=Enum.CameraType.Custom
     end)
-    task.delay(0.8,function() tw(alignBtn,{BackgroundColor3=C.surf2}); camBusy=false end)
+    task.delay(0.8,function() tw(alignBtn,{BackgroundColor3=C.surf,BackgroundTransparency=0.3}); camBusy=false end)
 end)
 
 -- ════════════════════════════════════════════════════════════════════
 -- BACKGROUND SYSTEMS
 -- ════════════════════════════════════════════════════════════════════
 
--- Giant potion: instant ragdoll + speed on use
+-- Giant potion
 lp.CharacterAdded:Connect(function(c)
     local hum=c:WaitForChild("Humanoid"); task.wait(0.3)
     local baseH=hum.HipHeight; local gpActive=false; local gpPrev=currentSpeed
@@ -893,39 +797,29 @@ lp.CharacterAdded:Connect(function(c)
         local newH=hum.HipHeight
         if not gpActive and newH>baseH*1.4 then
             gpActive=true; gpPrev=currentSpeed
-            if ADM_REMOTE then
-                task.spawn(function() pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,lp,"ragdoll") end) end)
-            end
+            if ADM_REMOTE then task.spawn(function() pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,lp,"ragdoll") end) end) end
             local gs=math.clamp(tonumber(gpBox.Text) or 40,1,120)
             currentSpeed=gs; if speedOn then startBoost(gs) end
         elseif gpActive and newH<=baseH*1.15 then
-            gpActive=false; currentSpeed=gpPrev
-            if speedOn then startBoost(gpPrev) end
+            gpActive=false; currentSpeed=gpPrev; if speedOn then startBoost(gpPrev) end
         end
     end)
 end)
 
--- CHANGED: Infinite jump using Delta's infinite yield style
--- Uses JumpRequest event, doesn't touch character state or reset anything
+-- Infinite jump (Delta style)
 local jumpConn=nil
 local function setupIJ(char)
     if jumpConn then jumpConn:Disconnect(); jumpConn=nil end
     local hum=char:WaitForChild("Humanoid",10); if not hum then return end
-    -- Delta infinite yield style: listen to JumpRequest, change state to Jumping
     jumpConn=UIS.JumpRequest:Connect(function()
         if not ijOn then return end
         if not hum or not hum.Parent then return end
         if hum.Health<=0 then return end
-        -- Only fire when in air states too (infinite jump)
         hum:ChangeState(Enum.HumanoidStateType.Jumping)
     end)
 end
 if lp.Character then task.spawn(function() pcall(setupIJ,lp.Character) end) end
--- Reconnect on respawn — does NOT reset/kill character, just rebinds the event
-lp.CharacterAdded:Connect(function(c)
-    task.wait(0.15)
-    pcall(setupIJ,c)
-end)
+lp.CharacterAdded:Connect(function(c) task.wait(0.15); pcall(setupIJ,c) end)
 
 -- Aimbot
 local aimbotTarget=nil; local aimbotRemote=nil
@@ -1042,7 +936,7 @@ task.spawn(function()
     end
 end)
 
--- Anti Beehive (fixed — only removes invert/reverse/confuse, not bee parts)
+-- Anti Beehive (lighting effects + movement fix, NOT bee parts)
 local beeList={"BlurEffect","ColorCorrectionEffect","BloomEffect","SunRaysEffect","DepthOfFieldEffect","PostEffect"}
 local function isBee(o) for _,n in ipairs(beeList) do if o:IsA(n) then return true end end; return false end
 local function clearBee() for _,v in pairs(Lighting:GetDescendants()) do if isBee(v) then pcall(function() v:Destroy() end) end end end
@@ -1116,8 +1010,7 @@ task.spawn(function() task.wait(1)
     end
 end)
 
--- Base Protector logic (Anti Steal from Phantom Flash V5)
--- stealHitbox/myPlotRef needed for anti steal + base prot
+-- Anti Steal (Phantom Flash V5 style — thief closest to hitbox)
 local stealHitbox=nil; local myPlotRef=nil
 task.spawn(function()
     while task.wait(1.2) do
@@ -1134,22 +1027,17 @@ task.spawn(function()
         end
     end
 end)
-
--- CHANGED: Anti Steal from Phantom Flash V5 — finds thief closest to steal HITBOX not local player
 local carpets={["Flying Carpet"]=true,["Witch's Broom"]=true,["Santa's Sleigh"]=true,["Cupid's Wings"]=true}
 local lastPunish={}
 local function punish(p)
     if not ADM_REMOTE or not p or p==lp then return end
     local char=p.Character; if not char then return end
-    local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
     local uid=p.UserId; local now=tick()
     if lastPunish[uid] and now-lastPunish[uid]<0.5 then return end
     lastPunish[uid]=now
-    -- Phantom Flash V5 style: balloon instant
     task.spawn(function() pcall(function() ADM_REMOTE:InvokeServer(ADM_UUID,p,"balloon") end) end)
     rowCdEnd["balloon"]=tick()+(ROW_CD["balloon"] or 30)
 end
--- find thief by closest to steal hitbox (Phantom Flash V5 exact logic)
 local function findThief()
     local searchPos=stealHitbox and stealHitbox.Position
     if not searchPos then local myHRP=lp.Character and lp.Character:FindFirstChild("HumanoidRootPart"); searchPos=myHRP and myHRP.Position end
@@ -1211,11 +1099,11 @@ local function mkESP(plr)
     local char=plr.Character; if not char then return end
     local hrp=char:FindFirstChild("HumanoidRootPart"); if not hrp or char:FindFirstChild(ESPTAG) then return end
     local box=Instance.new("BoxHandleAdornment",char); box.Name=ESPTAG; box.Adornee=hrp
-    box.Size=Vector3.new(3.5,5.5,1.8); box.Color3=C.accent; box.Transparency=0.58; box.ZIndex=10; box.AlwaysOnTop=true
+    box.Size=Vector3.new(3.5,5.5,1.8); box.Color3=C.accent; box.Transparency=0.55; box.ZIndex=10; box.AlwaysOnTop=true
     local bb=Instance.new("BillboardGui",char); bb.Name=ESPTAG.."N"
-    bb.Adornee=char:FindFirstChild("Head") or hrp; bb.Size=UDim2.fromOffset(90,20); bb.StudsOffset=Vector3.new(0,2.8,0); bb.AlwaysOnTop=true
-    local bgE=Instance.new("Frame",bb); bgE.Size=UDim2.new(1,0,1,0); bgE.BackgroundColor3=Color3.fromRGB(10,10,12)
-    bgE.BackgroundTransparency=0.25; bgE.BorderSizePixel=0; co(bgE,4); stk(bgE,0.8,C.accent,0.3)
+    bb.Adornee=char:FindFirstChild("Head") or hrp; bb.Size=UDim2.fromOffset(88,19); bb.StudsOffset=Vector3.new(0,2.8,0); bb.AlwaysOnTop=true
+    local bgE=Instance.new("Frame",bb); bgE.Size=UDim2.new(1,0,1,0); bgE.BackgroundColor3=Color3.fromRGB(5,10,10)
+    bgE.BackgroundTransparency=0.22; bgE.BorderSizePixel=0; co(bgE,4); stk(bgE,0.8,C.accent,0.3)
     lbl(bgE,{Size=UDim2.new(1,0,0.58,0);Text=plr.DisplayName;Font=Enum.Font.GothamBold;TextSize=8;TextColor3=C.white;TextXAlignment=Enum.TextXAlignment.Center;TextStrokeTransparency=0.5;TextStrokeColor3=Color3.new(0,0,0)})
     lbl(bgE,{Size=UDim2.new(1,0,0.42,0);Position=UDim2.new(0,0,0.58,0);Text="@"..plr.Name;Font=Enum.Font.Gotham;TextSize=6;TextColor3=C.dim;TextXAlignment=Enum.TextXAlignment.Center})
     local apBB=Instance.new("BillboardGui",char); apBB.Name=ESPTAG.."AP"; apBB.Adornee=hrp
@@ -1225,8 +1113,8 @@ local function mkESP(plr)
     task.spawn(function() task.wait(0.8); local hasAP=false
         pcall(function() local pg=lp:FindFirstChild("PlayerGui"); if not pg then return end; local ap=pg:FindFirstChild("AdminPanel"); if not ap then return end
             local pl=ap:FindFirstChild("Profiles",true); if pl and pl:FindFirstChild(plr.Name) then hasAP=true end end)
-        if hasAP then apF.BackgroundColor3=Color3.fromRGB(6,20,10); stk(apF,0.7,C.grn,0); apL.TextColor3=C.grn; apL.Text="AP✓"
-        else apF.BackgroundColor3=Color3.fromRGB(20,6,6); stk(apF,0.7,C.red,0); apL.TextColor3=C.red; apL.Text="AP✗" end
+        if hasAP then apF.BackgroundColor3=Color3.fromRGB(5,18,8); stk(apF,0.7,C.grn,0); apL.TextColor3=C.grn; apL.Text="AP✓"
+        else apF.BackgroundColor3=Color3.fromRGB(18,5,5); stk(apF,0.7,C.red,0); apL.TextColor3=C.red; apL.Text="AP✗" end
     end)
 end
 for _,p in ipairs(Players:GetPlayers()) do if p~=lp then task.defer(function() mkESP(p) end) end end
@@ -1235,15 +1123,15 @@ for _,p in ipairs(Players:GetPlayers()) do if p~=lp then p.CharacterAdded:Connec
 
 -- Timer ESP
 local timerESPs={}; local myPlotRef2=nil; local baseAlerted=false
-local ECOL_R=Color3.fromRGB(255,65,65); local ECOL_Y=Color3.fromRGB(255,190,40); local ECOL_G=Color3.fromRGB(52,218,88)
+local ECOL_R=Color3.fromRGB(255,65,65); local ECOL_Y=Color3.fromRGB(255,190,40); local ECOL_G=Color3.fromRGB(40,210,120)
 local function showAlert()
     pcall(function() local s=Instance.new("Sound"); s.SoundId="rbxassetid://9118633772"; s.Volume=0.85; s.Parent=workspace; s:Play(); Debris:AddItem(s,5) end)
     local ag=Instance.new("ScreenGui",CoreGui); ag.Name="VxAlert"; ag.ResetOnSpawn=false; ag.IgnoreGuiInset=true
-    local af=Instance.new("Frame",ag); af.Size=UDim2.fromOffset(160,22); af.Position=UDim2.new(0.5,-80,0,-30)
+    local af=Instance.new("Frame",ag); af.Size=UDim2.fromOffset(162,22); af.Position=UDim2.new(0.5,-81,0,-30)
     af.BackgroundColor3=C.panel; af.BackgroundTransparency=0.1; af.BorderSizePixel=0; co(af,6); stk(af,1.5,C.red,0.08)
     lbl(af,{Size=UDim2.new(1,0,1,0);Text="⚠  BASE EXPIRES IN 5s!";TextSize=8;Font=Enum.Font.GothamBlack;TextColor3=C.red})
-    TweenSvc:Create(af,TweenInfo.new(0.3,Enum.EasingStyle.Back),{Position=UDim2.new(0.5,-80,0,6)}):Play()
-    task.delay(4,function() TweenSvc:Create(af,TweenInfo.new(0.2),{Position=UDim2.new(0.5,-80,0,-30)}):Play(); task.wait(0.25); ag:Destroy() end)
+    TweenSvc:Create(af,TweenInfo.new(0.3,Enum.EasingStyle.Back),{Position=UDim2.new(0.5,-81,0,6)}):Play()
+    task.delay(4,function() TweenSvc:Create(af,TweenInfo.new(0.2),{Position=UDim2.new(0.5,-81,0,-30)}):Play(); task.wait(0.25); ag:Destroy() end)
 end
 task.spawn(function() while task.wait(0.4) do
     local plots=workspace:FindFirstChild("Plots"); if not plots then continue end
@@ -1255,7 +1143,7 @@ task.spawn(function() while task.wait(0.4) do
             if not e or not e.bb.Parent then
                 if e then pcall(function() e.bb:Destroy() end) end
                 local bb=Instance.new("BillboardGui"); bb.Size=UDim2.fromOffset(46,13); bb.StudsOffset=Vector3.new(0,6.5,0); bb.AlwaysOnTop=true; bb.Adornee=mp; bb.MaxDistance=1200; bb.Parent=plot
-                local bgT=Instance.new("Frame",bb); bgT.Size=UDim2.new(1,0,1,0); bgT.BackgroundColor3=Color3.fromRGB(8,8,10); bgT.BackgroundTransparency=0.18; bgT.BorderSizePixel=0; co(bgT,4)
+                local bgT=Instance.new("Frame",bb); bgT.Size=UDim2.new(1,0,1,0); bgT.BackgroundColor3=Color3.fromRGB(5,10,10); bgT.BackgroundTransparency=0.18; bgT.BorderSizePixel=0; co(bgT,4)
                 local sk=Instance.new("UIStroke",bgT); sk.Color=ECOL_Y; sk.Thickness=0.7; sk.Transparency=0.28
                 local tl=lbl(bgT,{Size=UDim2.new(1,0,1,0);TextSize=8;TextColor3=ECOL_Y;TextStrokeTransparency=0.5;TextStrokeColor3=Color3.new(0,0,0)})
                 timerESPs[plot.Name]={bb=bb,lbl=tl,sk=sk}; e=timerESPs[plot.Name]
@@ -1284,7 +1172,7 @@ task.spawn(function() while task.wait(0.9) do
     end
 end end)
 
--- Auto kick on steal text
+-- Auto kick
 local function watchObj(obj)
     if not (obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox")) then return end
     local function chk(t) if type(t)=="string" and t:lower():find("you stole") and autoKickOn then pcall(function() lp:Kick("nice steal twin") end) end end
@@ -1294,4 +1182,4 @@ local function setupWatch(gui) for _,d in ipairs(gui:GetDescendants()) do watchO
 for _,g in ipairs(lp.PlayerGui:GetChildren()) do setupWatch(g) end
 lp.PlayerGui.ChildAdded:Connect(setupWatch)
 
-print("VertexHub loaded | r9qbx discord")
+print("VertexHub V3 loaded | r9qbx discord")
