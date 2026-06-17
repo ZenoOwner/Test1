@@ -155,7 +155,7 @@ local function makePanel(name,w,h,col,defX,defY,key)
     stk(f,1.2,col or C.str,0.35)
     local hdr=Instance.new("Frame"); hdr.Size=UDim2.new(1,0,0,20); hdr.BackgroundColor3=C.surf
     hdr.BackgroundTransparency=0.2; hdr.BorderSizePixel=0; hdr.Parent=f; co(hdr,9)
-    Instance.new("Frame",hdr).Size,Instance.new("Frame",hdr).Position,Instance.new("Frame",hdr).BackgroundColor3,Instance.new("Frame",hdr).BackgroundTransparency,Instance.new("Frame",hdr).BorderSizePixel=UDim2.new(1,0,0,6),UDim2.new(0,0,1,-6),C.surf,0.2,0
+    local hdrFlat=Instance.new("Frame",hdr); hdrFlat.Size=UDim2.new(1,0,0,6); hdrFlat.Position=UDim2.new(0,0,1,-6); hdrFlat.BackgroundColor3=C.surf; hdrFlat.BackgroundTransparency=0.2; hdrFlat.BorderSizePixel=0
     if name then lbl(hdr,{Position=UDim2.new(0,7,0,0);Size=UDim2.new(1,-24,1,0);Text=name;TextSize=8;Font=Enum.Font.GothamBlack;TextXAlignment=Enum.TextXAlignment.Left;TextColor3=col or C.dim}) end
     local mb=btn(hdr,"─",UDim2.fromOffset(14,13),UDim2.new(1,-17,0.5,-6.5),C.surf2,C.dim,8); mb.BackgroundTransparency=0.6
     local content=Instance.new("Frame"); content.Size=UDim2.new(1,0,0,h-20)
@@ -455,7 +455,7 @@ local AP=Instance.new("Frame",SG); AP.Size=UDim2.fromOffset(AP_W,22)
 AP.Position=UDim2.fromOffset(10,150); AP.BackgroundColor3=C.panel; AP.BackgroundTransparency=0.22
 AP.BorderSizePixel=0; AP.ClipsDescendants=true; co(AP,9); stk(AP,1.2,C.str,0.35); loadPos("ap",AP)
 local apHdr=Instance.new("Frame",AP); apHdr.Size=UDim2.new(1,0,0,21); apHdr.BackgroundColor3=C.surf; apHdr.BackgroundTransparency=0.2; apHdr.BorderSizePixel=0; co(apHdr,9)
-Instance.new("Frame",apHdr).Size,Instance.new("Frame",apHdr).Position,Instance.new("Frame",apHdr).BackgroundColor3,Instance.new("Frame",apHdr).BackgroundTransparency,Instance.new("Frame",apHdr).BorderSizePixel=UDim2.new(1,0,0,7),UDim2.new(0,0,1,-7),C.surf,0.2,0
+local apHdrFlat=Instance.new("Frame",apHdr); apHdrFlat.Size=UDim2.new(1,0,0,7); apHdrFlat.Position=UDim2.new(0,0,1,-7); apHdrFlat.BackgroundColor3=C.surf; apHdrFlat.BackgroundTransparency=0.2; apHdrFlat.BorderSizePixel=0
 lbl(apHdr,{Position=UDim2.new(0,7,0,0);Size=UDim2.new(1,-24,1,0);Text="Admin Panel";TextSize=8;Font=Enum.Font.GothamBlack;TextXAlignment=Enum.TextXAlignment.Left;TextColor3=C.dim})
 local apMb=btn(apHdr,"─",UDim2.fromOffset(14,13),UDim2.new(1,-17,0.5,-6.5),C.surf2,C.dim,8); apMb.BackgroundTransparency=0.6
 dragF(AP,apHdr,"ap")
@@ -806,20 +806,24 @@ lp.CharacterAdded:Connect(function(c)
     end)
 end)
 
--- Infinite jump (Delta style)
-local jumpConn=nil
-local function setupIJ(char)
-    if jumpConn then jumpConn:Disconnect(); jumpConn=nil end
-    local hum=char:WaitForChild("Humanoid",10); if not hum then return end
-    jumpConn=UIS.JumpRequest:Connect(function()
-        if not ijOn then return end
-        if not hum or not hum.Parent then return end
-        if hum.Health<=0 then return end
-        hum:ChangeState(Enum.HumanoidStateType.Jumping)
-    end)
+-- Infinite jump (lemon farm style - reconnects on CharacterAdded, no state reset)
+local ijChar = lp.Character
+local ijHum = ijChar and ijChar:FindFirstChildOfClass("Humanoid")
+local function connectIJ()
+    ijChar = lp.Character or lp.CharacterAdded:Wait()
+    ijHum = ijChar:WaitForChild("Humanoid")
 end
-if lp.Character then task.spawn(function() pcall(setupIJ,lp.Character) end) end
-lp.CharacterAdded:Connect(function(c) task.wait(0.15); pcall(setupIJ,c) end)
+connectIJ()
+UIS.JumpRequest:Connect(function()
+    if not ijOn then return end
+    if not ijHum or not ijHum.Parent then return end
+    if ijHum.Health <= 0 then return end
+    ijHum:ChangeState(Enum.HumanoidStateType.Jumping)
+end)
+lp.CharacterAdded:Connect(function(c)
+    ijChar = c
+    ijHum = c:WaitForChild("Humanoid")
+end)
 
 -- Aimbot
 local aimbotTarget=nil; local aimbotRemote=nil
