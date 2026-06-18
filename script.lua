@@ -1,5 +1,3 @@
-
-
 local _ = not game:IsLoaded()
 local _call6 = game:GetService('Players')
 local _ = not _call6.LocalPlayer
